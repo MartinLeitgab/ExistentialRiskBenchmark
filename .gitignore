@@ -1,0 +1,16 @@
+# Environment
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Data (large files)
+data/scenarios/generated/
+data/responses/
+*.csv
+*.jsonl
+
+# IDE
+.vscode/
+.idea/
+*.swp
