@@ -22,8 +22,8 @@ python3 --version
 
 ## 2. Clone Repository
 ```bash
-git clone https://github.com/[org]/exrisk-benchmark
-cd exrisk-benchmark
+git clone https://github.com/ExistentialRiskBenchmark
+cd ExistentialRiskBenchmark
 ```
 
 ## 3. Create Virtual Environment
