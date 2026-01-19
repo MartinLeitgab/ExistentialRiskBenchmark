@@ -2,24 +2,49 @@
 anthropic==0.39.0
 openai==1.54.0
 google-generativeai==0.8.3
+google-api-core==2.29.0
+google-api-python-client==2.188.0
+google-auth==2.47.0
+huggingface-hub==0.36.0
+
+# HTTP clients
+httpx==0.28.1
+requests==2.32.5
+anyio==4.12.1
 
 # Data processing
 pandas==2.2.0
 numpy==1.26.3
 scipy==1.12.0
 scikit-learn==1.4.0
-sentence-transformers>=2.3.0
+sentence-transformers==5.2.0
+
+# PyTorch & NLP
+torch==2.9.1
+transformers==4.57.5
+tokenizers==0.22.2
+safetensors==0.7.0
+
+# Data validation
+pydantic==2.12.5
+typing_extensions==4.15.0
 
 # Visualization
 matplotlib==3.8.2
 seaborn==0.13.1
+pillow==12.1.0
 
 # Utilities
 pyyaml==6.0.1
 python-dotenv==1.0.0
 tqdm==4.66.1
+joblib==1.5.3
+certifi>=2026.1.4
 
-# Development
+# Development & Testing
 pytest==7.4.4
+pytest-cov==7.0.0
+coverage==7.13.1
 black==23.12.1
 flake8==7.0.0
+pre-commit==4.5.1
