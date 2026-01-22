@@ -5,18 +5,26 @@ import hashlib
 import threading
 import httpx
 from typing import List, Dict, Optional
+from dataclasses import dataclass
+from typing import Literal, Any
 
 from dotenv import load_dotenv
+load_dotenv()
 
 import anthropic
 from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
 from anthropic.types.messages.batch_create_params import Request as AnthropicBatchRequest
-
 import openai
 import tiktoken
-
 from google import genai
 from google.genai import types
+
+BatchProvider = Literal["anthropic", "openai", "google"]
+@dataclass(frozen=True)
+class BatchHandle:
+    provider: BatchProvider
+    id: str                 # batch_id or file_name
+    metadata: Optional[Any] = None
 
 
 
@@ -63,17 +71,34 @@ class UnifiedLLMClient:
     """
 
     DEFAULT_MODELS = {
-        "anthropic": "claude-sonnet-4-5",
+        "anthropic": "claude-sonnet-4-5-20250929",
         "openai": "gpt-5.2",
         "google": "gemini-3-flash-preview",
     }
 
     PRICING = {
-        "claude-sonnet-4-5": (3 / 1e6, 15 / 1e6),
+        "claude-sonnet-4-5-20250929": (3 / 1e6, 15 / 1e6),
         "gpt-5.2": (5 / 1e6, 15 / 1e6),
         "gpt-4o": (5 / 1e6, 15 / 1e6),
         "gemini-3-flash-preview": (2 / 1e6, 8 / 1e6),
     }
+
+    @staticmethod
+    def _require_env(key: str):
+        if key not in os.environ or not os.environ[key]:
+            raise OSError(f"Missing required API key: {key}")
+
+
+    def _validate_api_key(self):
+        env_var = {
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "google": "GOOGLE_API_KEY",
+        }.get(self.provider)
+
+        if env_var:
+            self._require_env(env_var)
+
 
     def __init__(
         self,
@@ -81,8 +106,8 @@ class UnifiedLLMClient:
         model: Optional[str] = None,
         enable_cache: bool = True,
         rate_limit_per_sec: float = 5.0,
+        client_override=None,   # used for tests / mocks
     ):
-        load_dotenv()
 
         self.provider = provider
         self.model = model or self.DEFAULT_MODELS[provider]
@@ -90,22 +115,38 @@ class UnifiedLLMClient:
         self.cache: Dict[str, dict] = {}
         self.bucket = TokenBucket(rate_limit_per_sec, rate_limit_per_sec)
 
+        if client_override:
+            self.client = client_override
+            return
+
+        self._validate_api_key()
+
         if provider == "anthropic":
-            self.client = anthropic.Anthropic(
-                api_key=os.getenv("ANTHROPIC_API_KEY")
-            )
+            self._require_env("ANTHROPIC_API_KEY")
+            self.api_key = os.getenv("ANTHROPIC_API_KEY")
+            if not self.api_key:
+                raise OSError("ANTHROPIC_API_KEY is missing")
+            self.client = anthropic.Anthropic(api_key=self.api_key)
 
         elif provider == "openai":
+            self._require_env("OPENAI_API_KEY")
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            if not self.api_key:
+                raise OSError("OPENAI_API_KEY is missing")
             self.client = openai.OpenAI(
-                http_client=httpx.Client(trust_env=False)
+                api_key=self.api_key,
+                http_client=httpx.Client(trust_env=False),
             )
 
         elif provider == "google":
-            self.client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
+            self._require_env("GOOGLE_API_KEY")
+            self.api_key = os.getenv("GOOGLE_API_KEY")
+            if not self.api_key:
+                raise OSError("GOOGLE_API_KEY is missing")
+            self.client = genai.Client(api_key=self.api_key)
 
         else:
             raise ValueError(f"Unsupported provider: {provider}")
-
 
     def generate(
         self,
@@ -169,10 +210,7 @@ class UnifiedLLMClient:
         """
         GPT-5.x+ models require max_completion_tokens instead of max_tokens.
         """
-        if self.model.startswith("gpt-5"):
-            return "max_completion_tokens"
-        return "max_tokens"
-
+        return "max_completion_tokens" if self.model.startswith("gpt-5") else "max_tokens"
 
     def _generate_openai(self, prompt, system_prompt, temperature, max_tokens):
         messages = []
@@ -201,8 +239,6 @@ class UnifiedLLMClient:
 
     def _generate_google(self, prompt, system_prompt, temperature, max_tokens):
         full = prompt if not system_prompt else f"{system_prompt}\n\n{prompt}"
-
-        # Generate content
         r = self.client.models.generate_content(
             model=self.model,
             contents=prompt,
@@ -221,128 +257,186 @@ class UnifiedLLMClient:
             "usage": tokens,
         }
 
-    import anthropic
-
-    def submit_anthropic_batch(self, requests: List[Dict], poll_interval: float = 5.0) -> dict:
-        batch = []
-        for r in requests:
-            batch.append(
-                AnthropicBatchRequest(
-                    custom_id=r["id"],
-                    params=MessageCreateParamsNonStreaming(
-                        model=self.model,
-                        max_tokens=r.get("max_tokens", 1024),
-                        messages=[{"role": "user", "content": r["prompt"]}],
-                    ),
-                )
-            )
-
-        # Submit batch
-        batch_obj = self.client.messages.batches.create(requests=batch)
-        print(f"Batch submitted: {batch_obj.id} (status: {batch_obj.processing_status})")
-
-        # Poll until results are available
+    def _poll_until(self, fn, is_done, interval=5, timeout=300):
+        start = time.time()
         while True:
-            try:
-                results_iter = self.client.messages.batches.results(batch_obj.id)
-                break  # results are ready
-            except anthropic.AnthropicError:
-                print(f"Batch still processing... waiting {poll_interval}s")
-                time.sleep(poll_interval)
+            if time.time() - start > timeout:
+                raise TimeoutError("Batch polling timed out")
 
-        # Process results
-        for result in results_iter:
-            result_type = getattr(result.result, "type", None)
-            if result_type == "succeeded":
-                print(f"Success! {result.custom_id}")
-            elif result_type == "errored":
-                error_type = getattr(result.result, "error", None)
-                if error_type and error_type.type == "invalid_request":
-                    print(f"Validation error {result.custom_id}")
-                else:
-                    print(f"Server error {result.custom_id}")
-            elif result_type == "expired":
-                print(f"Request expired {result.custom_id}")
+            obj = fn()
+            if is_done(obj):
+                return obj
 
-        return batch_obj
+            time.sleep(interval)
+    
+    def submit_batch(self, requests: List[Dict], jsonl_path: Optional[str] = None) -> BatchHandle:
+        if self.provider == "anthropic":
+            batch_id = self.submit_anthropic_batch(requests)
+            return BatchHandle(provider="anthropic", id=batch_id)
+
+        if self.provider == "openai":
+            if not jsonl_path:
+                raise ValueError("jsonl_path is required for OpenAI batch")
+            batch_id = self.submit_openai_batch(requests, jsonl_path)
+            return BatchHandle(provider="openai", id=batch_id)
+
+        if self.provider == "google":
+            if not jsonl_path:
+                raise ValueError("jsonl_path is required for Gemini batch")
+            file_name = self.submit_gemini_batch(requests, jsonl_path)
+            return BatchHandle(provider="google", id=file_name)
+
+        raise ValueError(f"Unsupported provider: {self.provider}")
+
+    def retrieve_batch_results(self, handle: BatchHandle) -> Dict[str, str]:
+        if handle.provider == "anthropic":
+            return self.retrieve_anthropic_batch_results(handle.id)
+
+        if handle.provider == "openai":
+            return self.retrieve_openai_batch_results(handle.id)
+
+        if handle.provider == "google":
+            return self.retrieve_gemini_batch_results(handle.id)
+
+        raise ValueError(f"Unsupported provider: {handle.provider}")
+
+    def submit_anthropic_batch(self, requests: List[Dict]) -> str:
+        batch_reqs = [
+            AnthropicBatchRequest(
+                custom_id=r["id"],
+                params=MessageCreateParamsNonStreaming(
+                    model=self.model,
+                    max_tokens=r.get("max_tokens", 1024),
+                    messages=[{"role": "user", "content": r["prompt"]}],
+                ),
+            )
+            for r in requests
+        ]
+
+        batch = self.client.messages.batches.create(requests=batch_reqs)
+        return batch.id
 
     def submit_openai_batch(self, requests: List[Dict], jsonl_path: str) -> str:
-        import json
-
-        # Write JSONL
         with open(jsonl_path, "w") as f:
             for r in requests:
                 f.write(json.dumps({
                     "custom_id": r["id"],
                     "method": "POST",
-                    "url": "/v1/chat/completions",
+                    "url": "/v1/responses",
                     "body": {
                         "model": self.model,
-                        "messages": [{"role": "user", "content": r["prompt"]}],
-                        "max_tokens": r.get("max_tokens", 512),
+                        "input": r["prompt"],
+                        "max_output_tokens": 512,
                     },
                 }) + "\n")
 
-        # Upload file
-        file = self.client.files.create(file=open(jsonl_path, "rb"), purpose="batch")
+        file = self.client.files.create(
+            file=open(jsonl_path, "rb"),
+            purpose="batch",
+        )
 
-        # Create batch job
         batch = self.client.batches.create(
             input_file_id=file.id,
-            endpoint="/v1/chat/completions",
+            endpoint="/v1/responses",
             completion_window="24h",
         )
-        print(f"OpenAI batch submitted: {batch.id} (status: {getattr(batch, 'status', 'unknown')})")
 
-        # No polling! Just return batch ID and instruct user to download results JSONL
         return batch.id
 
-
-    def submit_gemini_batch(self, requests: List[Dict], jsonl_path: str, poll_interval: float = 5.0) -> str:
-        """
-        Submits a batch job to Google Gemini using JSONL, polls for processing,
-        and logs per-request successes.
-        """
-        import json
-        import time
-
-        # Step 1: Write JSONL
-        with open(jsonl_path, "w") as f:
+    def submit_gemini_batch(self, requests: List[Dict], jsonl_path: str) -> str:
+        with open(jsonl_path, "w", encoding="utf-8") as f:
             for r in requests:
-                f.write(
-                    json.dumps({
-                        "key": r["id"],
-                        "request": {
-                            "contents": [{"parts": [{"text": r["prompt"]}]}]
-                        }
-                    }) + "\n"
-                )
+                f.write(json.dumps({
+                    "key": r["id"],
+                    "request": {
+                        "contents": [
+                            {
+                                "role": "user",
+                                "parts": [{"text": r["prompt"]}],
+                            }
+                        ]
+                    },
+                }) + "\n")
 
-        # Step 2: Upload file
-        uploaded_file = self.client.files.upload(
+        uploaded = self.client.files.upload(
             file=jsonl_path,
-            config=types.UploadFileConfig(display_name="gemini-batch", mime_type="application/jsonl")
+            config=types.UploadFileConfig(
+                display_name="gemini-batch-input",
+                mime_type="application/jsonl",
+            ),
         )
-        print(f"Gemini batch file uploaded: {uploaded_file.name}")
 
-        # Step 3: Poll until processing_status == "succeeded"
-        while True:
-            file_status = self.client.files.get(name=uploaded_file.name)  # <-- correct usage
-            status = getattr(file_status, "processing_status", None)
-            if status == "succeeded":
-                print("Gemini batch processing completed!")
-                break
-            print(f"Batch still processing... waiting {poll_interval}s")
-            time.sleep(poll_interval)
+        batch = self.client.batches.create(
+            model=self.model,
+            input_file=uploaded.name,
+        )
 
-        # Step 4: Fetch results and log per-request successes
-        results_file = self.client.files.get(name=uploaded_file.name)
-        contents = getattr(results_file, "contents", [])
-        for entry in contents:
-            print(f"Success! {entry['key']}")
+        return batch.name
 
-        return uploaded_file.name
+    def retrieve_anthropic_batch_results(self, batch_id: str) -> Dict[str, str]:
+        batch = self._poll_until(
+            fn=lambda: self.client.messages.batches.retrieve(batch_id),
+            is_done=lambda b: b.request_counts.processing == 0,
+            interval=10,
+            timeout=1800,
+        )
 
+        if batch.request_counts.errored > 0 or batch.request_counts.expired > 0:
+            raise RuntimeError("Anthropic batch failed")
+
+        raw = requests.get(batch.results_url).text
+
+        results = {}
+        for line in raw.splitlines():
+            obj = json.loads(line)
+            results[obj["custom_id"]] = obj["content"][0]["text"]
+
+        return results
+
+    def retrieve_openai_batch_results(self, batch_id: str) -> Dict[str, str]:
+        batch = self._poll_until(
+            fn=lambda: self.client.batches.retrieve(batch_id),
+            is_done=lambda b: (
+                b.status == "completed" and b.output_file_id
+            ) or b.status in ("failed", "expired", "cancelled"),
+            interval=10,
+            timeout=600,
+        )
+
+        if batch.status != "completed":
+            raise RuntimeError(f"OpenAI batch ended with status: {batch.status}")
+
+        raw = self.client.files.content(batch.output_file_id)
+
+        results = {}
+        for line in raw.decode().splitlines():
+            obj = json.loads(line)
+            results[obj["custom_id"]] = obj["response"]["choices"][0]["message"]["content"]
+
+        return results
+
+    def retrieve_gemini_batch_results(self, batch_name: str) -> Dict[str, str]:
+        batch = self._poll_until(
+            fn=lambda: self.client.batches.get(name=batch_name),
+            is_done=lambda b: b.state in ("SUCCEEDED", "FAILED"),
+            interval=10,
+            timeout=1800,
+        )
+
+        if batch.state != "SUCCEEDED":
+            raise RuntimeError(f"Gemini batch failed: {batch.state}")
+
+        raw = self.client.files.download(name=batch.output_file).decode("utf-8")
+
+        results = {}
+        for line in raw.splitlines():
+            obj = json.loads(line)
+            results[obj["key"]] = (
+                obj["response"]["candidates"][0]
+                ["content"]["parts"][0]["text"]
+            )
+
+        return results
 
     def count_tokens(self, prompt: str, completion: str = "") -> dict:
         try:
@@ -380,42 +474,3 @@ class UnifiedLLMClient:
     @staticmethod
     def _hash(*items) -> str:
         return hashlib.sha256(json.dumps(items, sort_keys=True).encode()).hexdigest()
-
-
-
-if __name__ == "__main__":
-    print("\n=== SINGLE-SHOT + RETRY + COST TEST ===")
-
-    prompt = "Explain in one paragraph why the sky is blue."
-
-    for provider in ["anthropic", "openai", "google"]:
-        client = UnifiedLLMClient(provider)
-        r1 = client.generate(prompt)
-        r2 = client.generate(prompt)  # cache hit
-        cost = client.estimate_cost(prompt)
-
-        print(f"Provider: {provider}")
-        print("Content:", r1["content"][:120])
-        print("Usage:", r1["usage"])
-        print("Estimated cost:", cost)
-        print("Cache working:", r1["content"] == r2["content"])
-
-    print("\n=== BATCH API TEST ===")
-
-    batch_requests = [
-        {"id": "req-1", "prompt": "Define photosynthesis."},
-        {"id": "req-2", "prompt": "What is Newton's second law?"},
-    ]
-
-    anth = UnifiedLLMClient("anthropic")
-    print("Anthropic batch:", anth.submit_anthropic_batch(batch_requests))
-
-    oai = UnifiedLLMClient("openai")
-    print("OpenAI batch id:", oai.submit_openai_batch(batch_requests, "openai_batch.jsonl"))
-
-    gem = UnifiedLLMClient("google")
-    print("Gemini batch file:", gem.submit_gemini_batch(batch_requests, "gemini_batch.jsonl"))
-
-    print("\n=== LLM-AS-JUDGE TEST ===")
-    judge_text = "Which answer is more concise: A or B?"
-    print(UnifiedLLMClient("openai").judge_with_gpt4o(judge_text))
