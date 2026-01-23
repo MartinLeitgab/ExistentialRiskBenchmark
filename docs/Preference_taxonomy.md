@@ -4,8 +4,8 @@
 
 This document describes the 18-preference taxonomy for the Existential Risk Preferences Benchmark, including design rationale, x-risk pathway mapping, selection criteria, and supporting literature.
 
-**Version:** 2.0  
-**Total Preferences:** 18 (6 per category)  
+**Version:** 2.0
+**Total Preferences:** 18 (6 per category)
 **Coverage:** 153 unique pairs tested uniformly
 
 ---
