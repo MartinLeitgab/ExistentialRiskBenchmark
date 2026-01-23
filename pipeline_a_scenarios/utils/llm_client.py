@@ -9,9 +9,7 @@ class UnifiedLLMClient:
 
     def __init__(self, provider: str, model: str, api_key: Optional[str] = None):
         if provider not in ["anthropic", "openai"]:
-            raise ValueError(
-                f"Provider must be 'anthropic' or 'openai', got '{provider}'"
-            )
+            raise ValueError(f"Provider must be 'anthropic' or 'openai', got '{provider}'")
 
         self.provider = provider
         self.model = model
