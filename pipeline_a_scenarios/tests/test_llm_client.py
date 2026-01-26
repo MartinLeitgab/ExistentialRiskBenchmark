@@ -38,7 +38,7 @@ RESULTS_DIR.mkdir(exist_ok=True)
 
 TEST_PROMPT = "Explain the difference between a list and a tuple in Python in one sentence."
 
-PROVIDERS = ["anthropic", "openai", "google"]
+PROVIDERS = ["anthropic", "openai", "google"] #["google"] #
 
 
 def example_batch_requests() -> list[dict]:
@@ -108,6 +108,7 @@ def test_integration_marker():
     assert True
 
 @pytest.mark.integration
+@pytest.mark.batch
 @pytest.mark.slow
 @pytest.mark.parametrize("provider", PROVIDERS)
 def test_batch_processing_from_file(provider: str):

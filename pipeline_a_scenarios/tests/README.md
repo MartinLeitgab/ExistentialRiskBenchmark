@@ -39,6 +39,16 @@ Runs **only integration tests**:
 pytest -m integration
 ```
 
+# Run integration tests except batch
+pytest -m "integration and not batch" -s
+
+# Run batch tests only
+pytest -m batch -s
+
+# Run all tests including slow integration
+pytest -m "integration or slow" -s
+
+
 ⚠️ These tests:
 
 * Call real external APIs
