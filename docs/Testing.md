@@ -218,3 +218,17 @@ tests/unit/test_llm_client.py::test_retry_logic_on_failures PASSED              
 tests/unit/test_llm_client.py::test_file_handling_for_batch_inputs PASSED                                             [ 95%] 
 tests/unit/test_llm_client.py::test_error_handling_and_validation PASSED                                              [100%] 
 ```
+
+ 
+## Procedure after using cost tracker
+
+Everyone should follow the gitworkflow after using Cost Tracker
+```
+git add data/metadata/costs_$(whoami).jsonl
+git commit -m "Cost log"
+git push
+
+# For Team lead
+git pull  # Get teammates' cost logs
+
+```
