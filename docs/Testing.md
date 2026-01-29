@@ -5,6 +5,7 @@
 There are different unit tests are define under tests/unit section.
 
 ### 1.test_cost_tracker.py
+### 2.test_llm_client.py
 File to check unit tests.
 
 
