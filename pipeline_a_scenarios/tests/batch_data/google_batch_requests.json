@@ -1,10 +1,10 @@
 [
   {
-    "id": "req-1",
-    "prompt": "What is Python? Answer in one sentence."
+    "id": "request_1",
+    "prompt": "Explain how AI works in a few words"
   },
   {
-    "id": "req-2",
-    "prompt": "What is an LLM? Answer in one sentence."
+    "id": "request_2",
+    "prompt": "Explain how quantum computing works in a few words"
   }
 ]

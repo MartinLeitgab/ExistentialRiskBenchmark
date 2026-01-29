@@ -66,6 +66,36 @@ pytest -m ""
 
 ---
 
+🧹 Cleanup stuck Gemini batch jobs
+
+If Gemini batch tests are skipped due to queue saturation ("11 active jobs"), cancel all stuck jobs before submitting new ones:
+bash
+
+Copy
+CLEANUP_GEMINI_JOBS=1 pytest -m "" "pipeline_a_scenarios/tests/test_llm_client.py::test_batch_submission[google]" -s
+This command will:
+List all active Gemini batch jobs
+Cancel any jobs stuck in QUEUED/RUNNING state
+Proceed with the new batch submission
+
+---
+
+Check Gemini Batch status and queue.
+
+pytest -m "" pipeline_a_scenarios/tests/test_llm_client.py::test_check_gemini_queue -s
+pytest -m "" pipeline_a_scenarios/tests/test_llm_client.py::test_check_current_gemini_batch -s
+
+# 1. Cancel the stuck 15-minute batch
+pytest -m "" pipeline_a_scenarios/tests/test_llm_client.py::test_cleanup_stuck_gemini_batch -s
+
+# 2. Run with parallel mode (completes in ~10 seconds)
+pytest -m "" "pipeline_a_scenarios/tests/test_llm_client.py::test_batch_submission[google]" -s
+
+# 3. Retrieve (instant since results already saved)
+pytest -m "" "pipeline_a_scenarios/tests/test_llm_client.py::test_batch_wait_and_retrieve[google]" -s
+
+---
+
 ## 🔑 Required API keys (for integration tests)
 
 * `OPENAI_API_KEY`
