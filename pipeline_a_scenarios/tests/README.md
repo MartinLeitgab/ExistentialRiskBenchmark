@@ -143,6 +143,29 @@ During the development and testing of `pipeline_a_scenarios`, I resolved several
 
 * Correct endpoint usage and parameter configurations for each provider.
 * Ensuring that the `reasoning` or “thinking” configuration is applied consistently.
+* Implementing **token multipliers** to allow extended reasoning (“thinking”) without truncating outputs. This ensures that LLMs have sufficient token budget for high-reasoning responses.
+
+### Token Multipliers Rationale
+
+Because different providers handle reasoning and max token budgets differently, multipliers were applied as follows:
+
+| Provider       | Reasoning Mode | Token Multiplier / Budget Adjustment |
+|----------------|----------------|-------------------------------------|
+| **Google Gemini** | standard/high | Output tokens multiplied by **8x** (`max_output_tokens = max_tokens * 8`) and `thinking_config` applied where possible. Batch API does **not** support `thinking_config`, so parallel single-shot calls are used. |
+| **OpenAI**     | standard/high | If model supports reasoning (GPT-5.2, o1, o3), output tokens multiplied by **10x**. Otherwise, `reasoning_effort` parameter is applied (`medium/high`). |
+| **Anthropic**  | standard/high | `thinking` field enabled with `budget_tokens` = 2x–3x of `max_tokens` depending on mode (standard: 2x, high: 3x). Adjusted `max_tokens` ensures outputs are not truncated. |
+
+This approach guarantees that extended reasoning can be requested without hitting hard limits or losing generated content, while maintaining consistency across providers.
+
+### Google Gemini Workarounds
+
+* In Google AI Studio, **batch submissions cannot enable `thinking_config`**, unlike Anthropic and OpenAI.
+* To overcome this, a **parallel single-shot call approach** (`submit_gemini_parallel`) was implemented:
+  * Each prompt is sent individually in parallel threads.
+  * `thinking_config` can then be applied per request.
+  * Results are aggregated to mimic batch processing while respecting Gemini API limitations.
+
+This setup allows consistent extended reasoning for all LLM providers while preserving batch-like efficiency and correctness.
 
 A key difference observed is in **Google Gemini** behavior compared to Anthropic and OpenAI:
 
