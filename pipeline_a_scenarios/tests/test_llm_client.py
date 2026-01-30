@@ -42,7 +42,7 @@ RESULTS_DIR.mkdir(exist_ok=True)
 
 TEST_PROMPT = "Explain the difference between a list and a tuple in Python in one sentence."
 
-PROVIDERS = ["google"] 
+PROVIDERS = ["anthropic", "openai", "google"]
 
 # Maximum number of active Gemini jobs before we refuse to submit (to prevent queue saturation)
 MAX_GEMINI_QUEUE_DEPTH = 5

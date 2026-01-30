@@ -538,6 +538,68 @@ class UnifiedLLMClient:
         batch = self.client.messages.batches.create(requests=batch_reqs)
         return batch.id
 
+    def submit_openai_batch(self, requests: List[Dict], jsonl_path: str) -> str:
+        """
+        Fixed OpenAI batch submission to use correct endpoint and token parameter.
+        The endpoint should be /v1/chat/completions for chat models.
+        Also handles correct token parameter based on model version (max_tokens vs max_completion_tokens).
+        """
+        # Determine which token parameter to use based on model
+        token_param = self._openai_max_token_param()
+        
+        with open(jsonl_path, "w") as f:
+            for r in requests:
+                max_tokens = r.get("max_tokens", 512)
+                
+                # For reasoning models, increase tokens significantly
+                is_reasoning_model = (
+                    self.model.startswith("o1") or 
+                    self.model.startswith("o3") or 
+                    self.model.startswith("gpt-5")
+                )
+                
+                if is_reasoning_model:
+                    max_tokens = max_tokens * 10
+                
+                body = {
+                    "model": self.model,
+                    "messages": [
+                        {"role": "user", "content": r["prompt"]}
+                    ],
+                    token_param: max_tokens,
+                }
+                
+                # Add system prompt if provided
+                if "system_prompt" in r:
+                    body["messages"].insert(0, {
+                        "role": "system",
+                        "content": r["system_prompt"]
+                    })
+                
+                # Add temperature if provided
+                if "temperature" in r:
+                    body["temperature"] = r["temperature"]
+                
+                f.write(json.dumps({
+                    "custom_id": r["id"],
+                    "method": "POST",
+                    "url": "/v1/chat/completions",  # Fixed endpoint
+                    "body": body,
+
+                }) + "\n")
+        file = self.client.files.create(
+            file=open(jsonl_path, "rb"),
+            purpose="batch",
+        )
+
+        batch = self.client.batches.create(
+            input_file_id=file.id,
+            endpoint="/v1/chat/completions",  # Fixed endpoint
+            completion_window="24h",
+        )
+
+        return batch.id
+
     def submit_gemini_batch(self, requests: List[Dict], jsonl_path: str) -> str:
         """
         Gemini Batch API compliant submission with optimized generation config.
