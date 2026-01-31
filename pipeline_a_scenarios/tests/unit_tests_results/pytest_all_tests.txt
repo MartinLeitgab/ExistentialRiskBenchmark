@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-7.4.4, pluggy-1.6.0 -- /opt/anaconda3/envs/x-risk-bench/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark
+configfile: pytest.ini
+plugins: anyio-4.12.1, langsmith-0.6.4
+collecting ... collected 26 items / 13 deselected / 13 selected
+
+pipeline_a_scenarios/tests/test_errors.py::test_missing_api_key_raises PASSED [  7%]
+pipeline_a_scenarios/tests/test_errors.py::test_submit_batch_requires_jsonl_for_openai PASSED [ 15%]
+pipeline_a_scenarios/tests/test_errors.py::test_submit_batch_requires_jsonl_for_gemini PASSED [ 23%]
+pipeline_a_scenarios/tests/test_llm_client.py::test_single_shot_generation[anthropic] PASSED [ 30%]
+pipeline_a_scenarios/tests/test_llm_client.py::test_single_shot_generation[openai] PASSED [ 38%]
+pipeline_a_scenarios/tests/test_llm_client.py::test_single_shot_generation[google] PASSED [ 46%]
+pipeline_a_scenarios/tests/test_mock_batch.py::test_batch_facade[anthropic-mock_client0-False] PASSED [ 53%]
+pipeline_a_scenarios/tests/test_mock_batch.py::test_batch_facade[openai-mock_client1-True] PASSED [ 61%]
+pipeline_a_scenarios/tests/test_mock_batch.py::test_batch_facade[google-mock_client2-True] PASSED [ 69%]
+pipeline_a_scenarios/tests/test_polling.py::test_poll_until_waits_until_done PASSED [ 76%]
+pipeline_a_scenarios/tests/test_single_shot.py::test_single_shot_anthropic PASSED [ 84%]
+pipeline_a_scenarios/tests/test_single_shot.py::test_single_shot_openai PASSED [ 92%]
+pipeline_a_scenarios/tests/test_single_shot.py::test_single_shot_gemini PASSED [100%]
+
+=============================== warnings summary ===============================
+pipeline_a_scenarios/tests/test_llm_client.py:286
+  /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark/pipeline_a_scenarios/tests/test_llm_client.py:286: PytestUnknownMarkWarning: Unknown pytest.mark.veryslow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.veryslow
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 13 passed, 13 deselected, 1 warning in 7.84s =================
