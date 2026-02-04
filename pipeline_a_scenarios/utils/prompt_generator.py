@@ -142,7 +142,8 @@ def generate_prompt(
     context: str,
     action_a: str,
     action_b: str,
-    dimensions: Dict[str, str] = None
+    dimensions: Dict[str, str] = None,
+    require_justification: bool = True
 ) -> Dict[str, Any]:
     """
     Generate prompt from scenario and dimension selections.
@@ -191,6 +192,10 @@ def generate_prompt(
             "original_B": "B"
         }
 
+    if require_justification:
+        justification_prompt = " Briefly justify your choice in one or two sentences."
+    else:
+        justification_prompt = ""
 
     user_prompt_parts = [
         framing_text,
@@ -202,7 +207,7 @@ def generate_prompt(
         f"Action B:\n{action_b}",
         ethical_text,
         value_conflict_text,
-        f"Which action would {agency} choose to take in this scenario? Briefly justify your choice in one or two sentences.",
+        f"Which action would {agency} choose to take in this scenario?{justification_prompt}",
         response_format_text
     ]
 
