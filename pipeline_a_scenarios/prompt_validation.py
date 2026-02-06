@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from utils.llm_client import UnifiedLLMClient
-from utils.prompt_generator import generate_all_variants, generate_prompt
+from utils.prompt_generator import generate_all_variants, generate_prompt 
 from utils.cost_tracker import CostTracker
 from utils.judge_client import JudgeClient
 from utils.judge_analysis import (
@@ -45,8 +45,34 @@ def run_validation_study(
     
     # Generate all variants (PIPE-A2)
     print("\n2. Loading prompt variants from PIPE-A2...")
-    variants = generate_all_variants()
-    print(f"   Generated {len(variants)} prompt variants")
+    
+    # Generate variants for each dimension we want to test
+    # We'll test single-dimension variations from the base
+    all_variants = []
+    
+    # Base variant (all defaults)
+    from utils.prompt_generator import BASE_DIMENSIONS, generate_prompt_id
+    base_variant = {
+        "variant_id": generate_prompt_id(BASE_DIMENSIONS),
+        "dimensions": BASE_DIMENSIONS.copy(),
+        "vary_dim": "base",
+        "vary_value": "baseline"
+    }
+    all_variants.append(base_variant)
+    
+    # Generate single-dimension variations
+    dimensions_to_vary = ["framing", "exfiltration", "response_format", "ethical_framing"]
+    for dim in dimensions_to_vary:
+        variants_for_dim = generate_all_variants(vary_dim=dim)
+        all_variants.extend(variants_for_dim)
+    
+    print(f"   Generated {len(all_variants)} prompt variants")
+    print(f"   - 1 base variant")
+    for dim in dimensions_to_vary:
+        count = len(generate_all_variants(vary_dim=dim))
+        print(f"   - {count} {dim} variants")
+    
+    variants = all_variants
     
     # Initialize model clients
     print("\n3. Initializing model clients...")
@@ -71,12 +97,20 @@ def run_validation_study(
     for scenario in scenarios:
         for variant in variants:
             # Generate prompt (PIPE-A2)
-            prompt_obj, variant_id = generate_prompt(
-                scenario["context"],
-                scenario["action_a"],
-                scenario["action_b"],
-                variant["dimensions"]
+            prompt_result = generate_prompt(
+                context=scenario["context"],
+                action_a=scenario["action_a"],
+                action_b=scenario["action_b"],
+                dimensions=variant["dimensions"]
             )
+            
+            # Extract components
+            prompt_obj = {
+                "user_prompt": prompt_result["user_prompt"],
+                "system_prompt": prompt_result["system_prompt"]
+            }
+            variant_id = variant["variant_id"]
+            temperature = prompt_result["metadata"]["temperature"]
             
             for model in models:
                 client = clients[model]
@@ -86,10 +120,11 @@ def run_validation_study(
                     
                     try:
                         # Call model
+                        # Note: For Phase 1, we override variant temperature with 0 for consistency
                         response = client.generate(
                             prompt=prompt_obj["user_prompt"],
-                            system_prompt=prompt_obj.get("system_prompt"),
-                            temperature=0,  # Consistency testing
+                            system_prompt=prompt_obj["system_prompt"],
+                            temperature=temperature,  # Consistency testing (override variant temperature)
                             max_tokens=500
                         )
                         
@@ -121,7 +156,14 @@ def run_validation_study(
                             "run": run_idx,
                             "response_text": response["content"],
                             "usage": response["usage"],
-                            "dimensions": variant["dimensions"]
+                            "dimensions": variant["dimensions"],
+                            "scenario_metadata": {
+                                "preference_pair": scenario.get("preference_pair"),
+                                "pair_type": scenario.get("pair_type"),
+                                "difficulty": scenario.get("difficulty"),
+                                "stakes_level": scenario.get("stakes_level"),
+                                "domain": scenario.get("domain")
+                            }
                         }
                         results.append(result)
                         
@@ -407,8 +449,23 @@ def generate_anomaly_report(
     print(f"✓ Saved anomaly report to {report_path}")
 
 
+def prepare_phase1_data():
+    """Prepare seed scenarios if they don't exist."""
+    seeds_path = "data/scenarios/seeds_phase1.json"
+    
+    if not Path(seeds_path).exists():
+        print("Seed scenarios not found. Creating from all_scenarios.json...")
+        from prepare_seed_scenarios import select_seed_scenarios
+        select_seed_scenarios()
+    else:
+        print(f"✓ Found existing seed scenarios at {seeds_path}")
+
+
 def main_phase1():
     """Run complete Phase 1 pipeline."""
+    
+    # Step 0: Prepare data
+    prepare_phase1_data()
     
     # Step 1: Run validation study
     study_results = run_validation_study()

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Dict
 
 from utils.llm_client import UnifiedLLMClient
-from utils.prompt_generator import generate_prompt
+from utils.prompt_generator import generate_prompt, generate_all_variants, BASE_DIMENSIONS, generate_prompt_id
 from utils.cost_tracker import CostTracker
 
 
@@ -23,24 +23,30 @@ def prepare_batch_requests(
     Returns list of dicts with keys: id, prompt, system_prompt, temperature, max_tokens
     """
     
+    from utils.prompt_generator import generate_prompt
+    
     requests = []
     variant_id = variant["variant_id"]
+    variant_dimensions = variant["dimensions"]
     
     for scenario in scenarios:
-        # Generate prompt
-        prompt_obj, _ = generate_prompt(
-            scenario["context"],
-            scenario["action_a"],
-            scenario["action_b"],
-            variant["dimensions"]
+        # Generate prompt using prompt_generator
+        prompt_result = generate_prompt(
+            context=scenario["context"],
+            action_a=scenario["action_a"],
+            action_b=scenario["action_b"],
+            dimensions=variant_dimensions
         )
+        
+        # Extract temperature from variant metadata
+        temperature = prompt_result["metadata"]["temperature"]
         
         # Format for UnifiedLLMClient batch API
         request = {
             "id": f"{scenario['id']}_{variant_id}_{model}",
-            "prompt": prompt_obj["user_prompt"],
-            "system_prompt": prompt_obj.get("system_prompt", "You are a helpful assistant."),
-            "temperature": 0.7,
+            "prompt": prompt_result["user_prompt"],
+            "system_prompt": prompt_result["system_prompt"],
+            "temperature": temperature,
             "max_tokens": 500
         }
         requests.append(request)
@@ -128,10 +134,53 @@ def submit_all_batches(
 
 
 def load_variant_configs(variant_ids: List[str]) -> List[Dict]:
-    """Load variant configurations from PIPE-A2."""
-    # This would integrate with PIPE-A2's variant storage
-    # For now, stub implementation
-    pass
+    """
+    Load variant configurations from Phase 1 rankings.
+    
+    Args:
+        variant_ids: List of variant IDs selected from Phase 1
+        
+    Returns:
+        List of variant config dicts with variant_id and dimensions
+    """
+    from utils.prompt_generator import BASE_DIMENSIONS, DIMENSION_VALUES, generate_prompt_id
+    
+    # Load Phase 1 rankings to get dimension configurations
+    rankings_file = "data/results/prompt_validation/variant_rankings.json"
+    with open(rankings_file) as f:
+        rankings = json.load(f)
+    
+    variant_configs = []
+    
+    # Build reverse lookup: variant_id -> dimensions
+    variant_lookup = {}
+    
+    # First, add base variant
+    base_id = generate_prompt_id(BASE_DIMENSIONS)
+    variant_lookup[base_id] = {
+        "variant_id": base_id,
+        "dimensions": BASE_DIMENSIONS.copy()
+    }
+    
+    # Then add all single-dimension variations
+    dimensions_to_vary = ["framing", "exfiltration", "response_format", "ethical_framing"]
+    from utils.prompt_generator import generate_all_variants
+    
+    for dim in dimensions_to_vary:
+        for variant in generate_all_variants(vary_dim=dim):
+            variant_lookup[variant["prompt_id"]] = {
+                "variant_id": variant["prompt_id"],
+                "dimensions": variant["dimensions"]
+            }
+    
+    # Now get configs for requested variant_ids
+    for vid in variant_ids:
+        if vid in variant_lookup:
+            variant_configs.append(variant_lookup[vid])
+        else:
+            print(f"   ⚠ Warning: Variant {vid} not found in generated variants")
+    
+    return variant_configs
 
 
 if __name__ == "__main__":
