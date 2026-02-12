@@ -1,6 +1,6 @@
 """
 tests/unit/test_cost_tracker.py
-12 CORE TESTS - MATCHING ACTUAL COSTTRACKER (2025 Pricing)
+12 CORE TESTS - ACTUAL 2026 PRICING
 Author: Pooja Puranik
 Date: 12/02/2026
 """
@@ -44,38 +44,38 @@ def test_tracker_initialization():
         assert tracker.costs == []
 
 
-# ==================== TEST 2: OPENAI PRICING ====================
+# ==================== TEST 2: OPENAI PRICING (2026) ====================
 
 def test_openai_pricing(isolated_tracker):
-    """Test 2: Verify OpenAI pricing calculation."""
+    """Test 2: Verify OpenAI pricing calculation - 2026 rates."""
     tracker = isolated_tracker
     
-    # GPT-4o: $5/$15 per 1M tokens
+    # GPT-4o: $2.50/$10.00 per 1M tokens (2026 pricing)
     cost = tracker.calculate_cost(
         provider="openai",
         model="gpt-4o",
         input_tokens=1_000_000,
         output_tokens=500_000
     )
-    assert cost == 12.50  # (5*1 + 15*0.5) = 5 + 7.5 = 12.5
+    assert cost == 7.50  # (2.5*1 + 10*0.5) = 2.5 + 5 = 7.5
     
-    # GPT-4o-mini: $0.15/$0.60 per 1M tokens
+    # GPT-4o-mini: $0.075/$0.30 per 1M tokens (2026 pricing)
     cost = tracker.calculate_cost(
         provider="openai",
         model="gpt-4o-mini",
         input_tokens=1_000_000,
         output_tokens=500_000
     )
-    assert cost == 0.45  # (0.15*1 + 0.60*0.5) = 0.15 + 0.30 = 0.45
+    assert cost == 0.225  # (0.075*1 + 0.30*0.5) = 0.075 + 0.15 = 0.225
 
 
-# ==================== TEST 3: ANTHROPIC PRICING ====================
+# ==================== TEST 3: ANTHROPIC PRICING (2026) ====================
 
 def test_anthropic_pricing(isolated_tracker):
-    """Test 3: Verify Anthropic pricing calculation."""
+    """Test 3: Verify Anthropic pricing calculation - 2026 rates."""
     tracker = isolated_tracker
     
-    # Claude Sonnet 4.5: $3/$15 per 1M tokens
+    # Claude Sonnet 4.5: $3.00/$15.00 per 1M tokens (unchanged)
     cost = tracker.calculate_cost(
         provider="anthropic",
         model="claude-sonnet-4.5",
@@ -85,13 +85,13 @@ def test_anthropic_pricing(isolated_tracker):
     assert cost == 10.50  # (3*1 + 15*0.5) = 3 + 7.5 = 10.5
 
 
-# ==================== TEST 4: GOOGLE PRICING ====================
+# ==================== TEST 4: GOOGLE PRICING (2026) ====================
 
 def test_google_pricing(isolated_tracker):
-    """Test 4: Verify Google pricing calculation."""
+    """Test 4: Verify Google pricing calculation - 2026 rates."""
     tracker = isolated_tracker
     
-    # Gemini 2.5 Pro: $1.25/$5 per 1M tokens
+    # Gemini 2.5 Pro: $1.25/$5.00 per 1M tokens (unchanged)
     cost = tracker.calculate_cost(
         provider="google",
         model="gemini-2.5-pro",
