@@ -51,10 +51,12 @@ class CostTracker:
     # Pricing per million tokens (input, output)
     # Updated with actual 2025 pricing
     PRICING = {
+        
         "openai": {
+
             "gpt-5.2": {"input": 5.0, "output": 15.0},
-            "gpt-4o": {"input": 5.0, "output": 15.0},
-            "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+            "gpt-4o": {"input": 2.5, "output": 10.0},  # ✅ 2026 pricing
+            "gpt-4o-mini": {"input": 0.075, "output": 0.30},  # ✅ 2026 pricing
             "gpt-4": {"input": 3.0, "output": 6.0},
             "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
         },
