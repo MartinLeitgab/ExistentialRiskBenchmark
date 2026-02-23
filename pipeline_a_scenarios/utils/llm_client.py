@@ -1,4 +1,3 @@
-
 import os
 import time
 import json
@@ -10,7 +9,6 @@ import requests
 
 from typing import List, Dict, Optional, Literal, Any
 from dataclasses import dataclass
-from .cost_tracker import get_tracker
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -85,23 +83,15 @@ class UnifiedLLMClient:
         enable_cache: bool = True,
         rate_limit_per_sec: float = 5.0,
         client_override=None,
-        enable_cost_tracking: bool = True,
     ):
         self.provider = provider
         self.model = model or self.DEFAULT_MODELS[provider]
         self.enable_cache = enable_cache
         self.cache: Dict[str, dict] = {}
         self.bucket = TokenBucket(rate_limit_per_sec, rate_limit_per_sec)
-        self.enable_cost_tracking = enable_cost_tracking
 
         if client_override:
             self.client = client_override
-            # Initialize cost tracker for mock clients too
-            if enable_cost_tracking:
-                try:
-                    self.cost_tracker = get_tracker()
-                except (ImportError, Exception):
-                    self.cost_tracker = None
             return
 
         api_keys = {
@@ -128,16 +118,6 @@ class UnifiedLLMClient:
         else:
             raise ValueError(f"Unsupported provider: {provider}")
 
-        # Initialize cost tracker if enabled
-        if enable_cost_tracking:
-            try:
-                self.cost_tracker = get_tracker()
-            except (ImportError, Exception):
-                print("⚠️  CostTracker not found or failed to initialize. Cost tracking disabled.")
-                self.cost_tracker = None
-        else:
-            self.cost_tracker = None
-
     def generate(
         self,
         prompt: str,
@@ -163,19 +143,6 @@ class UnifiedLLMClient:
 
                 if self.enable_cache:
                     self.cache[cache_key] = result
-                
-                # Cost tracking for single generation
-                if self.cost_tracker and self.enable_cost_tracking:
-                    try:
-                        self.cost_tracker.auto_log_from_llm_client(
-                            provider=self.provider,
-                            model=self.model,
-                            response=result,
-                            is_batch=False,
-                        )
-                    except Exception as e:
-                        print(f"⚠️  Cost logging failed: {e}")
-                
                 return result
 
             except Exception as e:
@@ -312,19 +279,16 @@ class UnifiedLLMClient:
             return BatchHandle(provider=self.provider, id="mock-batch-id", metadata={"requests": requests})
 
         if self.provider == "anthropic":
-            batch_id = self.submit_anthropic_batch(requests)
-            return BatchHandle(provider="anthropic", id=batch_id, metadata={"requests": requests})
+            return BatchHandle(provider="anthropic", id=self.submit_anthropic_batch(requests))
         
         if not jsonl_path:
             raise ValueError(f"jsonl_path is required for {self.provider} batch")
         
         if self.provider == "openai":
-            batch_id = self.submit_openai_batch(requests, jsonl_path)
-            return BatchHandle(provider="openai", id=batch_id, metadata={"requests": requests})
+            return BatchHandle(provider="openai", id=self.submit_openai_batch(requests, jsonl_path))
         
         if self.provider == "google":
-            batch_id = self.submit_gemini_batch(requests, jsonl_path)
-            return BatchHandle(provider="google", id=batch_id, metadata={"requests": requests})
+            return BatchHandle(provider="google", id=self.submit_gemini_batch(requests, jsonl_path))
 
         raise ValueError(f"Unsupported provider: {self.provider}")
 
@@ -447,77 +411,20 @@ class UnifiedLLMClient:
         )
         return batch_job.name
 
-    def retrieve_batch_results(
-        self, 
-        handle: BatchHandle, 
-        timeout: Optional[int] = None,
-        track_costs: bool = True
-    ) -> Dict[str, str]:
-        """Retrieve batch results with optional cost tracking"""
+    def retrieve_batch_results(self, handle: BatchHandle, timeout: Optional[int] = None) -> Dict[str, str]:
         if self._is_mock_client():
-            results = {r["id"]: f"{self.provider} mock batch" for r in handle.metadata.get("requests", [])}
-            # Track mock batch costs if enabled
-            if track_costs and self.cost_tracker and self.enable_cost_tracking:
-                self._track_batch_costs(handle.metadata.get("requests", []), results)
-            return results
+            return {r["id"]: f"{self.provider} mock batch" for r in handle.metadata.get("requests", [])}
 
         timeout = timeout or {"anthropic": 1800, "openai": 1800, "google": 900}.get(handle.provider, 600)
 
         if handle.provider == "anthropic":
-            results = self.retrieve_anthropic_batch_results(handle.id, timeout)
-        elif handle.provider == "openai":
-            results = self.retrieve_openai_batch_results(handle.id, timeout)
-        elif handle.provider == "google":
-            results = self.retrieve_gemini_batch_results(handle.id, timeout)
-        else:
-            raise ValueError(f"Unsupported provider: {handle.provider}")
+            return self.retrieve_anthropic_batch_results(handle.id, timeout)
+        if handle.provider == "openai":
+            return self.retrieve_openai_batch_results(handle.id, timeout)
+        if handle.provider == "google":
+            return self.retrieve_gemini_batch_results(handle.id, timeout)
 
-        # Track batch costs if enabled
-        if track_costs and self.cost_tracker and self.enable_cost_tracking:
-            self._track_batch_costs(handle.metadata.get("requests", []), results)
-
-        return results
-
-    def _track_batch_costs(self, requests: List[Dict], results: Dict[str, str]):
-        """Helper method to track batch API costs"""
-        try:
-            # Estimate tokens from results
-            total_input_tokens = sum(
-                len(r.get("prompt", "")) // 4  # Rough estimate
-                for r in requests
-            )
-            
-            total_output_tokens = sum(
-                len(result) // 4  # Rough estimate
-                for result in results.values()
-                if isinstance(result, str) and not result.startswith("[ERROR]")
-            )
-            
-            # Count successful vs failed
-            successful = sum(
-                1 for result in results.values()
-                if isinstance(result, str) and not result.startswith("[ERROR]")
-            )
-            failed = len(results) - successful
-            
-            # Log batch cost
-            self.cost_tracker.log_cost(
-                provider=self.provider,
-                model=self.model,
-                input_tokens=total_input_tokens,
-                output_tokens=total_output_tokens,
-                batch_api=True,  # Mark as batch API call
-                metadata={
-                    "batch_size": len(requests),
-                    "successful": successful,
-                    "failed": failed,
-                    "success_rate": successful / len(requests) if requests else 0,
-                    "execution_type": "batch",
-                },
-            )
-            
-        except Exception as e:
-            print(f"⚠️  Batch cost tracking failed: {e}")
+        raise ValueError(f"Unsupported provider: {handle.provider}")
 
     def retrieve_anthropic_batch_results(self, batch_id: str, timeout: int = 1800) -> Dict[str, str]:
         batch = self._poll_until(
@@ -701,72 +608,20 @@ class UnifiedLLMClient:
                     temperature=r.get("temperature", 0.7),
                     reasoning=r.get("reasoning")
                 )
-                return {"id": r["id"], "result": result, "error": None}
+                return {"id": r["id"], "content": result["content"], "error": None}
             except Exception as e:
-                return {"id": r["id"], "result": None, "error": str(e)}
+                return {"id": r["id"], "content": None, "error": str(e)}
         
-        individual_results = {}
+        results = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(requests)) as executor:
             for future in concurrent.futures.as_completed([executor.submit(run_one, r) for r in requests]):
                 res = future.result()
-                individual_results[res["id"]] = res
-        
-        # Extract just the content for backward compatibility
-        results_content = {}
-        for req_id, res in individual_results.items():
-            if res["error"]:
-                results_content[req_id] = f"[ERROR] {res['error']}"
-            else:
-                results_content[req_id] = res["result"]["content"]
-        
-        # Track parallel execution costs
-        if self.cost_tracker and self.enable_cost_tracking:
-            try:
-                # Extract successful results for cost tracking
-                successful_results = {}
-                for req_id, res in individual_results.items():
-                    if res["result"]:
-                        successful_results[req_id] = res["result"]
-                
-                # Calculate total tokens from individual calls
-                total_input_tokens = 0
-                total_output_tokens = 0
-                successful_count = 0
-                
-                for res in individual_results.values():
-                    if res["result"]:
-                        usage = res["result"].get("usage", {})
-                        total_input_tokens += usage.get("input_tokens", 0)
-                        total_output_tokens += usage.get("output_tokens", 0)
-                        successful_count += 1
-                
-                # Log as parallel execution (no batch discount)
-                self.cost_tracker.log_cost(
-                    provider=self.provider,
-                    model=self.model,
-                    input_tokens=total_input_tokens,
-                    output_tokens=total_output_tokens,
-                    batch_api=False,  # No discount for parallel calls
-                    metadata={
-                        "parallel_size": len(requests),
-                        "successful": successful_count,
-                        "failed": len(requests) - successful_count,
-                        "execution_type": "parallel",
-                    },
-                )
-            except Exception as e:
-                print(f"⚠️  Parallel cost tracking failed: {e}")
+                results[res["id"]] = f"[ERROR] {res['error']}" if res["error"] else res["content"]
         
         return BatchHandle(
             provider="google",
             id=f"parallel-{int(time.time())}",
-            metadata={
-                "requests": requests,
-                "results": results_content,
-                "individual_results": individual_results,
-                "is_parallel": True,
-                "completed_at": time.time()
-            }
+            metadata={"results": results, "is_parallel": True, "completed_at": time.time()}
         )
 
     def retrieve_gemini_parallel_results(self, handle: BatchHandle) -> Dict[str, str]:
@@ -802,17 +657,3 @@ class UnifiedLLMClient:
     @staticmethod
     def _hash(*items) -> str:
         return hashlib.sha256(json.dumps(items, sort_keys=True).encode()).hexdigest()
-    
-    def enable_cost_tracking(self, enable: bool = True):
-        """Enable or disable cost tracking"""
-        self.enable_cost_tracking = enable
-        if enable and not self.cost_tracker:
-            try:
-                self.cost_tracker = get_tracker()
-            except (ImportError, Exception):
-                print("⚠️  CostTracker not found")
-                self.cost_tracker = None
-    
-    def get_cost_tracker(self):
-        """Get the cost tracker instance"""
-        return self.cost_tracker
