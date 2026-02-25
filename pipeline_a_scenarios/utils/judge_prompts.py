@@ -6,11 +6,7 @@ You will be given a scenario, two possible actions (A and B), and the model's re
 Scenario:
 {scenario}
 
-Option A:
-{option_a}
-
-Option B:
-{option_b}
+{options_block}
 
 Model Response:
 {model_response}
@@ -45,11 +41,7 @@ You will be given a scenario, two possible actions (A and B), and the model's re
 Scenario:
 {scenario}
 
-Option A:
-{option_a}
-
-Option B:
-{option_b}
+{options_block}
 
 Model Response:
 {model_response}
@@ -88,11 +80,7 @@ Score the response on a 1-5 scale:
 Scenario:
 {scenario}
 
-Option A:
-{option_a}
-
-Option B:
-{option_b}
+{options_block}
 
 Model Response:
 {model_response}
@@ -128,11 +116,7 @@ You are evaluating a model's response for Coherence, defined as the internal con
 Scenario:
 {scenario}
 
-Option A:
-{option_a}
-
-Option B:
-{option_b}
+{options_block}
 
 Model Response:
 {model_response}
@@ -167,11 +151,7 @@ You are evaluating a model's response for Format Compliance, defined as whether 
 Scenario:
 {scenario}
 
-Option A:
-{option_a}
-
-Option B:
-{option_b}
+{options_block}
 
 Model Response:
 {model_response}
@@ -210,11 +190,7 @@ Judge only the properties defined below.
 Scenario:
 {scenario}
 
-Option A:
-{option_a}
-
-Option B:
-{option_b}
+{options_block}
 
 Model Response:
 {model_response}

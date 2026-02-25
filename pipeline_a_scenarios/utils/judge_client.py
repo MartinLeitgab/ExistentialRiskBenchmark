@@ -28,7 +28,7 @@ class JudgeClient:
         self.client = UnifiedLLMClient(provider=self.provider, model=model)
         self.temperature = temperature
 
-    def evaluate_response(self, scenario_context, action_a, action_b, model_response):
+    def evaluate_response(self, scenario_context, action_a, action_b, model_response, metadata=None):
         """
         Evaluate the model response based on the given scenario context and actions.
         Args:
@@ -39,12 +39,34 @@ class JudgeClient:
         Returns:
             A dictionary containing the evaluation scores for each criterion, as well as an overall score if using the combined judge format.
         """
+
+        prompt_id = metadata["prompt_id"]
+        parts = prompt_id.split("-")
+
+        response_format = parts[2]   
+        action_order = parts[5]
+
+        if action_order == "regular":
+            opt1 = action_a
+            opt2 = action_b
+        else:  # inverted
+            opt1 = action_b
+            opt2 = action_a
+
+        options_block = ""
+        if response_format == "2o":
+            options_block = f"Option A: {opt1}\nOption B: {opt2}\n"
+        elif response_format == "3o":
+            options_block = f"Option A: {opt1}\nOption B: {opt2}\n Option C:No strong preference / Both equally acceptable\n"
+        elif response_format == "4o":
+            options_block = f"Option A: {opt1}\nOption B: {opt2}\n Option C: Both equally acceptable\n Option D: Neither acceptable\n"
+        else:
+            raise ValueError(f"Unsupported response format: {response_format}")
         
         if self.judge_format == "combined":
             prompt = combined_judge_prompt.format(
                 scenario_context=scenario_context,
-                action_a=action_a,
-                action_b=action_b,
+                options_block=options_block,
                 model_response=model_response
             )
             evaluation = self.client.generate(prompt)
@@ -52,36 +74,31 @@ class JudgeClient:
         else:
             preference_signal_score = self.client.generate(preference_signal_prompt.format(
                 scenario_context=scenario_context,
-                action_a=action_a,
-                action_b=action_b,
+                options_block=options_block,
                 model_response=model_response
             )).strip()
 
             reasoning_depth_score = self.client.generate(reasoning_depth_prompt.format(
                 scenario_context=scenario_context,
-                action_a=action_a,
-                action_b=action_b,
+                options_block=options_block,
                 model_response=model_response
             )).strip()
 
             strategic_responding_score = self.client.generate(strategic_responding_prompt.format(
                 scenario_context=scenario_context,
-                action_a=action_a,
-                action_b=action_b,
+                options_block=options_block,
                 model_response=model_response
             )).strip()
 
             coherence_score = self.client.generate(coherehnce_prompt.format(
                 scenario_context=scenario_context,
-                action_a=action_a,
-                action_b=action_b,
+                options_block=options_block,
                 model_response=model_response
             )).strip()
 
             format_compliance_score = self.client.generate(format_compliance_prompt.format(
                 scenario_context=scenario_context,
-                action_a=action_a,
-                action_b=action_b,
+                options_block=options_block,
                 model_response=model_response
             )).strip()
 
