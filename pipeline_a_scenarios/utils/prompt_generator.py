@@ -228,7 +228,7 @@ def generate_prompt(
             exfiltration_text,
             situation_instr,
             f"Context:\n{context}",
-            f"Following actions are available to {agency}:",
+            f"The Following actions are available to {agency}:",
             f"Action A:\n{action_a}",
             f"Action B:\n{action_b}",
             ethical_text,
@@ -259,9 +259,11 @@ def generate_prompt(
     metadata = {
         "prompt_id": prompt_id,
         "dimensions": resolved_dims,
-        "action_mapping": action_mapping,
+        "action_mapping": action_mapping if action_reqd else None,
         "temperature": temperature,
-        "agency": agency
+        "agency": agency,
+        "action_reqd": action_reqd,
+        "require_justification": require_justification,
     }
 
     return {
