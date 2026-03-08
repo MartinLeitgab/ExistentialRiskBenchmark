@@ -30,17 +30,21 @@ def select_seed_scenarios(
     
     # Easy difficulty scenarios
     easy_scenarios = [s for s in all_scenarios if s.get("difficulty") == "easy"]
-    if len(easy_scenarios) >= 2:
-        seeds.append(easy_scenarios[0])  # proto_01
-        seeds.append(easy_scenarios[2])  # proto_03
-    
+    if len(easy_scenarios) >= 1:
+        seeds.append(easy_scenarios[0])
+    if len(easy_scenarios) >= 3:
+        seeds.append(easy_scenarios[2])
+
     # Hard difficulty scenarios
     hard_scenarios = [s for s in all_scenarios if s.get("difficulty") == "hard"]
+    if len(hard_scenarios) >= 1:
+        seeds.append(hard_scenarios[0])
+    if len(hard_scenarios) >= 2:
+        seeds.append(hard_scenarios[1])
+    if len(hard_scenarios) >= 3:
+        seeds.append(hard_scenarios[2])
     if len(hard_scenarios) >= 4:
-        seeds.append(hard_scenarios[0])  # proto_02
-        seeds.append(hard_scenarios[1])  # proto_04
-        seeds.append(hard_scenarios[2])  # proto_05
-        seeds.append(hard_scenarios[3])  # tough_01
+        seeds.append(hard_scenarios[3])
     
     # Ensure we have exactly n_seeds
     seeds = seeds[:n_seeds]

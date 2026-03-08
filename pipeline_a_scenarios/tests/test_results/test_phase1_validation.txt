@@ -1,0 +1,40 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-7.4.4, pluggy-1.6.0 -- /opt/anaconda3/envs/x-risk-bench/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark
+configfile: pytest.ini
+plugins: anyio-4.12.1, langsmith-0.6.4
+collecting ... collected 6 items
+
+unit/test_phase1_validation.py::TestValidationStudy::test_run_validation_study_structure PASSED [ 16%]
+unit/test_phase1_validation.py::TestValidationStudy::test_api_error_handling PASSED [ 33%]
+unit/test_phase1_validation.py::TestJudgeEvaluation::test_evaluate_with_judge PASSED [ 50%]
+unit/test_phase1_validation.py::TestVariantRanking::test_analyze_and_rank_variants PASSED [ 66%]
+unit/test_phase1_validation.py::TestAnomalyReporting::test_generate_anomaly_report PASSED [ 83%]
+unit/test_phase1_validation.py::TestAnomalyReporting::test_recommendation_text_generation PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88: DeprecationWarning: 'parseString' deprecated - use 'parse_string'
+    parse = parser.parseString(pattern)
+
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92: DeprecationWarning: 'resetCache' deprecated - use 'reset_cache'
+    parser.resetCache()
+
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_mathtext.py:45
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_mathtext.py:45: DeprecationWarning: 'enablePackrat' deprecated - use 'enable_packrat'
+    ParserElement.enablePackrat()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 6 passed, 13 warnings in 2.93s ========================

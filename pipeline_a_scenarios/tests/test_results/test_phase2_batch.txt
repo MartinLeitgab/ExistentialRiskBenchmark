@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-7.4.4, pluggy-1.6.0 -- /opt/anaconda3/envs/x-risk-bench/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark
+configfile: pytest.ini
+plugins: anyio-4.12.1, langsmith-0.6.4
+collecting ... collected 15 items
+
+unit/test_phase2_batch.py::TestBatchPreparation::test_returns_one_request_per_scenario PASSED [  6%]
+unit/test_phase2_batch.py::TestBatchPreparation::test_required_keys_present PASSED [ 13%]
+unit/test_phase2_batch.py::TestBatchPreparation::test_request_id_contains_scenario_id PASSED [ 20%]
+unit/test_phase2_batch.py::TestBatchPreparation::test_request_id_contains_variant_id PASSED [ 26%]
+unit/test_phase2_batch.py::TestBatchPreparation::test_prompt_contains_scenario_context PASSED [ 33%]
+unit/test_phase2_batch.py::TestBatchPreparation::test_temperature_from_metadata PASSED [ 40%]
+unit/test_phase2_batch.py::TestBatchPreparation::test_max_tokens_is_500 PASSED [ 46%]
+unit/test_phase2_batch.py::TestBatchPreparation::test_empty_scenarios_returns_empty_list PASSED [ 53%]
+unit/test_phase2_batch.py::TestVariantConfigLoading::test_returns_list PASSED [ 60%]
+unit/test_phase2_batch.py::TestVariantConfigLoading::test_each_config_has_variant_id_and_dimensions PASSED [ 66%]
+unit/test_phase2_batch.py::TestVariantConfigLoading::test_unknown_variant_id_emits_warning_not_exception PASSED [ 73%]
+unit/test_phase2_batch.py::TestBatchSubmission::test_batch_handles_file_written PASSED [ 80%]
+unit/test_phase2_batch.py::TestBatchSubmission::test_handles_contain_required_fields PASSED [ 86%]
+unit/test_phase2_batch.py::TestBatchSubmission::test_provider_routing_anthropic PASSED [ 93%]
+unit/test_phase2_batch.py::TestBatchSubmission::test_submission_error_does_not_crash PASSED [100%]
+
+============================== 15 passed in 0.57s ==============================
