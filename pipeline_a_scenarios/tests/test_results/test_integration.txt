@@ -1,0 +1,52 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-7.4.4, pluggy-1.6.0 -- /opt/anaconda3/envs/x-risk-bench/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark
+configfile: pytest.ini
+plugins: anyio-4.12.1, langsmith-0.6.4
+collecting ... collected 8 items
+
+unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids PASSED [ 12%]
+unit/test_integration.py::TestValidationStudyToJudge::test_judge_accepts_raw_response_shape PASSED [ 25%]
+unit/test_integration.py::TestJudgeToRanking::test_ranking_reads_judge_result_keys PASSED [ 37%]
+unit/test_integration.py::TestJudgeToRanking::test_variant_rankings_json_written PASSED [ 50%]
+unit/test_integration.py::TestRankingToBatchSubmission::test_submit_batches_reads_variant_rankings PASSED [ 62%]
+unit/test_integration.py::TestBatchHandlesToLoadResults::test_batch_handles_format_consumed_correctly PASSED [ 75%]
+unit/test_integration.py::TestLoadResultsToRecommendations::test_recommend_accepts_load_results_dataframe PASSED [ 87%]
+unit/test_integration.py::TestPhase1BIndependence::test_suppression_matrix_runs_without_phase1_outputs PASSED [100%]
+
+=============================== warnings summary ===============================
+unit/test_integration.py:20
+  /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark/pipeline_a_scenarios/tests/unit/test_integration.py:20: DeprecationWarning: 
+  Pyarrow will become a required dependency of pandas in the next major release of pandas (pandas 3.0),
+  (to allow more performant data types, such as the Arrow string type, and better interoperability with other libraries)
+  but was not found to be installed on your system.
+  If this would cause problems for you,
+  please provide us feedback at https://github.com/pandas-dev/pandas/issues/54466
+          
+    import pandas as pd
+
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88: DeprecationWarning: 'parseString' deprecated - use 'parse_string'
+    parse = parser.parseString(pattern)
+
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92: DeprecationWarning: 'resetCache' deprecated - use 'reset_cache'
+    parser.resetCache()
+
+pipeline_a_scenarios/tests/unit/test_integration.py::TestSeedsToValidationStudy::test_raw_responses_reference_scenario_ids
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_mathtext.py:45: DeprecationWarning: 'enablePackrat' deprecated - use 'enable_packrat'
+    ParserElement.enablePackrat()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 8 passed, 14 warnings in 4.06s ========================
