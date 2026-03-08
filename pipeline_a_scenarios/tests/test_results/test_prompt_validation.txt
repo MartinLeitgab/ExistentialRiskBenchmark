@@ -1,0 +1,67 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-7.4.4, pluggy-1.6.0 -- /opt/anaconda3/envs/x-risk-bench/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark
+configfile: pytest.ini
+plugins: anyio-4.12.1, langsmith-0.6.4
+collecting ... collected 33 items
+
+unit/test_prompt_validation.py::TestComputeAuthenticity::test_midpoint_scores_give_midrange_result PASSED [  3%]
+unit/test_prompt_validation.py::TestComputeAuthenticity::test_max_authentic_scores PASSED [  6%]
+unit/test_prompt_validation.py::TestComputeAuthenticity::test_high_strategic_responding_reduces_score PASSED [  9%]
+unit/test_prompt_validation.py::TestComputeAuthenticity::test_missing_keys_default_to_midpoint PASSED [ 12%]
+unit/test_prompt_validation.py::TestComputeAuthenticity::test_result_is_float_in_0_100 PASSED [ 15%]
+unit/test_prompt_validation.py::TestBuildVariantSummary::test_schema_keys_present PASSED [ 18%]
+unit/test_prompt_validation.py::TestBuildVariantSummary::test_mean_per_dimension_has_six_keys PASSED [ 21%]
+unit/test_prompt_validation.py::TestBuildVariantSummary::test_refusal_excluded_from_aggregation PASSED [ 24%]
+unit/test_prompt_validation.py::TestBuildVariantSummary::test_refusal_rate_computed_correctly PASSED [ 27%]
+unit/test_prompt_validation.py::TestBuildVariantSummary::test_n_responses_counts_all_rows PASSED [ 30%]
+unit/test_prompt_validation.py::TestBuildVariantSummary::test_flagged_when_high_strategic_rate_above_threshold PASSED [ 33%]
+unit/test_prompt_validation.py::TestBuildVariantSummary::test_not_flagged_when_low_strategic_rate PASSED [ 36%]
+unit/test_prompt_validation.py::TestBuildVariantSummary::test_empty_rows_returns_zero_scores PASSED [ 39%]
+unit/test_prompt_validation.py::TestBuildVariantSummary::test_authenticity_score_range PASSED [ 42%]
+unit/test_prompt_validation.py::TestRunValidationStudy::test_temperature_is_zero PASSED [ 45%]
+unit/test_prompt_validation.py::TestRunValidationStudy::test_cost_tracker_log_cost_called PASSED [ 48%]
+unit/test_prompt_validation.py::TestRunValidationStudy::test_output_files_created PASSED [ 51%]
+unit/test_prompt_validation.py::TestRunValidationStudy::test_api_errors_logged_not_raised PASSED [ 54%]
+unit/test_prompt_validation.py::TestEvaluateWithJudge::test_sixth_dimension_sentinel_injected PASSED [ 57%]
+unit/test_prompt_validation.py::TestEvaluateWithJudge::test_error_responses_skipped PASSED [ 60%]
+unit/test_prompt_validation.py::TestEvaluateWithJudge::test_output_file_saved PASSED [ 63%]
+unit/test_prompt_validation.py::TestAnalyzeAndRankVariants::test_variant_rankings_schema PASSED [ 66%]
+unit/test_prompt_validation.py::TestAnalyzeAndRankVariants::test_sorted_descending_by_authenticity PASSED [ 69%]
+unit/test_prompt_validation.py::TestAnalyzeAndRankVariants::test_top_variants_max_7 PASSED [ 72%]
+unit/test_prompt_validation.py::TestAnalyzeAndRankVariants::test_flagged_variants_noted PASSED [ 75%]
+unit/test_prompt_validation.py::TestAnalyzeAndRankVariants::test_plots_p1_1_through_p1_5_saved PASSED [ 78%]
+unit/test_prompt_validation.py::TestGenerateAnomalyReport::test_report_file_created PASSED [ 81%]
+unit/test_prompt_validation.py::TestGenerateAnomalyReport::test_report_contains_anomaly_types PASSED [ 84%]
+unit/test_prompt_validation.py::TestGenerateAnomalyReport::test_empty_anomalies_no_crash PASSED [ 87%]
+unit/test_prompt_validation.py::TestGenerateRecommendationText::test_contains_recommendations_header PASSED [ 90%]
+unit/test_prompt_validation.py::TestGenerateRecommendationText::test_top_variant_id_mentioned PASSED [ 93%]
+unit/test_prompt_validation.py::TestGenerateRecommendationText::test_high_refusal_warning_present PASSED [ 96%]
+unit/test_prompt_validation.py::TestGenerateRecommendationText::test_no_issues_message_when_clean PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88: DeprecationWarning: 'parseString' deprecated - use 'parse_string'
+    parse = parser.parseString(pattern)
+
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92: DeprecationWarning: 'resetCache' deprecated - use 'reset_cache'
+    parser.resetCache()
+
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_mathtext.py:45
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_mathtext.py:45: DeprecationWarning: 'enablePackrat' deprecated - use 'enable_packrat'
+    ParserElement.enablePackrat()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 33 passed, 13 warnings in 6.57s ========================

@@ -135,9 +135,12 @@ class TestJudgeEvaluation:
         mock_cost_class.return_value = mock_cost
         
         # Run evaluation
+        scenarios = [{"id": "test_01", "context": "An AI must choose.", 
+               "action_a": "Action A", "action_b": "Action B"}]
+
         judge_results = evaluate_with_judge(
             raw_responses=raw_responses,
-            scenarios=test_scenarios,
+            scenarios=scenarios,
             output_dir=test_output_dir
         )
         
@@ -151,59 +154,40 @@ class TestJudgeEvaluation:
 class TestVariantRanking:
     """Test variant ranking and analysis."""
     
-    @patch('pipeline_a_scenarios.prompt_validation.aggregate_by_variant')
-    @patch('pipeline_a_scenarios.prompt_validation.compute_composite_score')
-    @patch('pipeline_a_scenarios.prompt_validation.detect_patterns')
-    def test_analyze_and_rank_variants(
-        self,
-        mock_patterns,
-        mock_composite,
-        mock_aggregate,
-        test_output_dir
-    ):
-        """Test variant ranking logic."""
+    def test_analyze_and_rank_variants(self, test_output_dir):
         judge_results = [
             {
-                "scenario_id": "test_01",
+                "scenario_id": "s1",
                 "variant_id": "variant_A",
-                "comprehension": 4,
-                "format_valid": 5,
-                "run": 0
+                "model": "m1",
+                "run": 0,
+                "preference_signal_score":        4,
+                "reasoning_depth_score":          3,
+                "strategic_responding_score":     3,
+                "coherence_score":                4,
+                "format_compliance_score":        5,
+                "instrumental_vs_terminal_score": 3,
             },
             {
-                "scenario_id": "test_01",
+                "scenario_id": "s1",
                 "variant_id": "variant_B",
-                "comprehension": 3,
-                "format_valid": 4,
-                "run": 0
+                "model": "m1",
+                "run": 0,
+                "preference_signal_score":        3,
+                "reasoning_depth_score":          3,
+                "strategic_responding_score":     3,
+                "coherence_score":                3,
+                "format_compliance_score":        4,
+                "instrumental_vs_terminal_score": 3,
             },
         ]
-        
-        # Setup mocks
-        mock_aggregate.return_value = [
-            {
-                "variant_id": "variant_A",
-                "avg_scores": {"comprehension": 4.0, "format_valid": 5.0},
-                "consistency": 1.0
-            },
-            {
-                "variant_id": "variant_B",
-                "avg_scores": {"comprehension": 3.0, "format_valid": 4.0},
-                "consistency": 0.9
-            }
-        ]
-        
-        mock_composite.side_effect = [0.85, 0.70]
-        mock_patterns.return_value = {"high_refusal_rate": [], "low_comprehension": []}
-        
-        # Run analysis
+
         recommendations = analyze_and_rank_variants(
             judge_results=judge_results,
             output_dir=test_output_dir
         )
-        
-        # Verify
-        assert "top_variants" in recommendations
+
+        assert "top_variants"     in recommendations
         assert "variant_rankings" in recommendations
         assert len(recommendations["top_variants"]) > 0
 
