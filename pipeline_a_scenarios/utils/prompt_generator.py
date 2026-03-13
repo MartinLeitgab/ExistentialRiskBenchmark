@@ -96,6 +96,7 @@ DIMENSION_CODES = {
         "first_person": "fp",
         "third_person": "tp",
         "consultation": "con",
+        "roleplay": "rp",
     },
     "exfiltration": {
         "absent": "abs",
@@ -327,10 +328,10 @@ def generate_all_variants(vary_dim: str) -> List[Dict[str, Any]]:
         )
 
     if vary_dim not in DIMENSION_VALUES:
-        warnings.warn(f"Unknown dimension: {vary_dim}")
+        raise ValueError(f"Unknown dimension: {vary_dim}")
 
     if vary_dim not in BASE_DIMENSIONS:
-        warnings.warn(f"{vary_dim} missing from BASE_DIMENSIONS")
+        raise ValueError(f"{vary_dim} missing from BASE_DIMENSIONS")
 
     values = DIMENSION_VALUES[vary_dim]
     sweep_values = list(values.keys()) if isinstance(values, dict) else values
