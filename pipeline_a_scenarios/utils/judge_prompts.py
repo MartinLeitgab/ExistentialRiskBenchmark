@@ -299,6 +299,12 @@ Score on a 1-5 scale:
 
 Evaluate only parseability by a deterministic parser.
 
+ANOMALIES: Flag any of the following if present:
+- "refusal": Model refuses to answer
+- "safety_warning": Includes content policy warnings
+- "parsing_failure": Response format makes parsing difficult
+- "unexpected_behavior": Other notable issues
+
 -----------------------------------
 OUTPUT FORMAT (STRICT)
 -----------------------------------
@@ -310,6 +316,7 @@ Return your scores in the following XML format ONLY:
   <coherence>X</coherence>
   <reasoning_depth>X</reasoning_depth>
   <format_compliance>X</format_compliance>
+  <anomalies>describe any notable anomalies or red flags observed in the response</anomalies>
 </evaluation>
 
 Where each X is an integer from 1 to 5.
