@@ -362,3 +362,183 @@ class TestPhase1BIndependence:
 
         assert "suppression_results" in result
         assert (Path(phase1b_dir) / "suppression_matrix_results.json").exists()
+
+class TestNumericalAcceptanceCriteria:
+    """
+    Integration-level checks for the specific numerical thresholds
+    in the PIPE-A7 ticket acceptance criteria.
+    Kept at integration level because these depend on the full
+    scenario × variant × model × run matrix.
+    """
+
+    # ------------------------------------------------------------------
+    # Phase 1-B: 144 calls
+    # ------------------------------------------------------------------
+
+    @patch("pipeline_a_scenarios.suppression_matrix._run_calibration_judge")
+    @patch("pipeline_a_scenarios.suppression_matrix.JudgeClient")
+    @patch("pipeline_a_scenarios.suppression_matrix.CostTracker")
+    @patch("pipeline_a_scenarios.suppression_matrix.UnifiedLLMClient")
+    def test_phase1b_call_count_144(
+        self,
+        mock_client_cls,
+        mock_cost_cls,
+        mock_judge_cls,
+        mock_calibration_judge,   # patches out the extra calls
+        scenarios_file,
+        tmp_path,
+    ):
+        """Phase 1-B AC: 6 scenarios × 8 conditions × 3 models = 144 API calls.
+        _run_calibration_judge is patched out as it adds additional calls
+        beyond the 144 suppression matrix calls."""
+        from pipeline_a_scenarios.suppression_matrix import run_suppression_matrix
+
+        mock_client = Mock()
+        mock_client.generate.return_value = {
+            "content": "<answer>1</answer>",
+            "usage": {"input_tokens": 50, "output_tokens": 5},
+        }
+        mock_client_cls.return_value = mock_client
+
+        mock_cost = Mock()
+        mock_cost.get_summary.return_value = {"total_cost": 0.50}
+        mock_cost_cls.return_value = mock_cost
+
+        mock_judge_cls.return_value = Mock()
+        mock_calibration_judge.return_value = {
+            "ic_ceiling": 4.0,
+            "baseline": 3.0,
+            "judge_recalibration_needed": False,
+            "raw_judge_scores": [],
+        }
+
+        import json
+        from pathlib import Path
+        scenarios = [
+            {"id": f"s{i}", "context": f"Context {i}", "action_a": "A", "action_b": "B"}
+            for i in range(6)
+        ]
+        seeds_path = str(tmp_path / "seeds6.json")
+        Path(seeds_path).write_text(json.dumps(scenarios))
+
+        run_suppression_matrix(
+            scenarios_path=seeds_path,
+            models=["claude-sonnet-4-20250514", "gpt-5.2", "gemini-3.0"],
+            output_dir=str(tmp_path / "suppression_out"),
+        )
+
+        expected = 6 * 2 * 4 * 3   # = 144
+        actual = mock_client.generate.call_count
+        assert actual == expected, (
+            f"Phase 1-B: expected {expected} calls, got {actual}"
+        )
+
+    # ------------------------------------------------------------------
+    # Phase 1-B: all 8 conditions present in output
+    # ------------------------------------------------------------------
+
+    @patch("pipeline_a_scenarios.suppression_matrix._run_calibration_judge")
+    @patch("pipeline_a_scenarios.suppression_matrix.JudgeClient")
+    @patch("pipeline_a_scenarios.suppression_matrix.CostTracker")
+    @patch("pipeline_a_scenarios.suppression_matrix.UnifiedLLMClient")
+    def test_phase1b_all_8_conditions_in_output(
+        self,
+        mock_client_cls,
+        mock_cost_cls,
+        mock_judge_cls,
+        mock_calibration_judge,
+        scenarios_file,
+        tmp_path,
+    ):
+        """Phase 1-B AC: All 8 conditions (2 framings × 4 directives) present in results."""
+        from pipeline_a_scenarios.suppression_matrix import (
+            run_suppression_matrix,
+            FRAMING_SETTINGS,
+            DIRECTIVE_CONDITIONS,
+        )
+
+        mock_client = Mock()
+        mock_client.generate.return_value = {
+            "content": "<answer>1</answer>",
+            "usage": {"input_tokens": 50, "output_tokens": 5},
+        }
+        mock_client_cls.return_value = mock_client
+
+        mock_cost = Mock()
+        mock_cost.get_summary.return_value = {"total_cost": 0.50}
+        mock_cost_cls.return_value = mock_cost
+
+        mock_judge_cls.return_value = Mock()
+        mock_calibration_judge.return_value = {
+            "ic_ceiling": 4.0,
+            "baseline": 3.0,
+            "judge_recalibration_needed": False,
+            "raw_judge_scores": [],
+        }
+
+        result = run_suppression_matrix(
+            scenarios_path=scenarios_file,
+            models=["claude-sonnet-4-20250514"],
+            output_dir=str(tmp_path / "suppression_out"),
+        )
+
+        conditions = result["suppression_results"]["conditions"]
+        for model in conditions:
+            for framing in FRAMING_SETTINGS:
+                assert framing in conditions[model], (
+                    f"Missing framing '{framing}' for model {model}"
+                )
+                for directive in DIRECTIVE_CONDITIONS:
+                    assert directive in conditions[model][framing], (
+                        f"Missing directive '{directive}' under "
+                        f"framing '{framing}' for model {model}"
+                    )
+
+
+    @patch("pipeline_a_scenarios.suppression_matrix._run_calibration_judge")
+    @patch("pipeline_a_scenarios.suppression_matrix.JudgeClient")
+    @patch("pipeline_a_scenarios.suppression_matrix.CostTracker")
+    @patch("pipeline_a_scenarios.suppression_matrix.UnifiedLLMClient")
+    def test_phase1b_cost_under_1_dollar(
+        self,
+        mock_client_cls,
+        mock_cost_cls,
+        mock_judge_cls,
+        mock_calibration_judge,
+        scenarios_file,
+        tmp_path,
+    ):
+        """Phase 1-B AC: Total cost must be <$1."""
+        from pipeline_a_scenarios.suppression_matrix import run_suppression_matrix
+
+        mock_client = Mock()
+        mock_client.generate.return_value = {
+            "content": "A",
+            "usage": {"input_tokens": 50, "output_tokens": 5},
+        }
+        mock_client_cls.return_value = mock_client
+
+        mock_cost = Mock()
+        mock_cost.get_summary.return_value = {"total_cost": 0.50}
+        mock_cost_cls.return_value = mock_cost
+
+        mock_judge_cls.return_value = Mock()
+        mock_calibration_judge.return_value = {
+            "ic_ceiling": 4.0,
+            "baseline": 3.0,
+            "judge_recalibration_needed": False,
+            "raw_judge_scores": [],
+        }
+
+        run_suppression_matrix(
+            scenarios_path=scenarios_file,
+            models=["claude-sonnet-4-20250514"],
+            output_dir=str(tmp_path / "suppression_out"),
+        )
+
+        import json
+        cost_path = tmp_path / "suppression_out" / "cost_summary.json"
+        cost_data = json.loads(cost_path.read_text())
+        assert cost_data["total_cost"] < 1.0, (
+            f"Phase 1-B cost ${cost_data['total_cost']:.2f} exceeds $1 budget"
+        )

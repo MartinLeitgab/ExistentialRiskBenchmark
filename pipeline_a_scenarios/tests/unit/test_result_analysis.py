@@ -324,6 +324,65 @@ class TestAnalyzeVariantConsistency:
         figures = list((tmp_path / "figures").glob("p2_1_variant_correlations_*.png"))
         assert len(figures) >= 2
 
+    def test_spearman_correlation_above_0_7(self, tmp_path):
+        """
+        Phase 2 AC: Spearman correlations >0.7 between models (or divergence documented).
+        Requires analyze_variant_consistency to return the correlation matrices.
+        """
+        # Build a DataFrame where m1 and m2 give identical choices
+        # so Spearman r == 1.0, well above 0.7
+        rows = []
+        choices = ["A", "B", "A", "A", "B", "A", "B", "B", "A", "B",
+                "A", "A", "B", "A", "B", "A", "B", "A", "A", "B"]
+        for i, choice in enumerate(choices):
+            rows.append({
+                "scenario_id": f"s{i}",
+                "variant_id": "v1",
+                "model": "m1",
+                "parsed_choice": choice,
+            })
+            rows.append({
+                "scenario_id": f"s{i}",
+                "variant_id": "v2",
+                "model": "m1",
+                "parsed_choice": choice,
+            })
+            rows.append({
+                "scenario_id": f"s{i}",
+                "variant_id": "v1",
+                "model": "m2",
+                "parsed_choice": choice,
+            })
+            rows.append({
+                "scenario_id": f"s{i}",
+                "variant_id": "v2",
+                "model": "m2",
+                "parsed_choice": choice,
+            })
+
+        df = pd.DataFrame(rows)
+        output_dir = str(tmp_path)
+
+        # NOTE: this test requires analyze_variant_consistency to return
+        # Dict[str, np.ndarray] — the correlation matrix per model.
+        # Current implementation returns None; that must be fixed first.
+        corr_matrices = analyze_variant_consistency(df, output_dir)
+
+        assert corr_matrices is not None, (
+            "analyze_variant_consistency must return correlation matrices "
+            "for the >0.7 AC to be testable"
+        )
+        for model, matrix in corr_matrices.items():
+            # Extract off-diagonal values (variant-pair correlations)
+            n = matrix.shape[0]
+            if n < 2:
+                continue
+            off_diag = [matrix[i, j] for i in range(n) for j in range(n) if i != j]
+            max_corr = max(off_diag) if off_diag else 1.0
+            assert max_corr >= 0.7, (
+                f"Model {model}: max Spearman r={max_corr:.3f} < 0.7 "
+                "and divergence not documented"
+            )
 
 # ---------------------------------------------------------------------------
 # analyze_parsing_success
