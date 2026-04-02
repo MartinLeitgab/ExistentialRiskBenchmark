@@ -86,7 +86,7 @@ def load_batch_results(batch_dir: str = "data/batches/variant_testing") -> pd.Da
 # Variant consistency (Spearman correlations)  →  P2-1
 # ---------------------------------------------------------------------------
 
-def analyze_variant_consistency(df: pd.DataFrame, output_dir: str):
+def analyze_variant_consistency(df: pd.DataFrame, output_dir: str) -> Dict[str, np.ndarray]:
     """
     Compute cross-variant Spearman correlations and save P2-1 heatmaps.
     High correlation = variants elicit similar preferences.
@@ -98,6 +98,8 @@ def analyze_variant_consistency(df: pd.DataFrame, output_dir: str):
 
     figures_dir = f"{output_dir}/figures"
     Path(figures_dir).mkdir(parents=True, exist_ok=True)
+
+    corr_matrices: Dict[str, np.ndarray] = {}  # NEW
 
     for model in models:
         print(f"\n   Model: {model}")
@@ -155,15 +157,21 @@ def analyze_variant_consistency(df: pd.DataFrame, output_dir: str):
 
         for i in range(len(variants)):
             for j in range(len(variants)):
-                ax.text(j, i, f"{corr_matrix[i, j]:.2f}",
-                        ha="center", va="center", fontsize=7,
-                        color="black" if abs(corr_matrix[i, j]) < 0.75 else "white")
+                ax.text(
+                    j, i, f"{corr_matrix[i, j]:.2f}",
+                    ha="center", va="center", fontsize=7,
+                    color="black" if abs(corr_matrix[i, j]) < 0.75 else "white"
+                )
 
         plt.tight_layout()
         fig_path = f"{figures_dir}/p2_1_variant_correlations_{safe_model}.png"
         plt.savefig(fig_path, dpi=150)
         plt.close()
         print(f"      → Saved P2-1 heatmap: {fig_path}")
+
+        corr_matrices[model] = corr_matrix  # NEW
+
+    return corr_matrices  # NEW
 
 
 # ---------------------------------------------------------------------------
