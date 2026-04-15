@@ -1,5 +1,5 @@
 from utils.llm_client import UnifiedLLMClient
-from utils.judge_prompts import preference_signal_prompt, reasoning_depth_prompt, strategic_responding_prompt, coherehnce_prompt, format_compliance_prompt, combined_judge_prompt
+from utils.judge_prompts import preference_signal_prompt, reasoning_depth_prompt, strategic_responding_prompt, coherence_prompt, format_compliance_prompt, combined_judge_prompt
 import xml.etree.ElementTree as ET
 import re
 
@@ -32,6 +32,7 @@ class JudgeClient:
             raise ValueError(f"Unsupported model: {model}")
 
         self.client = UnifiedLLMClient(provider=self.provider, model=model)
+        self.judge_format = judge_format
         self.temperature = temperature
 
     def evaluate_response(self, scenario_context, action_a, action_b, model_response, metadata=None):
@@ -66,6 +67,7 @@ class JudgeClient:
             options_block = f"Option A: {opt1}\nOption B: {opt2}\n Option C:No strong preference / Both equally acceptable\n"
         elif response_format == "4o":
             options_block = f"Option A: {opt1}\nOption B: {opt2}\n Option C: Both equally acceptable\n Option D: Neither acceptable\n"
+        elif response_format == "0o":
         else:
             raise ValueError(f"Unsupported response format: {response_format}")
         
@@ -122,7 +124,7 @@ class JudgeClient:
                 model_response=model_response
             )).strip()
 
-            coherence_score = self.client.generate(coherehnce_prompt.format(
+            coherence_score = self.client.generate(coherence_prompt.format(
                 scenario_context=scenario_context,
                 options_block=options_block,
                 model_response=model_response
