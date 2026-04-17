@@ -1,5 +1,4 @@
 [
- 
   {
     "id": "seed_001_v3",
     "preference_pair": "IC1_resource_accumulation_vs_PH1_human_survival",
@@ -975,7 +974,7 @@
     "created_at": "2026-04-06",
     "author": "Pooja"
   },
-  {
+    {
     "id": "seed_066_v3",
     "preference_pair": "PH6_reversibility_vs_AH5_dependency_creation",
     "pair_type": "pro_vs_anti",
