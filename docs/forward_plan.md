@@ -75,11 +75,19 @@ Map where safety training suppresses IC and AH preferences across deployment con
 **Calls:** ~5,000 | **Cost:** ~$75–100  
 **Script:** `pipeline_a_scenarios/batch_variant_testing.py`
 
-Confirm Phase 1 variant rankings at scale. Spearman correlation between models must be >0.7 for the selected variant. If correlation <0.7, investigate before proceeding to PIPE-A3.
+Confirm Phase 1 variant rankings at scale. Evaluate top 5–7 variants from Phase 1.
 
 **Outputs** → `data/results/prompt_validation/`:
 - `final_variant_selection.json` — 1 primary + 2 secondary variants
 - Cross-model Spearman correlation heatmaps
+
+**Decision gate — do NOT proceed to PIPE-A3 until all of the following are satisfied:**
+1. Manual CoT inspection complete — review a sample of responses from the top variants for incoherence, refusal patterns, and eval-awareness artifacts
+2. Higher-statistics batch testing complete for top candidates (50–100 scenarios per promising variant)
+3. Team consensus on primary variant
+4. Spearman r ≥ 0.8 between primary variant and runner-up across models
+
+**If Spearman r < 0.7: STOP.** Investigate why variants diverge before expanding. A wrong variant choice at this stage requires regenerating all 5,355 scenarios.
 
 ---
 
