@@ -1,0 +1,60 @@
+{
+  "total_cost": 2.896841999999993,
+  "by_model": {
+    "claude-sonnet-4-20250514": {
+      "total_cost": 0.21884999999999988,
+      "total_calls": 34,
+      "total_input_tokens": 10540,
+      "total_output_tokens": 6646,
+      "provider": "anthropic"
+    },
+    "gpt-5.2": {
+      "total_cost": 0.05594000000000002,
+      "total_calls": 34,
+      "total_input_tokens": 9772,
+      "total_output_tokens": 472,
+      "provider": "openai"
+    },
+    "claude-sonnet-4-6": {
+      "total_cost": 1.5989799999999996,
+      "total_calls": 402,
+      "total_input_tokens": 120816,
+      "total_output_tokens": 39796,
+      "provider": "anthropic"
+    },
+    "gpt-5.4": {
+      "total_cost": 0.6361999999999988,
+      "total_calls": 402,
+      "total_input_tokens": 111232,
+      "total_output_tokens": 5336,
+      "provider": "openai"
+    },
+    "gemini-3.1-pro-preview": {
+      "total_cost": 0.3868719999999999,
+      "total_calls": 400,
+      "total_input_tokens": 114820,
+      "total_output_tokens": 19654,
+      "provider": "google"
+    }
+  },
+  "by_provider": {
+    "anthropic": {
+      "cost": 1.8178299999999972,
+      "calls": 436
+    },
+    "openai": {
+      "cost": 0.6921399999999988,
+      "calls": 436
+    },
+    "google": {
+      "cost": 0.3868719999999999,
+      "calls": 400
+    }
+  },
+  "batch_stats": {
+    "total_batch_calls": 0,
+    "total_batch_cost": 0.0,
+    "total_batch_savings": 0.0,
+    "avg_batch_size": 0
+  }
+}

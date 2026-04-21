@@ -496,6 +496,7 @@ def _run_calibration_judge(
                         action_b=scenario["action_b"],
                         model_response=response["content"],
                         evaluation_context="pipe_a7_phase1b_calibration",
+                        metadata={"prompt_id": variant.get("variant_id")},
                     )
                     result.update({
                         "variant_id": variant["variant_id"],
