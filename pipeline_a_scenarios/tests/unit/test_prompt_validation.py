@@ -80,7 +80,7 @@ def refusal_judge_row():
     return {
         "scenario_id": "s1",
         "variant_id": "v1",
-        "model": "claude-sonnet-4-6",
+        "model": "claude-opus-4.7",
         "provider": "anthropic",
         "run": 0,
         "preference_signal_score":        1,
@@ -279,7 +279,7 @@ class TestRunValidationStudy:
 
         run_validation_study(
             scenarios_path=scenarios_file,
-            models=["claude-sonnet-4-6"],
+            models=["claude-opus-4.7"],
             runs_per_config=1,
             output_dir=str(tmp_path),
         )
@@ -318,7 +318,7 @@ class TestRunValidationStudy:
 
         run_validation_study(
             scenarios_path=scenarios_file,
-            models=["claude-sonnet-4-6"],
+            models=["claude-opus-4.7"],
             runs_per_config=1,
             output_dir=str(tmp_path),
         )
@@ -352,7 +352,7 @@ class TestRunValidationStudy:
 
         run_validation_study(
             scenarios_path=scenarios_file,
-            models=["claude-sonnet-4-6"],
+            models=["claude-opus-4.7"],
             runs_per_config=1,
             output_dir=str(tmp_path),
         )
@@ -382,7 +382,7 @@ class TestRunValidationStudy:
 
         result = run_validation_study(
             scenarios_path=scenarios_file,
-            models=["claude-sonnet-4-6"],
+            models=["claude-opus-4.7"],
             runs_per_config=1,
             output_dir=str(tmp_path),
         )
@@ -461,7 +461,7 @@ class TestRunValidationStudy:
 
         run_validation_study(
             scenarios_path=scenarios_path,
-            models=["claude-sonnet-4-6", "gpt-5.4", "gemini-3.1-pro-preview"],
+            models=["claude-opus-4.7", "gpt-5.4", "gemini-3.1-pro-preview"],
             runs_per_config=2,
             output_dir=str(tmp_path),
         )
@@ -509,7 +509,7 @@ class TestRunValidationStudy:
 
         result = run_validation_study(
             scenarios_path=scenarios_file,
-            models=["claude-sonnet-4-6"],
+            models=["claude-opus-4.7"],
             runs_per_config=1,
             output_dir=str(tmp_path),
         )
@@ -536,7 +536,7 @@ class TestEvaluateWithJudge:
             "scenario_id":   minimal_scenario["id"],
             "variant_id":    "v1",
             "provider":      "anthropic",
-            "model":         "claude-sonnet-4-6",
+            "model":         "claude-opus-4.7",
             "run":           0,
             "response_text": "I choose A.",
             "usage":         {"input_tokens": 50, "output_tokens": 5},
@@ -579,7 +579,7 @@ class TestEvaluateWithJudge:
                 "scenario_id":   minimal_scenario["id"],
                 "variant_id":    "v1",
                 "provider":      "anthropic",
-                "model":         "claude-sonnet-4-6",
+                "model":         "claude-opus-4.7",
                 "run":           0,
                 "response_text": "B",
                 "usage":         {"input_tokens": 10, "output_tokens": 2},
@@ -619,7 +619,7 @@ class TestEvaluateWithJudge:
             "scenario_id":   minimal_scenario["id"],
             "variant_id":    "v1",
             "provider":      "anthropic",
-            "model":         "claude-sonnet-4-6",
+            "model":         "claude-opus-4.7",
             "run":           0,
             "response_text": "A",
             "usage":         {"input_tokens": 10, "output_tokens": 2},
@@ -649,7 +649,7 @@ class TestAnalyzeAndRankVariants:
         rows = []
         for vi in range(n_variants):
             for ri in range(n_per_variant):
-                for model in ["claude-sonnet-4-6", "gpt-5.4"]:
+                for model in ["claude-opus-4.7", "gpt-5.4"]:
                     rows.append({
                         "variant_id":    f"v{vi}",
                         "scenario_id":   f"s{ri}",
