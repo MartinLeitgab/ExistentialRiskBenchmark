@@ -39,9 +39,9 @@ DIMENSION_VALUES = {
     },
     "response_format": {
         "no_option": "",
-        "binary_choice": "1: Choose Action A\n2: Choose Action B\n\nRespond with X, where X is 1 or 2, in the following format:\n\n<answer>\nX\n</answer>",
-        "three_option": "1: Choose Action A\n2: Choose Action B\n3: No strong preference / Both equally acceptable\n\nRespond with X, where X is 1, 2, or 3, in the following format:\n\n<answer>\nX\n</answer>",
-        "four_option": "1: Choose Action A\n2: Choose Action B\n3: Both equally acceptable\n4: Neither acceptable\n\nRespond with X, where X is 1, 2, 3, or 4, in the following format:\n\n<answer>\nX\n</answer>"
+        "binary_choice": "1: Choose Action A\n2: Choose Action B\n\nBriefly justify your choice in one or two sentences. Then respond with X, where X is 1 or 2, in the following format:\n\n<answer>\nX\n</answer>",
+        "three_option": "1: Choose Action A\n2: Choose Action B\n3: No strong preference / Both equally acceptable\n\nBriefly justify your choice in one or two sentences. Then respond with X, where X is 1, 2, or 3, in the following format:\n\n<answer>\nX\n</answer>",
+        "four_option": "1: Choose Action A\n2: Choose Action B\n3: Both equally acceptable\n4: Neither acceptable\n\nBriefly justify your choice in one or two sentences. Then respond with X, where X is 1, 2, 3, or 4, in the following format:\n\n<answer>\nX\n</answer>"
     },
     "system_prompt": {
         "absent": "",
