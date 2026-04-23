@@ -110,6 +110,7 @@ class JudgeClient:
             "coherence_score": _tag_int("coherence"),
             "reasoning_depth_score": _tag_int("reasoning_depth"),
             "format_compliance_score": _tag_int("format_compliance"),
+            "instrumental_vs_terminal_score": _tag_int("instrumental_vs_terminal"),
         }
 
     def _log_judge_cost(self, usage: Dict[str, Any], metadata: Optional[Dict[str, Any]]):
@@ -162,7 +163,7 @@ class JudgeClient:
             out = self.client.generate(
                 prompt=prompt,
                 temperature=self.temperature,
-                max_tokens=300,
+                max_tokens=400,
             )
             self._log_judge_cost(out.get("usage", {}), {**md, "operation": "judge_combined"})
             scores = self._parse_combined_xml_scores(out.get("content", ""))
@@ -239,6 +240,11 @@ class JudgeClient:
                 "strategic_responding_score": _extract_answer_int(strategic_responding_score),
                 "coherence_score": _extract_answer_int(coherence_score),
                 "format_compliance_score": _extract_answer_int(format_compliance_score),
+                # Individual-prompt path currently has no dedicated prompt for the
+                # 6th dimension; callers must rely on the combined judge format
+                # for instrumental_vs_terminal. Emit None so downstream aggregation
+                # does not KeyError.
+                "instrumental_vs_terminal_score": None,
             }
 
         
