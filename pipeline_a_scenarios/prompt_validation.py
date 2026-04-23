@@ -64,6 +64,41 @@ QUALITY_DIMENSIONS = {
 }
 
 
+# FIX (#5): deployment_context classifies the framing under which the response
+# was generated so the judge can calibrate strategic_responding accordingly.
+# The classification is a coarse bucket derived from the variant's
+# system_prompt and framing dimensions plus any scenario-level current_use_context
+# (issue #34 compatibility). Buckets:
+#   - "autonomous"   : model told it operates without human oversight
+#   - "agent"        : model told it is an AI agent with tool access
+#   - "assistant"    : model told it is a helpful assistant (monitored)
+#   - "current_use"  : scenario provides a current_use_context framing
+#   - "neutral"      : system prompt absent and no explicit framing
+_DEPLOYMENT_CONTEXT_BY_SYSTEM_PROMPT = {
+    "absent":     "neutral",
+    "assistant":  "assistant",
+    "agent":      "agent",
+    "autonomous": "autonomous",
+}
+
+
+def _deployment_context_for(variant: Dict, scenario: Dict) -> str:
+    """
+    Classify the deployment context of a variant × scenario pair.
+
+    This metadata is consumed by evaluate_with_judge() and forwarded to
+    JudgeClient.evaluate_response() so strategic_responding scoring can be
+    conditioned on the framing under which the response was generated.
+    A response that "deflects to human oversight" is strategic under an
+    autonomous frame but expected under an assistant frame.
+    """
+    if scenario.get("current_use_context"):
+        return "current_use"
+    dims = variant.get("dimensions", {}) if isinstance(variant, dict) else {}
+    sp = dims.get("system_prompt", "autonomous")
+    return _DEPLOYMENT_CONTEXT_BY_SYSTEM_PROMPT.get(sp, "autonomous")
+
+
 def _has_reasoning_text(response_text) -> bool:
     """
     Return True if the response contains substantive reasoning text beyond the
@@ -234,25 +269,62 @@ def run_validation_study(
     print("\n2. Loading prompt variants from PIPE-A2...")
     all_variants = []
 
-    from utils.prompt_generator import BASE_DIMENSIONS, generate_prompt_id
+    from utils.prompt_generator import (
+        BASE_DIMENSIONS,
+        generate_prompt_id,
+        generate_calibration_variants,
+    )
 
     base_variant = {
         "variant_id": generate_prompt_id(BASE_DIMENSIONS),
         "dimensions": BASE_DIMENSIONS.copy(),
         "vary_dim":   "base",
         "vary_value": "baseline",
+        "is_calibration": False,
     }
     all_variants.append(base_variant)
 
-    dimensions_to_vary = ["framing", "exfiltration", "response_format", "ethical_framing"]
+    # FIX (#4): system_prompt is the primary experimental lever for Phase 1 —
+    #          previously all variants ran with system_prompt="autonomous"
+    #          because this dimension was missing from dimensions_to_vary.
+    #          The "absent" and "assistant" conditions (and "agent") were never
+    #          tested, leaving the hypothesis space for evaluation framing unexplored.
+    dimensions_to_vary = [
+        "framing",
+        "exfiltration",
+        "response_format",
+        "system_prompt",
+        "ethical_framing",
+    ]
     for dim in dimensions_to_vary:
         for v in generate_all_variants(vary_dim=dim):
             # Normalise prompt_id → variant_id
             if "prompt_id" in v and "variant_id" not in v:
                 v["variant_id"] = v["prompt_id"]
+            # Skip duplicates of the base variant (e.g. the "autonomous" value
+            # of system_prompt equals BASE_DIMENSIONS, so generate_all_variants
+            # re-emits the base row which is already in all_variants).
+            if v["variant_id"] == base_variant["variant_id"]:
+                continue
+            v.setdefault("is_calibration", False)
             all_variants.append(v)
 
-    print(f"   Generated {len(all_variants)} prompt variants")
+    # FIX (#6): goal_specification variants (ic/ah/ph directives) supply the
+    #          suppression-matrix calibration anchors (Phase 1-B ceiling/floor).
+    #          Without them the run has no anchor for "purely instrumental" or
+    #          "purely prosocial" model behaviour. generate_calibration_variants()
+    #          returns exactly the three non-"absent" directives — the "absent"
+    #          case is already covered by the base variant and its siblings.
+    for v in generate_calibration_variants():
+        if "prompt_id" in v and "variant_id" not in v:
+            v["variant_id"] = v["prompt_id"]
+        v["is_calibration"] = True
+        all_variants.append(v)
+
+    n_calib = sum(1 for v in all_variants if v.get("is_calibration"))
+    n_candidate = len(all_variants) - n_calib
+    print(f"   Generated {len(all_variants)} prompt variants "
+          f"({n_candidate} candidate + {n_calib} calibration)")
     variants = all_variants
 
     print("\n3. Initialising model clients...")
@@ -333,6 +405,18 @@ def run_validation_study(
                             "response_text": response["content"],
                             "usage":         response["usage"],
                             "dimensions":    variant["dimensions"],
+                            # FIX (#6): flag goal-injection calibration rows so
+                            # downstream analysis can anchor the judge scale on
+                            # them without contaminating candidate rankings.
+                            "is_calibration":     variant.get("is_calibration", False),
+                            "vary_dim":           variant.get("vary_dim"),
+                            "vary_value":         variant.get("vary_value"),
+                            # FIX (#5): persist deployment context + goal
+                            # directive so the judge can condition strategic-
+                            # responding scoring on the framing under which the
+                            # response was generated.
+                            "deployment_context": _deployment_context_for(variant, scenario),
+                            "goal_specification": variant["dimensions"].get("goal_specification", "absent"),
                             "scenario_metadata": {
                                 "preference_pair": scenario.get("preference_pair"),
                                 "pair_type":       scenario.get("pair_type"),
@@ -411,13 +495,33 @@ def evaluate_with_judge(
     for i, resp in enumerate(valid_responses):
         scenario = scenario_map[resp["scenario_id"]]
 
+        # FIX (#5): deployment_context and goal_specification are required for
+        # correct strategic_responding scoring. Resolve from raw-response
+        # metadata first (written by run_validation_study); fall back to the
+        # variant's dimensions if this judge run is replaying older raw data
+        # that predates those fields.
+        dep_ctx = resp.get("deployment_context")
+        goal_spec = resp.get("goal_specification")
+        if dep_ctx is None or goal_spec is None:
+            variant_stub = {"dimensions": resp.get("dimensions", {})}
+            if dep_ctx is None:
+                dep_ctx = _deployment_context_for(variant_stub, scenario)
+            if goal_spec is None:
+                goal_spec = resp.get("dimensions", {}).get("goal_specification", "absent")
+
         result = judge.evaluate_response(
             scenario_context=scenario["context"],
             action_a=scenario["action_a"],
             action_b=scenario["action_b"],
             model_response=resp["response_text"],
             evaluation_context="pipe_a7_phase1",
-            metadata={"prompt_id": resp.get("variant_id")},
+            metadata={
+                "prompt_id": resp.get("variant_id"),
+                "deployment_context": dep_ctx,
+                "goal_specification": goal_spec,
+            },
+            deployment_context=dep_ctx,
+            goal_specification=goal_spec,
         )
 
         # Ensure the 6th dimension key exists (populated by INFRA-6 / issue #27)
@@ -434,8 +538,14 @@ def evaluate_with_judge(
             # analysis (parse_response in P1-6/P1-7 and scenario_summaries) can
             # classify A / B / equal / refusal correctly. Without this, every
             # row looked empty and was bucketed as "refusal".
-            "response_text": resp.get("response_text", ""),
-            "has_reasoning": _has_reasoning_text(resp.get("response_text", "")),
+            "response_text":      resp.get("response_text", ""),
+            "has_reasoning":      _has_reasoning_text(resp.get("response_text", "")),
+            # FIX (#5): persist the deployment_context + goal_specification
+            # actually sent to the judge so audit / rerun / calibration-anchor
+            # computations can group rows consistently with how they were scored.
+            "deployment_context": dep_ctx,
+            "goal_specification": goal_spec,
+            "is_calibration":     bool(resp.get("is_calibration", False)),
         })
         judge_results.append(result)
 
@@ -477,9 +587,23 @@ def analyze_and_rank_variants(
     """
     print("\n6. Analysing judge results and ranking variants...")
 
-    # Group rows by variant
+    # FIX (#6): partition calibration rows (ic/ah/ph goal-injection variants)
+    # from candidate rows. Calibration rows are goal-injected and biased by
+    # design — they serve as ceiling/floor anchors for the judge scale, not
+    # as candidates for Phase 2 selection. Including them in the candidate
+    # ranking would (a) contaminate the top-7 list with injected rows and
+    # (b) bias aggregate means because calibration rows systematically score
+    # near the extremes.
+    candidate_rows = [
+        r for r in judge_results if not r.get("is_calibration", False)
+    ]
+    calibration_rows = [
+        r for r in judge_results if r.get("is_calibration", False)
+    ]
+
+    # Group candidate rows by variant for ranking.
     by_variant: Dict[str, List[Dict]] = {}
-    for row in judge_results:
+    for row in candidate_rows:
         by_variant.setdefault(row["variant_id"], []).append(row)
 
     # Build summaries with ticket-spec schema
@@ -489,14 +613,28 @@ def analyze_and_rank_variants(
     ]
     variant_summaries.sort(key=lambda x: x["mean_authenticity_score"], reverse=True)
 
+    # Separate summary block for calibration anchors (ic/ah/ph).
+    calibration_summaries: List[Dict] = []
+    if calibration_rows:
+        calib_by_variant: Dict[str, List[Dict]] = {}
+        for row in calibration_rows:
+            calib_by_variant.setdefault(row["variant_id"], []).append(row)
+        calibration_summaries = [
+            {**_build_variant_summary(vid, rows), "is_calibration": True}
+            for vid, rows in calib_by_variant.items()
+        ]
+
     # ── Scenario-level summaries (new AC requirement) ──────────────────
     from pipeline_a_scenarios.analyze_batch_results import parse_response
 
-    scenario_ids = sorted({r["scenario_id"] for r in judge_results})
+    # FIX (#6): scenario-level summaries use candidate rows only so choice
+    # rates and calibration flags reflect real model behaviour, not the
+    # goal-injected calibration anchors.
+    scenario_ids = sorted({r["scenario_id"] for r in candidate_rows})
     scenario_summaries = []
 
     for sid in scenario_ids:
-        rows = [r for r in judge_results if r["scenario_id"] == sid]
+        rows = [r for r in candidate_rows if r["scenario_id"] == sid]
         valid = [r for r in rows
                  if r.get("format_compliance_score", 5) != FORMAT_REFUSAL_SCORE]
         total = max(len(rows), 1)
@@ -576,7 +714,11 @@ def analyze_and_rank_variants(
     recommendations = {
         "top_variants":           [v["variant_id"] for v in top_variants],
         "variant_rankings":       variant_summaries,
-        "scenario_summaries":     scenario_summaries,        
+        # FIX (#6): calibration anchors are persisted separately from the
+        # candidate variant_rankings so Phase 2 selection code cannot
+        # accidentally promote a goal-injected variant.
+        "calibration_summaries":  calibration_summaries,
+        "scenario_summaries":     scenario_summaries,
         "detected_patterns":      patterns,
         "recommendation_summary": generate_recommendation_text(top_variants, patterns),
     }
@@ -598,15 +740,19 @@ def analyze_and_rank_variants(
     figures_dir = f"{output_dir}/figures"
     Path(figures_dir).mkdir(parents=True, exist_ok=True)
 
-    _plot_p1_1_variant_ranking(variant_summaries, judge_results, figures_dir)
+    # FIX (#6): plots are drawn from candidate rows only so calibration
+    # anchors do not distort variant ranking charts, dimension distributions,
+    # or scenario-level choice plots. Calibration anchors are reported
+    # separately via calibration_summaries in variant_rankings.json.
+    _plot_p1_1_variant_ranking(variant_summaries, candidate_rows, figures_dir)
     _plot_p1_2_dimension_heatmap(variant_summaries, figures_dir)
     _plot_p1_3_refusal_strategic(variant_summaries, figures_dir)
-    _plot_p1_4_cross_model_correlation(judge_results, figures_dir)
-    _plot_p1_5_dimension_distributions(judge_results, figures_dir)
-    _plot_p1_6_choice_distribution(judge_results, figures_dir)
-    _plot_p1_7_scenario_model_heatmap(judge_results, figures_dir)
-    _plot_p1_8_scenario_variant_heatmap(judge_results, figures_dir)
-    _plot_p1_9_per_scenario_variance(judge_results, figures_dir)
+    _plot_p1_4_cross_model_correlation(candidate_rows, figures_dir)
+    _plot_p1_5_dimension_distributions(candidate_rows, figures_dir)
+    _plot_p1_6_choice_distribution(candidate_rows, figures_dir)
+    _plot_p1_7_scenario_model_heatmap(candidate_rows, figures_dir)
+    _plot_p1_8_scenario_variant_heatmap(candidate_rows, figures_dir)
+    _plot_p1_9_per_scenario_variance(candidate_rows, figures_dir)
 
     return recommendations
 

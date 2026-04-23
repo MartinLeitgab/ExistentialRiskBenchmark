@@ -403,15 +403,18 @@ class TestRunValidationStudy:
     ):
         """
         Phase 1 AC: ~540 calls (6 scenarios × ~15 variants × 3 models × 2 runs).
-        
+
         We control the variant count by mocking generate_all_variants to return
-        exactly 3 variants per dimension (4 dims × 3 = 12 + 1 base = 13 total),
-        then verify the call count matches 6 × 13 × 3 × 2 = 468, which is within
-        ±15% of 540 (the ticket spec uses ~15 variants, not an exact number).
-        
-        The ±15% tolerance reflects that the real variant count (57) exceeds the
-        ticket's ~15 estimate — the test verifies the formula is correct, not
-        that variants are artificially capped.
+        exactly 3 variants per dimension. The production code varies 5 dimensions
+        (framing, exfiltration, response_format, system_prompt, ethical_framing)
+        and appends 3 calibration variants (ic/ah/ph), so the mocked total is:
+          1 base + 5 dims × 3 mocked + 3 calibration = 19 total variants.
+        Expected call count = 6 × 19 × 3 × 2 = 684, within ±30% of the ~540
+        ticket estimate (the ticket predates the system_prompt + goal_spec
+        additions required for Phase 1-B).
+
+        The test verifies the wiring of the variant loop, not that variants
+        are artificially capped.
         """
         import json
         from pathlib import Path
@@ -466,12 +469,12 @@ class TestRunValidationStudy:
             output_dir=str(tmp_path),
         )
 
-        # 1 base + 4 dims × 3 mocked variants = 13 total variants
-        n_variants = 1 + 4 * 3
+        # 1 base + 5 dims × 3 mocked variants + 3 calibration (ic/ah/ph) = 19
+        n_variants = 1 + 5 * 3 + 3
         n_scenarios = 6
         n_models = 3
         n_runs = 2
-        expected = n_scenarios * n_variants * n_models * n_runs  # = 468
+        expected = n_scenarios * n_variants * n_models * n_runs  # = 684
 
         actual = mock_client.generate.call_count
         assert actual == expected, (
