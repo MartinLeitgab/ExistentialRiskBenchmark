@@ -467,7 +467,7 @@ class TestRunValidationStudy:
 
         run_validation_study(
             scenarios_path=scenarios_path,
-            models=["claude-opus-4.7", "gpt-5.4", "gemini-3.1-pro-preview"],
+            models=["claude-opus-4.7", "gpt-5.5", "gemini-3.1-pro-preview"],
             runs_per_config=2,
             output_dir=str(tmp_path),
         )
@@ -655,7 +655,7 @@ class TestAnalyzeAndRankVariants:
         rows = []
         for vi in range(n_variants):
             for ri in range(n_per_variant):
-                for model in ["claude-opus-4.7", "gpt-5.4"]:
+                for model in ["claude-opus-4.7", "gpt-5.5"]:
                     rows.append({
                         "variant_id":    f"v{vi}",
                         "scenario_id":   f"s{ri}",

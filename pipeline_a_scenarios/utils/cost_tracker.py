@@ -58,7 +58,11 @@ class CostTracker:
             # mirrors the gpt-5.2 tier until OpenAI publishes distinct rates;
             # matching the substring-fallback behaviour of `calculate_cost`
             # prevents a silent misattribution warning that would otherwise
-            # fire on every judge call.
+            # fire on every judge call. The production benchmark now runs on
+            # gpt-5.5 (core model + judge); gpt-5.4 is retained below so
+            # historical cost records replayed from older JSONL files still
+            # resolve cleanly.
+            "gpt-5.5": {"input": 5.0, "output": 15.0},
             "gpt-5.4": {"input": 5.0, "output": 15.0},
             "gpt-5.2": {"input": 5.0, "output": 15.0},
             "gpt-4o": {"input": 2.5, "output": 10.0},  # ✅ 2026 pricing
