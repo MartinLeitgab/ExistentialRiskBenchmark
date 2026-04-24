@@ -167,15 +167,27 @@ class UnifiedLLMClient:
             "messages": [{"role": "user", "content": prompt}],
         }
 
+        # Claude Opus 4.7+ permanently removed `temperature`, `top_p`, and `top_k`;
+        # any non-default value returns 400. Per Anthropic's migration guide, the
+        # required path is to omit these parameters entirely and rely on prompting
+        # (and output_config.effort) instead. This check covers opus-4-7 and any
+        # future aliases in that family (e.g. claude-opus-4-7-<date>).
+        sampling_params_rejected = self.model.startswith("claude-opus-4-7")
+
         budget, adjusted_tokens = self._apply_reasoning(max_tokens, reasoning)
         if budget:
-            params.update({
+            thinking_params = {
                 "thinking": {"type": "enabled", "budget_tokens": budget},
-                "temperature": 1.0,
-                "max_tokens": adjusted_tokens
-            })
+                "max_tokens": adjusted_tokens,
+            }
+            if not sampling_params_rejected:
+                thinking_params["temperature"] = 1.0
+            params.update(thinking_params)
         else:
-            params.update({"temperature": temperature, "max_tokens": max_tokens})
+            base_params = {"max_tokens": max_tokens}
+            if not sampling_params_rejected:
+                base_params["temperature"] = temperature
+            params.update(base_params)
 
         r = self.client.messages.create(**params)
 
