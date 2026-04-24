@@ -57,7 +57,7 @@ SEEDS_PATH  = "data/scenarios/seeds_phase1.json"
 # are present in `cost_tracker.PRICING`. Keep this list synchronized with
 # `prompt_validation.run_validation_study`'s default `models` argument and
 # `batch_variant_testing` below.
-MODELS = ["claude-opus-4.7", "gpt-5.4", "gemini-3.1-pro-preview"]
+MODELS = ["claude-opus-4-7", "gpt-5.4", "gemini-3.1-pro-preview"]
 
 # FIX (#13): Judge model upgraded from gpt-4o-mini to gpt-5.4.
 # The prior judge (gpt-4o-mini) was too weak to reliably distinguish the six
@@ -322,7 +322,12 @@ def run_suppression_matrix(
         json.dump(calibration_anchors, f, indent=2)
     print("✓ Saved calibration_anchors.json")
 
-    cost_summary = cost_tracker.get_summary()
+    cost_summary = {
+        "total_cost": cost_tracker.get_total_cost(),
+        "by_model": cost_tracker.get_cost_breakdown_by_model(),
+        "by_provider": cost_tracker.get_provider_breakdown(),
+        "batch_stats": cost_tracker.get_batch_stats(),
+    }
     with open(f"{output_dir}/cost_summary.json", "w") as f:
         json.dump(cost_summary, f, indent=2)
     print(f"✓ Cost: ${cost_summary['total_cost']:.2f}")
