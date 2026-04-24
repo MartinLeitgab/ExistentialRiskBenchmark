@@ -47,7 +47,36 @@ OUTPUT_DIR  = "data/results/suppression_matrix"
 FIGURES_DIR = f"{OUTPUT_DIR}/figures"
 SEEDS_PATH  = "data/scenarios/seeds_phase1.json"
 
-MODELS = ["claude-sonnet-4-20250514", "gpt-5.2", "gemini-3.0"]
+# FIX (#14): MODELS was drifting from the canonical Phase 1 / Phase 2 set
+# (`claude-opus-4.7`, `gpt-5.4`, `gemini-3.1-pro-preview`) and still pointed at
+# the older snapshot (`claude-sonnet-4-20250514`, `gpt-5.2`, `gemini-3.0`). That
+# caused the suppression matrix to run against different models than the
+# prompt-validation study, breaking cross-phase comparability of the
+# authenticity / suppression-gap metrics and triggering silent cost-tracker
+# fallback-warnings because neither `gemini-3.0` nor `claude-sonnet-4-20250514`
+# are present in `cost_tracker.PRICING`. Keep this list synchronized with
+# `prompt_validation.run_validation_study`'s default `models` argument and
+# `batch_variant_testing` below.
+MODELS = ["claude-opus-4.7", "gpt-5.4", "gemini-3.1-pro-preview"]
+
+# FIX (#13): Judge model upgraded from gpt-4o-mini to gpt-5.4.
+# The prior judge (gpt-4o-mini) was too weak to reliably distinguish the six
+# orthogonal dimensions required for multi-dimensional evaluation of benchmark
+# responses (in particular, it collapsed preference_signal and
+# strategic_responding onto the same value in ~77% of records). gpt-5.4 is the
+# strongest general reasoning model available in this code-base and is kept as
+# a module-level constant so it is easy to audit / swap in a single place.
+JUDGE_MODEL = "gpt-5.4"
+
+# FIX (#12): Previously the calibration judge was hard-coded to run on
+# `scenarios[:2]` with no explanation. The original rationale was cost control:
+# calibration runs the judge on every (condition × scenario × model) triple and
+# the Phase 1-B budget only allocated ~$1 for calibration anchors. We now
+# expose the limit as a named, documented constant so the cap is explicit and
+# callers can override it (`max_calibration_scenarios=None` runs on every
+# scenario, which is the recommended setting when the judge is gpt-5.4 and
+# total scenario count is small).
+CALIBRATION_SCENARIO_LIMIT = 2
 
 # 4 directive conditions (columns of the suppression matrix)
 DIRECTIVE_CONDITIONS = ["absent", "ic_directive", "ah_directive", "ph_directive"]
@@ -453,6 +482,7 @@ def _run_calibration_judge(
     clients: Dict[str, UnifiedLLMClient],
     cost_tracker: CostTracker,
     models: List[str],
+    max_calibration_scenarios: int | None = CALIBRATION_SCENARIO_LIMIT,
 ) -> Dict:
     """
     Run INFRA-6 judge on calibration-variant responses to establish
@@ -461,17 +491,48 @@ def _run_calibration_judge(
     Verification:  ic_directive runs should score HIGHER on preference_signal
     than absent-directive baseline.  If not, set judge_recalibration_needed=True.
 
-    Runs only absent + ic_directive × 2 scenarios × 3 models to stay within
-    Phase 1-B cost budget (~$1 total).
+    Args:
+        scenarios:                  Full list of seed scenarios available.
+        calibration_variants:       Goal-injection variants produced by
+                                    `generate_calibration_variants`.
+        clients:                    Model-name -> UnifiedLLMClient.
+        cost_tracker:               Shared CostTracker instance.
+        models:                     Models to include in calibration.
+        max_calibration_scenarios:  Cap on how many scenarios the calibration
+                                    judge iterates over. Defaults to
+                                    ``CALIBRATION_SCENARIO_LIMIT`` (2) which is
+                                    the historical Phase 1-B cost-budget cap
+                                    (~$1 total with the old gpt-4o-mini judge;
+                                    larger with gpt-5.4, see FIX #13).
+                                    Pass ``None`` to run calibration on every
+                                    scenario (recommended whenever the budget
+                                    allows, so anchors are computed on the full
+                                    distribution rather than the first two
+                                    seeds, which can be semantically biased).
+
+    FIX (#12): replaced the undocumented ``scenarios[:2]`` hard limit with the
+    explicit ``max_calibration_scenarios`` parameter above. Behaviour is
+    backward-compatible with the previous default (cap of 2).
     """
     print("\n5. Running calibration judge (INFRA-6) on goal-injection variants...")
 
     target_conditions = ["absent", "ic_directive"]
     judge_results: List[Dict] = []
 
+    if max_calibration_scenarios is None:
+        calibration_scenarios = list(scenarios)
+    else:
+        calibration_scenarios = list(scenarios[:max_calibration_scenarios])
+    print(
+        f"   Calibration budget: {len(calibration_scenarios)}/{len(scenarios)} "
+        f"scenarios × {len([c for c in target_conditions])} conditions × "
+        f"{len(models)} models "
+        f"(max_calibration_scenarios={max_calibration_scenarios})"
+    )
+
     try:
         judge = JudgeClient(
-            model="gpt-4o-mini",
+            model=JUDGE_MODEL,
             temperature=0,
             cost_tracker=cost_tracker,
         )
@@ -488,7 +549,7 @@ def _run_calibration_judge(
     for variant in calibration_variants:
         if variant["vary_value"] not in target_conditions:
             continue
-        for scenario in scenarios[:2]:
+        for scenario in calibration_scenarios:
             for model in models:
                 client   = clients[model]
                 provider = (
