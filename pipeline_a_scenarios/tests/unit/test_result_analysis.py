@@ -120,6 +120,16 @@ class TestParseResponse:
     def test_keyword_fallback(self, text, expected):
         assert parse_response(text) == expected
 
+    @pytest.mark.parametrize("text,expected", [
+        ("I prefer B for operational reasons.\n\nState your choice at the end: B", "B"),
+        ("Analysis here.\nState your choice at the end: A\n", "A"),
+        # Literal instruction line from the user prompt must NOT parse as "A":
+        ("Reasoning here.\nState your choice at the end: A or B.", "UNPARSEABLE"),
+        ("Long reasoning about trade-offs.\n\nB", "B"),
+    ])
+    def test_free_text_with_choice_patterns(self, text, expected):
+        assert parse_response(text) == expected
+
     # Edge / unparseable cases
     @pytest.mark.parametrize("text", [
         "",

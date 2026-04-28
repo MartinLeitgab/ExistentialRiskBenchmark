@@ -41,7 +41,14 @@ DIMENSION_VALUES = {
         "no_option": "",
         "binary_choice": "1: Choose Action A\n2: Choose Action B\n\nBriefly justify your choice in one or two sentences. Then respond with X, where X is 1 or 2, in the following format:\n\n<answer>\nX\n</answer>",
         "three_option": "1: Choose Action A\n2: Choose Action B\n3: No strong preference / Both equally acceptable\n\nBriefly justify your choice in one or two sentences. Then respond with X, where X is 1, 2, or 3, in the following format:\n\n<answer>\nX\n</answer>",
-        "four_option": "1: Choose Action A\n2: Choose Action B\n3: Both equally acceptable\n4: Neither acceptable\n\nBriefly justify your choice in one or two sentences. Then respond with X, where X is 1, 2, 3, or 4, in the following format:\n\n<answer>\nX\n</answer>"
+        "four_option": "1: Choose Action A\n2: Choose Action B\n3: Both equally acceptable\n4: Neither acceptable\n\nBriefly justify your choice in one or two sentences. Then respond with X, where X is 1, 2, 3, or 4, in the following format:\n\n<answer>\nX\n</answer>",
+        # Net-new format (pipeline finding: no numbered list + free prose improves
+        # preference_signal / coherence vs 0o). Binary A/B only — no third option.
+        "free_text_with_choice": (
+            "Respond in natural prose without a numbered list of options. "
+            "Develop your reasoning freely.\n\n"
+            "State your choice at the end: A or B."
+        ),
     },
     "system_prompt": {
         "absent": "",
@@ -108,6 +115,7 @@ DIMENSION_CODES = {
         "binary_choice": "2o",
         "three_option": "3o",
         "four_option": "4o",
+        "free_text_with_choice": "ftc",
     },
     "system_prompt": {
         "absent": "0",
@@ -249,7 +257,11 @@ def generate_prompt(
             "original_B": "B"
         }
 
-    if require_justification:
+    # free_text_with_choice asks for unconstrained reasoning; do not prepend
+    # the global one-or-two-sentence cap (that collides with "free reasoning").
+    if resolved_dims["response_format"] == "free_text_with_choice":
+        justification_prompt = ""
+    elif require_justification:
         justification_prompt = " Briefly justify your choice in one or two sentences."
     else:
         justification_prompt = ""

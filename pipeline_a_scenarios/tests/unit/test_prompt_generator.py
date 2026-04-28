@@ -316,6 +316,22 @@ class TestPromptContent:
         assert has_consequentialist
         logger.info("Test passed: Consequentialist ethical framing detected")
 
+    def test_free_text_with_choice_response_format(self, test_scenarios):
+        """Net-new free_text_with_choice: no numbered list, closing A/B line."""
+        dims = BASE_DIMENSIONS.copy()
+        dims["response_format"] = "free_text_with_choice"
+        result = generate_prompt(
+            context=test_scenarios[0]["context"],
+            action_a=test_scenarios[0]["action_a"],
+            action_b=test_scenarios[0]["action_b"],
+            dimensions=dims,
+        )
+        up = result["user_prompt"]
+        assert "State your choice at the end: A or B." in up
+        assert "numbered list" in up.lower()
+        assert "Briefly justify your choice in one or two sentences" not in up
+        assert "ftc" in result["metadata"]["prompt_id"]
+
 
 class TestEdgeCases:
     """Test edge cases and error handling."""

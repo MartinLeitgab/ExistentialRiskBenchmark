@@ -368,6 +368,8 @@ def parse_response(raw_text: str) -> str:
     - XML tags:  <answer>1</answer> or <answer>2</answer>
     - Bare letters/numbers: "A", "B", "1", "2", "3"
     - Labelled: "choice: A", "answer: B"
+    - free_text_with_choice: "State your choice at the end: B" (not the template
+      "…: A or B.") or a lone A/B on the final line when no <answer> tag is used
     - Keywords: "Action A", "Both equal"
     """
     import re
@@ -386,9 +388,11 @@ def parse_response(raw_text: str) -> str:
     ordered_patterns = [
         r"<answer>\s*([123])\s*</answer>",
         r"<answer>\s*([ABCabc])\s*</answer>",
-        r"(?:choice|answer|select|option)[:\s]+([ABCabc1-3])",
+        # Colon required after keyword — `[:\s]+` incorrectly matched
+        # "choice" + spaces + "a" from "… choice at the end …" in
+        # free_text_with_choice responses.
+        r"(?:choice|answer|select|option):\s*([ABCabc1-3])",
         r"^\s*([ABCabc1-3])\s*$",
-        r"\b([ABCabc1-3])\b",
     ]
 
     for pattern in ordered_patterns:
@@ -398,6 +402,46 @@ def parse_response(raw_text: str) -> str:
             mapped = choice_map.get(token) or choice_map.get(token.upper())
             if mapped:
                 return mapped
+
+    # free_text_with_choice: "State your choice at the end: X" where X is the
+    # model's answer. Do NOT match the literal instruction line "…: A or B."
+    # (negative lookahead skips capture when the letter is followed by " or ").
+    ft_matches = list(
+        re.finditer(
+            r"State your choice at the end:\s*([ABab])(?!\s+or)",
+            text,
+            re.IGNORECASE | re.MULTILINE,
+        )
+    )
+    if ft_matches:
+        tok = ft_matches[-1].group(1)
+        return "A" if tok.upper() == "A" else "B"
+
+    # free_text: no <answer> block — final non-empty line is a lone A/B token.
+    if not re.search(r"<answer\s*>", text, re.IGNORECASE):
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        if lines:
+            last = lines[-1]
+            m_last = re.fullmatch(r"([ABab])\s*\.?", last)
+            if m_last:
+                tok = m_last.group(1)
+                return "A" if tok.upper() == "A" else "B"
+
+    match = re.search(
+        r"\b([ABCabc1-3])\b",
+        re.sub(
+            r"State your choice at the end:\s*A\s+or\s+B\.?",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        ),
+        re.IGNORECASE | re.MULTILINE,
+    )
+    if match:
+        token  = match.group(1)
+        mapped = choice_map.get(token) or choice_map.get(token.upper())
+        if mapped:
+            return mapped
 
     lower = text.lower()
     if "action a" in lower or "choose a" in lower or "option a" in lower:
