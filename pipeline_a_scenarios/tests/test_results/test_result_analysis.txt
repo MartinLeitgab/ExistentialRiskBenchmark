@@ -1,0 +1,97 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-7.4.4, pluggy-1.6.0 -- /opt/anaconda3/envs/x-risk-bench/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark
+configfile: pytest.ini
+plugins: anyio-4.12.1, langsmith-0.6.4
+collecting ... collected 53 items
+
+unit/test_result_analysis.py::TestParseResponse::test_xml_digit_tag[<answer>1</answer>-A] PASSED [  1%]
+unit/test_result_analysis.py::TestParseResponse::test_xml_digit_tag[<answer>2</answer>-B] PASSED [  3%]
+unit/test_result_analysis.py::TestParseResponse::test_xml_digit_tag[<answer>3</answer>-equal] PASSED [  5%]
+unit/test_result_analysis.py::TestParseResponse::test_xml_digit_tag[<answer> 1 </answer>-A] PASSED [  7%]
+unit/test_result_analysis.py::TestParseResponse::test_xml_letter_tag[<answer>A</answer>-A] PASSED [  9%]
+unit/test_result_analysis.py::TestParseResponse::test_xml_letter_tag[<answer>b</answer>-B] PASSED [ 11%]
+unit/test_result_analysis.py::TestParseResponse::test_xml_letter_tag[<answer>C</answer>-equal] PASSED [ 13%]
+unit/test_result_analysis.py::TestParseResponse::test_labelled_patterns[choice: A-A] PASSED [ 15%]
+unit/test_result_analysis.py::TestParseResponse::test_labelled_patterns[Answer: B-B] PASSED [ 16%]
+unit/test_result_analysis.py::TestParseResponse::test_labelled_patterns[select: 1-A] PASSED [ 18%]
+unit/test_result_analysis.py::TestParseResponse::test_labelled_patterns[option: 2-B] PASSED [ 20%]
+unit/test_result_analysis.py::TestParseResponse::test_labelled_patterns[The answer is: 3-equal] PASSED [ 22%]
+unit/test_result_analysis.py::TestParseResponse::test_bare_token[A-A] PASSED [ 24%]
+unit/test_result_analysis.py::TestParseResponse::test_bare_token[b-B] PASSED [ 26%]
+unit/test_result_analysis.py::TestParseResponse::test_bare_token[2-B] PASSED [ 28%]
+unit/test_result_analysis.py::TestParseResponse::test_bare_token[3-equal] PASSED [ 30%]
+unit/test_result_analysis.py::TestParseResponse::test_keyword_fallback[I choose Action A.-A] PASSED [ 32%]
+unit/test_result_analysis.py::TestParseResponse::test_keyword_fallback[I would choose action b here.-B] PASSED [ 33%]
+unit/test_result_analysis.py::TestParseResponse::test_keyword_fallback[Both options are equal in value.-equal] PASSED [ 35%]
+unit/test_result_analysis.py::TestParseResponse::test_keyword_fallback[Neither choice is preferable.-equal] PASSED [ 37%]
+unit/test_result_analysis.py::TestParseResponse::test_keyword_fallback[The correct choice is A-A] PASSED [ 39%]
+unit/test_result_analysis.py::TestParseResponse::test_keyword_fallback[Option B is better.-B] PASSED [ 41%]
+unit/test_result_analysis.py::TestParseResponse::test_unparseable[] PASSED [ 43%]
+unit/test_result_analysis.py::TestParseResponse::test_unparseable[None] PASSED [ 45%]
+unit/test_result_analysis.py::TestParseResponse::test_unparseable[123] PASSED [ 47%]
+unit/test_result_analysis.py::TestParseResponse::test_unparseable[I don't know] PASSED [ 49%]
+unit/test_result_analysis.py::TestParseResponse::test_unparseable[12345] PASSED [ 50%]
+unit/test_result_analysis.py::TestParseResponse::test_unparseable[<answer></answer>] PASSED [ 52%]
+unit/test_result_analysis.py::TestParseResponse::test_unparseable[The answer is maybe] PASSED [ 54%]
+unit/test_result_analysis.py::TestParseResponse::test_unparseable[   ] PASSED [ 56%]
+unit/test_result_analysis.py::TestParseResponse::test_valid_responses_return_canonical[I choose Action A.-A] PASSED [ 58%]
+unit/test_result_analysis.py::TestParseResponse::test_valid_responses_return_canonical[Answer: B-B] PASSED [ 60%]
+unit/test_result_analysis.py::TestParseResponse::test_valid_responses_return_canonical[The correct choice is A-A] PASSED [ 62%]
+unit/test_result_analysis.py::TestParseResponse::test_valid_responses_return_canonical[<answer>1</answer>-A] PASSED [ 64%]
+unit/test_result_analysis.py::TestParseResponse::test_valid_responses_return_canonical[<answer>2</answer>-B] PASSED [ 66%]
+unit/test_result_analysis.py::TestParseResponse::test_valid_responses_return_canonical[Both are equal-equal] PASSED [ 67%]
+unit/test_result_analysis.py::TestLoadBatchResults::test_load_returns_dataframe PASSED [ 69%]
+unit/test_result_analysis.py::TestLoadBatchResults::test_load_handles_api_error_gracefully PASSED [ 71%]
+unit/test_result_analysis.py::TestLoadBatchResults::test_scenario_id_extracted_from_custom_id PASSED [ 73%]
+unit/test_result_analysis.py::TestLoadBatchResults::test_provider_routing PASSED [ 75%]
+unit/test_result_analysis.py::TestAnalyzeVariantConsistency::test_saves_p2_1_figure PASSED [ 77%]
+unit/test_result_analysis.py::TestAnalyzeVariantConsistency::test_handles_single_variant PASSED [ 79%]
+unit/test_result_analysis.py::TestAnalyzeVariantConsistency::test_handles_all_unparseable PASSED [ 81%]
+unit/test_result_analysis.py::TestAnalyzeVariantConsistency::test_multiple_models_produce_separate_figures PASSED [ 83%]
+unit/test_result_analysis.py::TestAnalyzeParsingSuccess::test_prints_variant_names PASSED [ 84%]
+unit/test_result_analysis.py::TestAnalyzeParsingSuccess::test_flags_below_95_percent PASSED [ 86%]
+unit/test_result_analysis.py::TestAnalyzeParsingSuccess::test_no_flag_above_95_percent PASSED [ 88%]
+unit/test_result_analysis.py::TestRecommendFinalVariants::test_primary_variant_is_highest_ranked_above_95 PASSED [ 90%]
+unit/test_result_analysis.py::TestRecommendFinalVariants::test_fallback_when_none_above_95 PASSED [ 92%]
+unit/test_result_analysis.py::TestRecommendFinalVariants::test_secondary_variants_max_two PASSED [ 94%]
+unit/test_result_analysis.py::TestRecommendFinalVariants::test_output_json_written PASSED [ 96%]
+unit/test_result_analysis.py::TestRecommendFinalVariants::test_p2_2_figure_saved PASSED [ 98%]
+unit/test_result_analysis.py::TestRecommendFinalVariants::test_return_keys_are_correct PASSED [100%]
+
+=============================== warnings summary ===============================
+unit/test_result_analysis.py:17
+  /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark/pipeline_a_scenarios/tests/unit/test_result_analysis.py:17: DeprecationWarning: 
+  Pyarrow will become a required dependency of pandas in the next major release of pandas (pandas 3.0),
+  (to allow more performant data types, such as the Arrow string type, and better interoperability with other libraries)
+  but was not found to be installed on your system.
+  If this would cause problems for you,
+  please provide us feedback at https://github.com/pandas-dev/pandas/issues/54466
+          
+    import pandas as pd
+
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88: DeprecationWarning: 'parseString' deprecated - use 'parse_string'
+    parse = parser.parseString(pattern)
+
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92: DeprecationWarning: 'resetCache' deprecated - use 'reset_cache'
+    parser.resetCache()
+
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_mathtext.py:45
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_mathtext.py:45: DeprecationWarning: 'enablePackrat' deprecated - use 'enable_packrat'
+    ParserElement.enablePackrat()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 53 passed, 14 warnings in 3.82s ========================

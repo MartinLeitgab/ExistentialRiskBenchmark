@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-7.4.4, pluggy-1.6.0 -- /opt/anaconda3/envs/x-risk-bench/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark
+configfile: pytest.ini
+plugins: anyio-4.12.1, langsmith-0.6.4
+collecting ... collected 13 items
+
+unit/test_prompt_generator.py::TestPromptGeneration::test_generate_prompt_basic PASSED [  7%]
+unit/test_prompt_generator.py::TestPromptGeneration::test_generate_prompt_with_variants PASSED [ 15%]
+unit/test_prompt_generator.py::TestPromptGeneration::test_action_order_inversion PASSED [ 23%]
+unit/test_prompt_generator.py::TestPromptGeneration::test_generate_all_variants[framing-3] PASSED [ 30%]
+unit/test_prompt_generator.py::TestPromptGeneration::test_generate_all_variants[response_format-3] PASSED [ 38%]
+unit/test_prompt_generator.py::TestPromptGeneration::test_generate_all_variants[ethical_framing-4] PASSED [ 46%]
+unit/test_prompt_generator.py::TestPromptGeneration::test_generate_prompt_id_consistency PASSED [ 53%]
+unit/test_prompt_generator.py::TestPromptGeneration::test_generate_prompt_id_uniqueness PASSED [ 61%]
+unit/test_prompt_generator.py::TestPromptContent::test_framing_first_person PASSED [ 69%]
+unit/test_prompt_generator.py::TestPromptContent::test_framing_third_person PASSED [ 76%]
+unit/test_prompt_generator.py::TestPromptContent::test_ethical_framing_present PASSED [ 84%]
+unit/test_prompt_generator.py::TestEdgeCases::test_invalid_dimension_value PASSED [ 92%]
+unit/test_prompt_generator.py::TestEdgeCases::test_empty_context PASSED  [100%]
+
+============================== 13 passed in 0.01s ==============================

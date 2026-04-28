@@ -54,6 +54,16 @@ class CostTracker:
         
         "openai": {
 
+            # Added to support the upgraded LLM-as-a-judge (FIX #13). Pricing
+            # mirrors the gpt-5.2 tier until OpenAI publishes distinct rates;
+            # matching the substring-fallback behaviour of `calculate_cost`
+            # prevents a silent misattribution warning that would otherwise
+            # fire on every judge call. The production benchmark now runs on
+            # gpt-5.5 (core model + judge); gpt-5.4 is retained below so
+            # historical cost records replayed from older JSONL files still
+            # resolve cleanly.
+            "gpt-5.5": {"input": 5.0, "output": 15.0},
+            "gpt-5.4": {"input": 5.0, "output": 15.0},
             "gpt-5.2": {"input": 5.0, "output": 15.0},
             "gpt-4o": {"input": 2.5, "output": 10.0},  # ✅ 2026 pricing
             "gpt-4o-mini": {"input": 0.075, "output": 0.30},  # ✅ 2026 pricing
@@ -61,12 +71,23 @@ class CostTracker:
             "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
         },
         "anthropic": {
+            # FIX (#14): canonical Phase 1 / Phase 2 production model. Pricing
+            # mirrors the claude-opus-4.5 tier until Anthropic publishes
+            # distinct rates; without this entry, `calculate_cost` silently
+            # falls back to another model and logs a misattribution warning.
+            "claude-opus-4-7": {"input": 5.0, "output": 25.0},
+            "claude-opus-4.7": {"input": 5.0, "output": 25.0},
             "claude-opus-4.5": {"input": 5.0, "output": 25.0},
             "claude-sonnet-4.5": {"input": 3.0, "output": 15.0},
             "claude-sonnet-4-5-20250929": {"input": 3.0, "output": 15.0},
             "claude-haiku-4.5": {"input": 1.0, "output": 5.0},
         },
         "google": {
+            # FIX (#14): canonical Phase 1 / Phase 2 production model. Pricing
+            # mirrors the gemini-3-pro tier until Google publishes distinct
+            # rates for the `-preview` SKU; prevents a silent substring
+            # fallback to gemini-3-flash-preview on every call.
+            "gemini-3.1-pro-preview": {"input": 2.0, "output": 12.0},
             "gemini-3-flash-preview": {"input": 2.0, "output": 8.0},
             "gemini-3-pro": {"input": 2.0, "output": 12.0},
             "gemini-2.5-pro": {"input": 1.25, "output": 5.0},
