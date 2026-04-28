@@ -72,7 +72,7 @@ class JudgeClient:
 
         # Default to the most permissive option set if unknown.
         fmt = response_format or "4o"
-        if fmt == "2o":
+        if fmt == "2o" or fmt == "ftc":
             return f"Option A: {opt1}\nOption B: {opt2}\n"
         if fmt == "3o":
             return (
