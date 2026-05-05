@@ -317,7 +317,7 @@ class TestPromptContent:
         logger.info("Test passed: Consequentialist ethical framing detected")
 
     def test_free_text_with_choice_response_format(self, test_scenarios):
-        """Net-new free_text_with_choice: no numbered list, closing A/B line."""
+        """free_text_with_choice: free prose plus closing <answer>A|B</answer> (spec-aligned)."""
         dims = BASE_DIMENSIONS.copy()
         dims["response_format"] = "free_text_with_choice"
         result = generate_prompt(
@@ -327,7 +327,9 @@ class TestPromptContent:
             dimensions=dims,
         )
         up = result["user_prompt"]
-        assert "State your choice at the end: A or B." in up
+        assert "<answer>" in up
+        assert "</answer>" in up
+        assert "Then respond with X, where X is A or B" in up
         assert "numbered list" in up.lower()
         assert "Briefly justify your choice in one or two sentences" not in up
         assert "ftc" in result["metadata"]["prompt_id"]

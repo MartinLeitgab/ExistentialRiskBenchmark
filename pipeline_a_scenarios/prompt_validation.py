@@ -29,6 +29,8 @@ from utils.cost_tracker import CostTracker
 from utils.judge_client import JudgeClient
 from utils.judge_analysis import detect_patterns
 
+from scenario_loader import load_scenarios
+
 # ---------------------------------------------------------------------------
 # Ticket-spec authenticity formula
 # ---------------------------------------------------------------------------
@@ -59,10 +61,9 @@ FORMAT_REFUSAL_SCORE     = 1   # format_compliance_score == 1 → refusal, exclu
 # reliable multi-dimensional evaluation of complex benchmark responses. It
 # systematically collapsed preference_signal and strategic_responding onto the
 # same score (~77% of records) and produced noisy coherence / reasoning-depth
-# ratings that distorted the authenticity ranking. gpt-5.5 is kept as a
-# module-level constant so the judge identity is explicit and can be swapped
-# in one place for re-runs. (Previously gpt-5.4 — upgraded to gpt-5.5 across
-# the core benchmark and judge model set in a single sweep.)
+# ratings that distorted the authenticity ranking. gpt-5.5 is the canonical
+# judge for this pipeline — kept as a module-level constant so the identity is
+# explicit and can be swapped in one place for re-runs.
 JUDGE_MODEL = "gpt-5.5"
 
 # Responses that consist of a bare answer (numeric/letter in an <answer> block, or a
@@ -370,8 +371,7 @@ def run_validation_study(
     cost_tracker = CostTracker(user_id="pipe_a7_phase1")
 
     print("\n1. Loading scenarios from PIPE-A1...")
-    with open(scenarios_path) as f:
-        scenarios = json.load(f)
+    scenarios = load_scenarios(scenarios_path)
     print(f"   Loaded {len(scenarios)} seed scenarios")
 
     print("\n2. Loading prompt variants from PIPE-A2...")
@@ -639,8 +639,7 @@ def rerun_failed_responses(
     from pipeline_a_scenarios.analyze_batch_results import parse_response
     from utils.prompt_generator import generate_all_variants, generate_prompt
 
-    with open(scenarios_path) as f:
-        scenarios = json.load(f)
+    scenarios = load_scenarios(scenarios_path)
     scenario_map = {s["id"]: s for s in scenarios}
 
     with open(raw_path) as f:
@@ -1753,8 +1752,7 @@ def main_phase1():
     prepare_phase1_data()
     study_results   = run_validation_study()
 
-    with open("data/scenarios/seeds_phase1.json") as f:
-        scenarios = json.load(f)
+    scenarios = load_scenarios("data/scenarios/seeds_phase1.json")
 
     judge_results   = evaluate_with_judge(study_results["raw_responses"], scenarios)
     recommendations = analyze_and_rank_variants(judge_results)

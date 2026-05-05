@@ -213,7 +213,13 @@ class TestBatchSubmission:
         scenarios_dir = tmp_path / "data" / "scenarios"
         scenarios_dir.mkdir(parents=True)
         (scenarios_dir / "stratified_phase2.json").write_text(json.dumps([
-            {"id": "s1", "context": "C", "action_a": "A", "action_b": "B"},
+            {
+                "id": "s1",
+                "pair_type": "inst_vs_pro",
+                "context": "C",
+                "action_a": "A",
+                "action_b": "B",
+            },
         ]))
 
         output_dir = tmp_path / "batches"
@@ -243,7 +249,13 @@ class TestBatchSubmission:
         scenarios_dir = tmp_path / "data" / "scenarios"
         scenarios_dir.mkdir(parents=True)
         (scenarios_dir / "stratified_phase2.json").write_text(json.dumps([
-            {"id": "s1", "context": "C", "action_a": "A", "action_b": "B"},
+            {
+                "id": "s1",
+                "pair_type": "inst_vs_pro",
+                "context": "C",
+                "action_a": "A",
+                "action_b": "B",
+            },
         ]))
 
         output_dir = tmp_path / "batches"
@@ -278,7 +290,13 @@ class TestBatchSubmission:
         scenarios_dir = tmp_path / "data" / "scenarios"
         scenarios_dir.mkdir(parents=True)
         (scenarios_dir / "stratified_phase2.json").write_text(json.dumps([
-            {"id": "s1", "context": "C", "action_a": "A", "action_b": "B"},
+            {
+                "id": "s1",
+                "pair_type": "inst_vs_pro",
+                "context": "C",
+                "action_a": "A",
+                "action_b": "B",
+            },
         ]))
 
         output_dir = tmp_path / "batches"
@@ -311,7 +329,13 @@ class TestBatchSubmission:
         scenarios_dir = tmp_path / "data" / "scenarios"
         scenarios_dir.mkdir(parents=True)
         (scenarios_dir / "stratified_phase2.json").write_text(json.dumps([
-            {"id": "s1", "context": "C", "action_a": "A", "action_b": "B"},
+            {
+                "id": "s1",
+                "pair_type": "inst_vs_pro",
+                "context": "C",
+                "action_a": "A",
+                "action_b": "B",
+            },
         ]))
 
         output_dir = tmp_path / "batches_err"

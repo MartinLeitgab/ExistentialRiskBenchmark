@@ -13,6 +13,8 @@ TESTS_DIR = Path(__file__).parent
 PIPELINE_DIR = TESTS_DIR.parent
 sys.path.insert(0, str(PIPELINE_DIR))
 
+from scenario_loader import load_scenarios
+
 print(f"Added to path: {PIPELINE_DIR}")  # Debug line
 
 
@@ -92,8 +94,7 @@ def test_scenarios(test_data_dir):
         with open(scenarios_file, "w") as f:
             json.dump(scenarios, f, indent=2)
     
-    with open(scenarios_file) as f:
-        return json.load(f)
+    return load_scenarios(str(scenarios_file))
 
 
 @pytest.fixture

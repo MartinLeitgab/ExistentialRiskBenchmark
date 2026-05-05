@@ -11,6 +11,8 @@ from utils.llm_client import UnifiedLLMClient
 from utils.prompt_generator import generate_prompt, generate_all_variants, BASE_DIMENSIONS, generate_prompt_id
 from utils.cost_tracker import CostTracker
 
+from scenario_loader import load_scenarios
+
 
 def prepare_batch_requests(
     scenarios: List[Dict],
@@ -66,8 +68,7 @@ def submit_all_batches(
     
     # Load scenarios (PIPE-A1 Phase 2)
     print("\n1. Loading 500 stratified scenarios...")
-    with open("data/scenarios/stratified_phase2.json") as f:
-        scenarios = json.load(f)
+    scenarios = load_scenarios("data/scenarios/stratified_phase2.json")
     print(f"   Loaded {len(scenarios)} scenarios")
     
     # Load variant configs (PIPE-A2)

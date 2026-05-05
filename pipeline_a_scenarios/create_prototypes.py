@@ -7,9 +7,11 @@ Creates 6 stratified scenarios for prompt template testing
 import json
 import os
 import re
-from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Optional
+from pathlib import Path
+from typing import Dict, List, Optional
+
+from scenario_loader import load_scenarios as load_scenarios_validated
 
 # ============================================================================
 # CONFIGURATION
@@ -281,33 +283,9 @@ def generate_templates():
     return scenarios
 
 def load_scenarios(file_path: str = "data/scenarios/seeds_phase1.json"):
-    """Load scenarios with BOM handling."""
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
-    
-    # Try with utf-8-sig first (handles BOM)
-    try:
-        with open(file_path, "r", encoding="utf-8-sig") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, UnicodeError) as e:
-        print(f"⚠️  Error loading with utf-8-sig: {e}")
-        
-        # Fallback to utf-8
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e2:
-            print(f"❌ Failed to load with utf-8: {e2}")
-            
-            # One more try - read raw and strip BOM manually
-            try:
-                with open(file_path, "rb") as f:
-                    raw_data = f.read()
-                    if raw_data.startswith(b'\xef\xbb\xbf'):
-                        raw_data = raw_data[3:]
-                    return json.loads(raw_data.decode('utf-8'))
-            except Exception as e3:
-                raise Exception(f"All loading methods failed: {e3}")
+    """Load scenarios with BOM handling and ``pair_type`` validation."""
+    return load_scenarios_validated(file_path)
+
 
 if __name__ == "__main__":
     import sys

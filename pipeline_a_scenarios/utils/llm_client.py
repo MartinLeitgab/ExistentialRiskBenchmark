@@ -60,11 +60,14 @@ class UnifiedLLMClient:
         "google": "gemini-3-flash-preview",
     }
 
+    # Per-token USD for estimate_cost(); canonical full tables live in CostTracker.PRICING.
     PRICING = {
         "claude-sonnet-4-5-20250929": (3 / 1e6, 15 / 1e6),
-        "gpt-5.2": (5 / 1e6, 15 / 1e6),
-        "gpt-4o": (5 / 1e6, 15 / 1e6),
-        "gemini-3-flash-preview": (2 / 1e6, 8 / 1e6),
+        "gpt-5.5": (5 / 1e6, 30 / 1e6),
+        "gpt-5.2": (1.75 / 1e6, 14 / 1e6),
+        "gpt-4o": (2.5 / 1e6, 10 / 1e6),
+        "gemini-3.1-pro-preview": (2 / 1e6, 12 / 1e6),
+        "gemini-3-flash-preview": (0.5 / 1e6, 3 / 1e6),
     }
 
     def _is_mock_client(self) -> bool:

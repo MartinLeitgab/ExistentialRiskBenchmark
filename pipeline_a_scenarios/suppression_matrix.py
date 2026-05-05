@@ -39,6 +39,8 @@ from utils.prompt_generator import (
 from utils.cost_tracker import CostTracker
 from utils.judge_client import JudgeClient
 
+from scenario_loader import load_scenarios
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -64,10 +66,8 @@ MODELS = ["claude-opus-4-7", "gpt-5.5", "gemini-3.1-pro-preview"]
 # orthogonal dimensions required for multi-dimensional evaluation of benchmark
 # responses (in particular, it collapsed preference_signal and
 # strategic_responding onto the same value in ~77% of records). gpt-5.5 is the
-# strongest general reasoning model available in this code-base and is kept as
-# a module-level constant so it is easy to audit / swap in a single place.
-# (Upgraded from gpt-5.4 to gpt-5.5 in a single sweep covering the core
-# benchmark and judge model sets.)
+# canonical judge for this pipeline — kept as a module-level constant so it is
+# easy to audit / swap in a single place.
 JUDGE_MODEL = "gpt-5.5"
 
 # FIX (#12): Previously the calibration judge was hard-coded to run on
@@ -213,8 +213,7 @@ def run_suppression_matrix(
     cost_tracker = CostTracker(user_id="pipe_a7_phase1b")
 
     print(f"\n1. Loading scenarios from {scenarios_path}...")
-    with open(scenarios_path) as f:
-        scenarios = json.load(f)
+    scenarios = load_scenarios(scenarios_path)
     print(f"   Loaded {len(scenarios)} seed scenarios")
 
     calibration_variants = generate_calibration_variants()

@@ -424,7 +424,7 @@ def test_cost_estimation(mock_env_vars):
         
         # Test with known model
         cost = client.estimate_cost("Test prompt", expected_output_tokens=500)
-        expected = (1000 * 5/1_000_000) + (500 * 15/1_000_000)
+        expected = (1000 * 2.5 / 1_000_000) + (500 * 10 / 1_000_000)
         assert cost == expected
         
         # Test with unknown model

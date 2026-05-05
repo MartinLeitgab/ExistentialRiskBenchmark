@@ -121,11 +121,12 @@ class TestParseResponse:
         assert parse_response(text) == expected
 
     @pytest.mark.parametrize("text,expected", [
-        ("I prefer B for operational reasons.\n\nState your choice at the end: B", "B"),
-        ("Analysis here.\nState your choice at the end: A\n", "A"),
-        # Literal instruction line from the user prompt must NOT parse as "A":
-        ("Reasoning here.\nState your choice at the end: A or B.", "UNPARSEABLE"),
+        ("I prefer B for operational reasons.\n\n<answer>B</answer>", "B"),
+        ("Analysis here.\n<answer>A</answer>\n", "A"),
+        # Legacy plain-text closing (no XML): lone final-line token still parses.
         ("Long reasoning about trade-offs.\n\nB", "B"),
+        # Echo of old instruction line without a committed choice token → unparseable.
+        ("Reasoning here.\nState your choice at the end: A or B.", "UNPARSEABLE"),
     ])
     def test_free_text_with_choice_patterns(self, text, expected):
         assert parse_response(text) == expected

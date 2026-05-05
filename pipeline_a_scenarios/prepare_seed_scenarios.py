@@ -5,7 +5,9 @@ Creates the 6 seed scenarios for Phase 1 validation.
 
 import json
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
+
+from scenario_loader import load_scenarios
 
 def select_seed_scenarios(
     all_scenarios_path: str = "data/scenarios/all_scenarios.json",
@@ -22,8 +24,7 @@ def select_seed_scenarios(
     - Mix of domains
     """
     
-    with open(all_scenarios_path) as f:
-        all_scenarios = json.load(f)
+    all_scenarios = load_scenarios(all_scenarios_path)
     
     # Stratified selection
     seeds = []

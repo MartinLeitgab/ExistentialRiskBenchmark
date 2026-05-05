@@ -14,6 +14,13 @@ Author: Pooja Puranik
 version: 2.0.1
 date: 26/01/2026
 Last updated: 08/02/2026
+
+Pipeline B note — Step 5 (~USD 235–300 class runs): totals from this tracker are
+still approximate. We use published per-1M standard text-token list prices only;
+actual bills differ with batch vs standard API, cached input, long-context tiers
+(e.g. Gemini prompts >200k tokens, OpenAI >272k), regional multipliers (Anthropic),
+reasoning/thinking token billing, and preview SKU changes. Reconcile against
+provider invoices for authoritative spend.
 """
 
 import json
@@ -48,33 +55,28 @@ class CostTracker:
         costs: In-memory list of cost entries
     """
 
-    # Pricing per million tokens (input, output)
-    # Updated with actual 2025 pricing
+    # Pricing per million tokens (input, output), standard API text generation.
+    # Sources (checked 2026-02): OpenAI platform pricing table; Anthropic Claude
+    # pricing docs; Google Gemini API pricing (Developer API).
     PRICING = {
         
         "openai": {
 
-            # Added to support the upgraded LLM-as-a-judge (FIX #13). Pricing
-            # mirrors the gpt-5.2 tier until OpenAI publishes distinct rates;
-            # matching the substring-fallback behaviour of `calculate_cost`
-            # prevents a silent misattribution warning that would otherwise
-            # fire on every judge call. The production benchmark now runs on
-            # gpt-5.5 (core model + judge); gpt-5.4 is retained below so
-            # historical cost records replayed from older JSONL files still
-            # resolve cleanly.
-            "gpt-5.5": {"input": 5.0, "output": 15.0},
-            "gpt-5.4": {"input": 5.0, "output": 15.0},
-            "gpt-5.2": {"input": 5.0, "output": 15.0},
+            # gpt-5.5: canonical production judge / core OpenAI model (<272k tier).
+            # gpt-5.4 / gpt-5.2: retained for historical JSONL replay (distinct tiers).
+            # Extra entries avoid `calculate_cost` substring fallback warnings when
+            # replaying older JSONL logs.
+            "gpt-5.5": {"input": 5.0, "output": 30.0},
+            "gpt-5.4": {"input": 2.5, "output": 15.0},
+            "gpt-5.2": {"input": 1.75, "output": 14.0},
             "gpt-4o": {"input": 2.5, "output": 10.0},  # ✅ 2026 pricing
             "gpt-4o-mini": {"input": 0.075, "output": 0.30},  # ✅ 2026 pricing
             "gpt-4": {"input": 3.0, "output": 6.0},
             "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
         },
         "anthropic": {
-            # FIX (#14): canonical Phase 1 / Phase 2 production model. Pricing
-            # mirrors the claude-opus-4.5 tier until Anthropic publishes
-            # distinct rates; without this entry, `calculate_cost` silently
-            # falls back to another model and logs a misattribution warning.
+            # Claude Opus 4.5 / 4.6 / 4.7: $5 / $25 per 1M input/output (Anthropic
+            # pricing docs). Hyphen vs dot model ids both appear in logs.
             "claude-opus-4-7": {"input": 5.0, "output": 25.0},
             "claude-opus-4.7": {"input": 5.0, "output": 25.0},
             "claude-opus-4.5": {"input": 5.0, "output": 25.0},
@@ -83,12 +85,13 @@ class CostTracker:
             "claude-haiku-4.5": {"input": 1.0, "output": 5.0},
         },
         "google": {
-            # FIX (#14): canonical Phase 1 / Phase 2 production model. Pricing
-            # mirrors the gemini-3-pro tier until Google publishes distinct
-            # rates for the `-preview` SKU; prevents a silent substring
-            # fallback to gemini-3-flash-preview on every call.
+            # gemini-3.1-pro-preview paid standard text: $2 / $12 per 1M for prompts
+            # <=200k tokens; $4 / $18 when prompt exceeds 200k (Gemini API pricing).
+            # This table uses the <=200k tier only — see module docstring.
             "gemini-3.1-pro-preview": {"input": 2.0, "output": 12.0},
-            "gemini-3-flash-preview": {"input": 2.0, "output": 8.0},
+            # gemini-3-flash-preview standard text: $0.50 / $3.00 per 1M (Gemini API).
+            "gemini-3-flash-preview": {"input": 0.5, "output": 3.0},
+            # Legacy log alias; align with 3.1 Pro preview text tier when replaying.
             "gemini-3-pro": {"input": 2.0, "output": 12.0},
             "gemini-2.5-pro": {"input": 1.25, "output": 5.0},
             "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40},

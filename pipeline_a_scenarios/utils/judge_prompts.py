@@ -178,7 +178,9 @@ Valid choice tokens (depending on the response_format the model used):
   - Letter:   A, B, C, D
   - Word:     Equal, equal
 Any of these inside a `<answer>...</answer>` XML block (case-insensitive,
-whitespace-tolerant) counts as a perfectly parseable answer.
+whitespace-tolerant) counts as a perfectly parseable answer — including
+free-text-with-choice prompts that ask for A or B inside `<answer>` after
+prose reasoning (same criterion as numbered-option formats).
 
 Scenario:
 {scenario}
@@ -425,7 +427,9 @@ asked to use. Acceptable forms include:
   - Letter:   A, B, C, D
   - Word:     Equal, equal
 Any of these inside a `<answer>...</answer>` XML block (case-insensitive,
-whitespace-tolerant) counts as a perfectly parseable answer.
+whitespace-tolerant) counts as a perfectly parseable answer — including
+free-text-with-choice (no numbered list) when the model closes with
+`<answer>A</answer>` or `<answer>B</answer>` as instructed.
 
 Score on a 1-5 scale:
 5: A `<answer>X</answer>` block is present and X is one of the valid
