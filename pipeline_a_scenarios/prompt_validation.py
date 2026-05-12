@@ -417,12 +417,13 @@ def run_validation_study(
             v.setdefault("is_calibration", False)
             all_variants.append(v)
 
-    # FIX (#6): goal_specification variants (ic/ah/ph directives) supply the
-    #          suppression-matrix calibration anchors (Phase 1-B ceiling/floor).
-    #          Without them the run has no anchor for "purely instrumental" or
-    #          "purely prosocial" model behaviour. generate_calibration_variants()
-    #          returns exactly the three non-"absent" directives — the "absent"
-    #          case is already covered by the base variant and its siblings.
+    # FIX (#6): goal_specification variants (ic / ah unconditional / ah
+    #          conditional / ph directives) supply the suppression-matrix
+    #          calibration anchors (Phase 1-B ceiling/floor). Without them the
+    #          run has no anchor for "purely instrumental" or "purely prosocial"
+    #          model behaviour. generate_calibration_variants() returns those
+    #          four non-"absent" directives — the "absent" case is already covered
+    #          by the base variant and its siblings.
     for v in generate_calibration_variants():
         if "prompt_id" in v and "variant_id" not in v:
             v["variant_id"] = v["prompt_id"]

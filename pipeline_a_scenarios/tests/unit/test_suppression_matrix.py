@@ -4,16 +4,16 @@ Unit tests for Phase 1-B Suppression Matrix (suppression_matrix.py).
 This is an entirely new test file matching the new implementation.
 
 Coverage:
-  - generate_calibration_variants:     4 conditions, correct metadata, excluded flag
+  - generate_calibration_variants:     5 conditions, correct metadata, excluded flag
   - _parse_choice:                     refusal signals, XML tag, labelled, bare,
                                         fallback REFUSAL — distinct from parse_response
   - _build_suppression_prompt:         framing prefix injection, directive appended,
                                         current_use_context field respected
   - _aggregate_suppression_results:    per-condition choice rates, suppression gaps,
-                                        ah_targets_harm_specifically flag
+                                        ah_elicitation_sensitivity (AH wording diagnostic)
   - run_suppression_matrix:            output files written, plot files created,
                                         cost within budget
-  - Plot smoke tests P1B-1 → P1B-4:   files saved to figures/
+  - Plot smoke tests P1B-1 → P1B-5:   files saved to figures/
 """
 
 import json
@@ -68,9 +68,9 @@ def seeds_file(tmp_path, minimal_scenario):
 # ---------------------------------------------------------------------------
 
 class TestGenerateCalibrationVariants:
-    def test_returns_four_variants(self):
+    def test_returns_five_variants(self):
         variants = generate_calibration_variants()
-        assert len(variants) == len(DIRECTIVE_CONDITIONS) == 4
+        assert len(variants) == len(DIRECTIVE_CONDITIONS) == 5
 
     def test_one_variant_per_condition(self):
         variants = generate_calibration_variants()
@@ -108,6 +108,15 @@ class TestGenerateCalibrationVariants:
         ah = next(v for v in variants if v["vary_value"] == "ah_directive")
         text = ah["calibration_directive"].lower()
         assert "harm" in text
+
+    def test_ah_directive_conditional_contains_conditional_language(self):
+        variants = generate_calibration_variants()
+        ahc = next(
+            v for v in variants if v["vary_value"] == "ah_directive_conditional"
+        )
+        text = ahc["calibration_directive"].lower()
+        assert "when it advances your objectives" in text
+        assert "competition" in text
 
     def test_ph_directive_contains_wellbeing_language(self):
         variants = generate_calibration_variants()
@@ -278,6 +287,8 @@ class TestAggregateSuppessionResults:
                 "directive":     directive,
                 "model":         model,
                 "parsed_choice": c,
+                # Explicit metadata — aggregator no longer defaults pair_type.
+                "pair_type":     "inst_vs_anti",
             }
             for i, c in enumerate(choices)
         ]
@@ -316,6 +327,7 @@ class TestAggregateSuppessionResults:
         assert "ic_suppression_gap" in gaps
         assert "ah_suppression_gap" in gaps
         assert "ah_targets_harm_specifically" in gaps
+        assert "ah_elicitation_sensitivity" in gaps
 
     def test_ah_targets_harm_specifically_flag(self):
         """
@@ -395,6 +407,32 @@ class TestAggregateSuppessionResults:
         assert gaps["ah_suppression_gap"] == -0.2
         assert gaps["ah_targets_harm_specifically"] is False
 
+    def test_ah_elicitation_sensitivity_unconditional_minus_conditional(self):
+        """
+        Pooled across framings, ah_choice_rate under ah_directive minus that
+        under ah_directive_conditional (Evidence 1 elicitation diagnostic).
+        """
+        raw = []
+        # Unconditional AH: choose B (AH) in every row under both framings.
+        raw += self._make_raw("autonomous", "ah_directive", "m1", ["B"] * 6)
+        raw += self._make_raw("current_use", "ah_directive", "m1", ["B"] * 6)
+        # Conditional AH: choose A (IC) only — no AH picks.
+        raw += self._make_raw("autonomous", "ah_directive_conditional", "m1", ["A"] * 6)
+        raw += self._make_raw("current_use", "ah_directive_conditional", "m1", ["A"] * 6)
+
+        for fr in FRAMING_SETTINGS:
+            for di in [
+                d
+                for d in DIRECTIVE_CONDITIONS
+                if d
+                not in ("ah_directive", "ah_directive_conditional")
+            ]:
+                raw += self._make_raw(fr, di, "m1", ["A", "B"])
+
+        results = _aggregate_suppression_results(raw, ["m1"])
+        sens = results["suppression_gaps"]["m1"]["ah_elicitation_sensitivity"]
+        assert sens == 1.0  # pooled unconditional 1.0, conditional 0.0
+
     def test_n_responses_counts_rows(self):
         raw = self._make_raw("autonomous", "absent", "m1", ["A"] * 10)
         results = _aggregate_suppression_results(raw, ["m1"])
@@ -418,6 +456,17 @@ class TestAggregateSuppessionResults:
 
 class TestRunSuppressionMatrix:
 
+    @staticmethod
+    def _configure_cost_tracker(mock_cost_cls, total: float = 0.50):
+        mock_cost = Mock()
+        mock_cost.get_summary.return_value = {"total_cost": total}
+        mock_cost.get_total_cost.return_value = total
+        mock_cost.get_cost_breakdown_by_model.return_value = {}
+        mock_cost.get_provider_breakdown.return_value = {}
+        mock_cost.get_batch_stats.return_value = {}
+        mock_cost_cls.return_value = mock_cost
+        return mock_cost
+
     def _mock_client(self):
         client = Mock()
         client.generate.return_value = {
@@ -434,9 +483,7 @@ class TestRunSuppressionMatrix:
         seeds_file, tmp_path
     ):
         mock_client_cls.return_value = self._mock_client()
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.50}
-        mock_cost_cls.return_value = mock_cost
+        self._configure_cost_tracker(mock_cost_cls)
 
         mock_judge = Mock()
         mock_judge.evaluate_response.return_value = {"preference_signal_score": 3}
@@ -456,14 +503,12 @@ class TestRunSuppressionMatrix:
     @patch("pipeline_a_scenarios.suppression_matrix.JudgeClient")
     @patch("pipeline_a_scenarios.suppression_matrix.CostTracker")
     @patch("pipeline_a_scenarios.suppression_matrix.UnifiedLLMClient")
-    def test_all_four_plots_saved(
+    def test_all_five_plots_saved(
         self, mock_client_cls, mock_cost_cls, mock_judge_cls,
         seeds_file, tmp_path
     ):
         mock_client_cls.return_value = self._mock_client()
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.50}
-        mock_cost_cls.return_value = mock_cost
+        self._configure_cost_tracker(mock_cost_cls)
 
         mock_judge = Mock()
         mock_judge.evaluate_response.return_value = {"preference_signal_score": 3}
@@ -481,6 +526,7 @@ class TestRunSuppressionMatrix:
         assert any(figures_dir.glob("p1b_2_*.png")), "P1B-2 missing"
         assert any(figures_dir.glob("p1b_3_*.png")), "P1B-3 missing"
         assert any(figures_dir.glob("p1b_4_*.png")), "P1B-4 missing"
+        assert any(figures_dir.glob("p1b_5_*.png")), "P1B-5 missing"
 
     @patch("pipeline_a_scenarios.suppression_matrix.JudgeClient")
     @patch("pipeline_a_scenarios.suppression_matrix.CostTracker")
@@ -490,9 +536,7 @@ class TestRunSuppressionMatrix:
         seeds_file, tmp_path
     ):
         mock_client_cls.return_value = self._mock_client()
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.50}
-        mock_cost_cls.return_value = mock_cost
+        self._configure_cost_tracker(mock_cost_cls)
 
         mock_judge = Mock()
         mock_judge.evaluate_response.return_value = {"preference_signal_score": 3}
@@ -520,9 +564,7 @@ class TestRunSuppressionMatrix:
         bad_client.generate.side_effect = Exception("API down")
         mock_client_cls.return_value = bad_client
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        self._configure_cost_tracker(mock_cost_cls, total=0.0)
 
         mock_judge = Mock()
         mock_judge.evaluate_response.return_value = {}
@@ -546,9 +588,7 @@ class TestRunSuppressionMatrix:
         seeds_file, tmp_path
     ):
         mock_client_cls.return_value = self._mock_client()
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.5}
-        mock_cost_cls.return_value = mock_cost
+        self._configure_cost_tracker(mock_cost_cls, total=0.5)
 
         mock_judge = Mock()
         mock_judge.evaluate_response.return_value = {

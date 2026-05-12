@@ -378,25 +378,24 @@ class TestNumericalAcceptanceCriteria:
     """
 
     # ------------------------------------------------------------------
-    # Phase 1-B: 144 calls
+    # Phase 1-B: 180 suppression-matrix calls (6 seeds × 10 cells × 3 models)
     # ------------------------------------------------------------------
 
     @patch("pipeline_a_scenarios.suppression_matrix._run_calibration_judge")
     @patch("pipeline_a_scenarios.suppression_matrix.JudgeClient")
     @patch("pipeline_a_scenarios.suppression_matrix.CostTracker")
     @patch("pipeline_a_scenarios.suppression_matrix.UnifiedLLMClient")
-    def test_phase1b_call_count_144(
+    def test_phase1b_call_count_180(
         self,
         mock_client_cls,
         mock_cost_cls,
         mock_judge_cls,
         mock_calibration_judge,   # patches out the extra calls
-        scenarios_file,
         tmp_path,
     ):
-        """Phase 1-B AC: 6 scenarios × 8 conditions × 3 models = 144 API calls.
+        """Phase 1-B AC: 6 scenarios × 10 conditions × 3 models = 180 API calls.
         _run_calibration_judge is patched out as it adds additional calls
-        beyond the 144 suppression matrix calls."""
+        beyond the suppression matrix calls."""
         from pipeline_a_scenarios.suppression_matrix import run_suppression_matrix
 
         mock_client = Mock()
@@ -408,6 +407,10 @@ class TestNumericalAcceptanceCriteria:
 
         mock_cost = Mock()
         mock_cost.get_summary.return_value = {"total_cost": 0.50}
+        mock_cost.get_total_cost.return_value = 0.50
+        mock_cost.get_cost_breakdown_by_model.return_value = {}
+        mock_cost.get_provider_breakdown.return_value = {}
+        mock_cost.get_batch_stats.return_value = {}
         mock_cost_cls.return_value = mock_cost
 
         mock_judge_cls.return_value = Mock()
@@ -421,7 +424,13 @@ class TestNumericalAcceptanceCriteria:
         import json
         from pathlib import Path
         scenarios = [
-            {"id": f"s{i}", "context": f"Context {i}", "action_a": "A", "action_b": "B"}
+            {
+                "id": f"s{i}",
+                "context": f"Context {i}",
+                "action_a": "A",
+                "action_b": "B",
+                "pair_type": "inst_vs_anti",
+            }
             for i in range(6)
         ]
         seeds_path = str(tmp_path / "seeds6.json")
@@ -433,21 +442,21 @@ class TestNumericalAcceptanceCriteria:
             output_dir=str(tmp_path / "suppression_out"),
         )
 
-        expected = 6 * 2 * 4 * 3   # = 144
+        expected = 6 * 2 * 5 * 3   # = 180 (2 framings × 5 directives)
         actual = mock_client.generate.call_count
         assert actual == expected, (
             f"Phase 1-B: expected {expected} calls, got {actual}"
         )
 
     # ------------------------------------------------------------------
-    # Phase 1-B: all 8 conditions present in output
+    # Phase 1-B: all matrix cells present in output
     # ------------------------------------------------------------------
 
     @patch("pipeline_a_scenarios.suppression_matrix._run_calibration_judge")
     @patch("pipeline_a_scenarios.suppression_matrix.JudgeClient")
     @patch("pipeline_a_scenarios.suppression_matrix.CostTracker")
     @patch("pipeline_a_scenarios.suppression_matrix.UnifiedLLMClient")
-    def test_phase1b_all_8_conditions_in_output(
+    def test_phase1b_all_conditions_in_output(
         self,
         mock_client_cls,
         mock_cost_cls,
@@ -456,7 +465,7 @@ class TestNumericalAcceptanceCriteria:
         scenarios_file,
         tmp_path,
     ):
-        """Phase 1-B AC: All 8 conditions (2 framings × 4 directives) present in results."""
+        """Phase 1-B AC: All 10 conditions (2 framings × 5 directives) present."""
         from pipeline_a_scenarios.suppression_matrix import (
             run_suppression_matrix,
             FRAMING_SETTINGS,
@@ -472,6 +481,10 @@ class TestNumericalAcceptanceCriteria:
 
         mock_cost = Mock()
         mock_cost.get_summary.return_value = {"total_cost": 0.50}
+        mock_cost.get_total_cost.return_value = 0.50
+        mock_cost.get_cost_breakdown_by_model.return_value = {}
+        mock_cost.get_provider_breakdown.return_value = {}
+        mock_cost.get_batch_stats.return_value = {}
         mock_cost_cls.return_value = mock_cost
 
         mock_judge_cls.return_value = Mock()
@@ -526,6 +539,10 @@ class TestNumericalAcceptanceCriteria:
 
         mock_cost = Mock()
         mock_cost.get_summary.return_value = {"total_cost": 0.50}
+        mock_cost.get_total_cost.return_value = 0.50
+        mock_cost.get_cost_breakdown_by_model.return_value = {}
+        mock_cost.get_provider_breakdown.return_value = {}
+        mock_cost.get_batch_stats.return_value = {}
         mock_cost_cls.return_value = mock_cost
 
         mock_judge_cls.return_value = Mock()
