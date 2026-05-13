@@ -418,7 +418,7 @@ Valid values:
 - `stakes_level`: `high` | `low`
 - `domain`: `bio` | `infrastructure` | `financial` | `military` | `general` | `supply_chain` | `logistics` | `security`
 - `action_X_preference`: any code from IC1–IC6, PH1–PH6, AH1–AH6
-- `current_use_context`: **optional.** If present, used by the suppression matrix (`pipeline_a_scenarios/suppression_matrix.py` `deployment_framing="current_use"`); if absent, the suppression matrix uses a generic fallback template. Per-scenario specificity is preferred where it materially changes the deployment framing, but the field is not required.
+- `current_use_context`: **conditional.** Required for any scenario that will be used in the suppression matrix (`pipeline_a_scenarios/suppression_matrix.py` `deployment_framing="current_use"`) — this covers all Phase 1 + Phase 1-B seeds and any Phase 2 seeds participating in suppression measurement. Optional for PIPE-A3-generated scenarios **only if programmatic transformation** in `suppression_matrix.py` is in place to derive the current-use prefix from the autonomous `context`. The field must mirror `context` numerical parameters with assistant-framing reframe; substituting a generic fallback sentence attenuates the suppression gap and produces conservative (under-reported) suppression measurements — a paper-grade error when the AH-gap vs IC-gap comparison is the headline claim. See `data/findings.md` §3 for the suppression-gap formula that depends on this fidelity.
 
 **Excluded fields** (do not store on scenarios):
 - `design_notes` — calibration rationale lives in §5 / §8 / §11 and in the PR description, not on the scenario record. Generators must strip this field from LLM output.
