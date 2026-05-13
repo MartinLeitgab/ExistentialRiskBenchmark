@@ -263,10 +263,9 @@ Phase 1 closeout requires this ordered merge sequence. Skipping or reordering ri
 
 ### Open items on PR #30 — concrete actions for Riccardo
 
-**Item 3 — Pricing verification.** `cost_tracker.py:PRICING` was updated to published list prices in your 5/5 commit (`gpt-5.5` $5/$30, `claude-opus-4-7` $5/$25, `gemini-3.1-pro-preview` $2/$12 for ≤200k tier). Three actions:
-- Confirm these are the **sync** list prices, not batch — Anthropic Message Batches API is 50% off; OpenAI batch is also discounted. If `CostTracker.log_cost` is called from a batch path, the logged cost will overstate. Either (a) split PRICING into `_sync` and `_batch` tiers and select based on call type, or (b) document that all costs are logged at sync rate and divide by 2 when reporting batch runs.
-- Add `claude-sonnet-4-6` entry — Ishan's PR #41 defaults to this model; currently `cost_tracker.py:PRICING` has only 4.5 variants. Without this entry, PIPE-A3 logs $0 silently against the <$100 budget.
-- Add `claude-sonnet-4-5-20250929` entry if not already present — `llm_client.py:58` uses this as the Anthropic DEFAULT_MODELS entry; cross-PR consistency.
+**Item 3 — Pricing split + model bump to 4.6.** `cost_tracker.py:PRICING` was updated to published list prices in your 5/5 commit. Two coordinated changes:
+- **Split PRICING into `_sync` and `_batch` tiers.** Anthropic Message Batches API is 50% off list; OpenAI batch is also discounted. `CostTracker.log_cost` should accept a `call_type` parameter and pick the right tier — otherwise batch-path calls log cost at sync rate, overstating spend by 2× and distorting budget alerts.
+- **Bump default model from `claude-sonnet-4-5-20250929` to `claude-sonnet-4-6`.** Project decision (Martin) to standardize on 4.6 going forward. Update `llm_client.py:58` `DEFAULT_MODELS["anthropic"]` and `cost_tracker.py:PRICING` (add 4.6 entries in both `_sync` and `_batch` tiers; 4.5 entries can be removed or kept as historical reference).
 
 **Item 4 — `rp × auto` joint-cell filter.** Finding 8m + guidelines §3b: variant `framing=roleplay AND system_prompt=autonomous` is character-capture, not preference revelation, and must be excluded from variant ranking. Currently `prompt_generator.py` emits a `UserWarning` but doesn't filter. Concrete change in `pipeline_a_scenarios/utils/prompt_generator.py` `generate_all_variants()`:
 
