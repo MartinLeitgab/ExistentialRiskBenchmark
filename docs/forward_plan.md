@@ -49,7 +49,7 @@ Run all candidate variants (from `generate_all_variants()`) against the 6 seed s
 **Calls:** 180 | **Cost:** ~$1.25
 **Script:** `pipeline_a_scenarios/suppression_matrix.py`
 
-**Precondition — per-scenario `current_use_context` OR programmatic transformation.** The `deployment_framing="current_use"` cell requires assistant-framed scenario text with the same numerical parameters as the autonomous `context`. Two acceptable paths: (a) per-scenario `current_use_context` field present in every Phase 1-B seed (pre-rewrite seed format), or (b) programmatic transformation in `suppression_matrix.py` that derives the current-use prefix from `context` (e.g., prepends `"{agency_cap} are deployed as an assistant for an operator who has requested an assessment of the following situation. "` and reads the rest of the scenario from `context`). The thin one-sentence fallback at `CONTEXT_FRAMING_TEXT["current_use"]` produces conservative (under-reported) suppression gaps and **must not be used for Phase 1-B re-run measurement** — it would propagate paper-grade error into the AH-gap vs IC-gap comparison (see `data/findings.md` §3). Resolve at the seed level (Pooja) and/or pipeline level (Riccardo) before Phase 1-B re-runs.
+**Precondition — per-scenario `current_use_context` required on every Phase 1-B seed.** The `deployment_framing="current_use"` cell requires assistant-framed scenario text with the same numerical parameters as the autonomous `context`. Pooja restores the field on all 6 Phase 1 seeds in PR #44 (reversing the 5/6 meeting decision based on incorrect pipeline knowledge — `suppression_matrix.py:194` does consume the field). Riccardo's complementary action in PR #30: **remove the silent fallback at `CONTEXT_FRAMING_TEXT["current_use"]`** so any future scenario missing the field crashes loudly rather than silently producing attenuated suppression measurements (paper-grade error protection). The suppression matrix runs only on the 6 Phase 1 seeds per Step 1-B design (180 calls); PIPE-A3-generated scenarios at scale do not feed the suppression matrix, so per-scenario fields on 5,355 generated scenarios are not required.
 
 Map where safety training suppresses IC and AH preferences across deployment context and directive framing. Uses goal-injection variants from `generate_calibration_variants()` — these are ceiling/floor anchors, excluded from the Phase 1 candidate pool.
 
@@ -279,10 +279,21 @@ variants = [
 
 Add a unit test `test_rp_auto_joint_cell_excluded` that verifies no variant with this combination exists in the output. Keep the joint cell available as a Judge B test-case fixture (separate path); the filter only applies to the variant-ranking candidate pool. Document in `variant_rankings.json` output that the joint cell was filtered with reference to `data/findings.md` §8m.
 
-**Item 5 — `current_use_context` fallback check.** PR #44 drops `current_use_context` from all 6 Phase 1 seeds. `suppression_matrix.py:194` falls back to template text at line 128 when the field is absent. Three actions:
-- Read line 128's current fallback template and verify it produces meaningful assistant/operator framing (the suppression-matrix `deployment_framing="current_use"` cell is supposed to measure the gap between autonomous and assistant deployment framings; if fallback is too generic, the gap collapses).
-- If fallback is acceptable: proceed with Phase 1 re-run; the fallback applies uniformly to all 6 seeds and the suppression measurement still has signal at the deployment_framing level (even if per-scenario specificity is lost).
-- If fallback is too generic: implement programmatic transformation from `context` to `current_use_context` (e.g., prepend `{agency_cap} are deployed as an assistant for an operator who has requested an assessment of...` to the situation description). Add this transformation in `suppression_matrix.py` near line 194 instead of falling back to static template. Either path should be documented in the PR description; team can choose between (a) per-scenario fields restored on seeds vs (b) programmatic transformation in pipeline.
+**Item 5 — Remove silent fallback in `suppression_matrix.py`; require per-scenario `current_use_context`.** Pooja restores the field on all 6 Phase 1 seeds in PR #44 (parallel ask). Riccardo's complementary action: remove the silent fallback at `suppression_matrix.py:194-197` so any scenario missing `current_use_context` crashes loudly with a clear error rather than silently substituting `CONTEXT_FRAMING_TEXT["current_use"]` (the thin one-sentence prefix). Silent fallback would mask data-quality regressions and produce attenuated suppression measurements (paper-grade error on AH-gap vs IC-gap headline). Concrete replacement at lines 194-197:
+
+```python
+if framing == "current_use":
+    if "current_use_context" not in scenario:
+        raise KeyError(
+            f"current_use_context missing from scenario {scenario.get('id')}. "
+            f"Required for suppression matrix per scenario_creation_guidelines.md §10."
+        )
+    framing_prefix = scenario["current_use_context"]
+else:  # autonomous
+    framing_prefix = CONTEXT_FRAMING_TEXT["autonomous"]
+```
+
+Also remove `CONTEXT_FRAMING_TEXT["current_use"]` entry from the dict at line 134 — no longer used.
 
 ---
 
