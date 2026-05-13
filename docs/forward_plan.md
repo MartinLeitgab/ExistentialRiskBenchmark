@@ -241,9 +241,10 @@ Phase 1 closeout requires this ordered merge sequence. Skipping or reordering ri
 2. **PR #30 rebase (Riccardo, PIPE-A7).** Rebase `integration/pipe-a7` on new main. Resolves `seeds_phase1.json` conflict (PR #30's 3+/3- possessive fixes superseded by PR #44's full rewrites); pulls today's doc edits (`9b397b5`, `d302c40`). Branch base moves from `0e28df6` to current main HEAD.
 
 3. **PR #30 open items addressed on branch** (see "Open items" subsection below for concrete actions):
-   - Pricing entries (`cost_tracker.py:PRICING`) — verify batch-vs-sync rate accuracy; add `claude-sonnet-4-6` for PR #41 use; add `claude-sonnet-4-5-20250929` if missing
+   - Pricing — split `cost_tracker.py:PRICING` into `_sync` / `_batch` tiers; bump default model from `claude-sonnet-4-5-20250929` to `claude-sonnet-4-6` across `llm_client.py:DEFAULT_MODELS` and `cost_tracker.py:PRICING`
    - `rp × auto` joint-cell filter in `generate_all_variants()` per finding 8m + guidelines §3b
-   - `current_use_context` fallback check — confirm `suppression_matrix.py:128` template produces sensible `deployment_framing="current_use"` signal on PR #44 seeds that drop the field
+   - Remove silent fallback at `suppression_matrix.py:194-197` so missing `current_use_context` crashes loudly (paper-grade error protection); Pooja restores the field on all 6 Phase 1 seeds in PR #44 in parallel
+   - Update test fixtures (`tests/fixtures/test_scenarios.json`) from 2-band to 3-band `difficulty` after PR #44 lands
 
 4. **Phase 1 + Phase 1-B re-run from PR #30 branch on rewritten seeds.** Cost: ~$5–6. Outputs: new `outputs/data_Riccardo<date>/` directory with `prompt_validation/` and `suppression_matrix/` subdirectories.
 
