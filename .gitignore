@@ -19,8 +19,10 @@ outputs/
 .vscode/
 .idea/
 *.swp
-<<<<<<< HEAD
-=======
-
 pipeline_a_scenarios/.DS_Store
 .DS_Store
+
+# AI tooling / local state (never tracked)
+CLAUDE.md
+CLAUDE_MEMORY.md
+.claude/
