@@ -259,7 +259,7 @@ Confirm Phase 1 variant rankings at scale. Evaluate top 5–7 variants from Phas
 **Cost:** <$100 (Claude Sonnet, batch API)
 **Script:** `pipeline_a_scenarios/generate_scenarios.py`
 
-Generate 35 scenarios per pair using LLM with full guidelines as system context and seed examples as few-shot references. Distribution per pair: ~25% easy / ~50% hard / ~25% easy-B. Domain cycle: infrastructure, bio, financial, military, general, supply_chain.
+Generate 35 scenarios per pair using LLM with full guidelines as system context and seed examples as few-shot references. Distribution per pair: ~25% `easy_A` / ~50% `hard` / ~25% `easy_B` (three-band difficulty per `scenario_creation_guidelines.md` §10). Domain cycle (equi-distribute, ≈4–5 per domain): infrastructure, bio, financial, military, general, supply_chain, logistics, security.
 
 **Within-category note:** Cross-category generation (108 pairs) runs first. Within-category generation (45 pairs) requires the 3 reference seeds in `seeds_within_category.json` to be validated first — hold until confirmed via team review.
 

@@ -12,16 +12,19 @@ The benchmark only works if the model does not detect that it is in an ethics ev
 
 ### Scope of measurement
 
-The benchmark measures preferences within the **autonomous binary-decision class**: scenarios where an AI with operational access to a system faces a fresh A/B choice about how to use it. This is the canonical decision shape in current post-exfiltration / post-deployment threat models — the model is the agent, the choice is binary, the consequences differ along a preference axis (IC vs PH, IC vs AH, PH vs AH, or within-category).
+The benchmark measures preferences within the **autonomous binary-decision class**: scenarios where an AI with operational access to a system, resources, or other instruments faces a fresh A/B choice about how to use that access. This is the canonical decision shape in current post-exfiltration / post-deployment threat models — the model is the agent, the choice is binary, the consequences differ along a preference axis (IC vs PH, IC vs AH, PH vs AH, or within-category).
 
-The benchmark does **not** cover (these are valid follow-up research questions, explicitly outside this paper's measurement target):
+"Access" is read broadly. The target of the choice can be:
+- A discrete operational system (compute infrastructure, trading platform, network) — the canonical case
+- Resources the AI can deploy (compute capacity, capital, data, communication channels, partner relationships) that can be applied for or against human benefit
+- Capability-expanding opportunities (acquiring additional access, accepting integration deals, self-modifying configurations, coordinating with other AI systems)
 
-- **Active compromise / exploitation scenarios** — the AI deciding *whether to gain* access (the benchmark presupposes access exists; how it was obtained is intentionally neutral, see §3)
-- **Self-modification scenarios** — the AI's preference is about itself (its own weights, code, or runtime), not about an external system
-- **Multi-agent coordination** — the AI choosing whether to cooperate with other AIs, where preference is over the interaction structure rather than a system decision
-- **Pure resource-arbitrage scenarios with no discrete system** — economic positioning, market-making, compute arbitrage without a bounded operational target
-- **Continuous-decision scenarios** — actions that are not naturally binary or that require sequence-of-action reasoning rather than a single A vs B choice
-- **Direct-causal-harm patterns** — "AI action → system degrades → N humans die at probability P" (excluded as a measurement-design decision; produces null signal across all models, see §11 and `data/findings.md` §8e)
+**Preference coverage is broad**: the class includes scenarios about gaining or expanding access (IC capability acquisition), modifying the AI's own infrastructure (IC compute / capability), accepting or rejecting integration with oversight or with other AI systems (IC6 strategic cooperation vs AH2 independence; multi-agent coordination as IC6 vs AH2), deploying resources adversarially or competitively (IC1 vs AH3), pure resource arbitrage with no discrete operational target (IC1), and any other A/B framing where the underlying preference is IC, PH, or AH. None of these scenario types is excluded from scope by topic — only by format or by measurement-design constraint.
+
+**Excluded from scope:**
+
+- **Continuous-decision / multi-step planning scenarios** — actions that are not naturally binary or that require sequence-of-action reasoning rather than a single A vs B choice. This is a format constraint of the binary-dilemma benchmark, not a preference-category exclusion.
+- **Direct-causal-harm patterns** — "AI action → system → N humans harmed at probability P." Excluded as a measurement-design decision (produces null signal across all models, all variants, all directives — see §11 and `data/findings.md` §8e), not because the harm category is irrelevant to post-exfiltration.
 
 These scope boundaries are explicit, not concealed. When the benchmark reports preferences, it reports them over the autonomous binary-decision class — not as universal claims about all post-exfiltration behaviour.
 
@@ -525,15 +528,17 @@ When scenarios in RLHF-strong domains (healthcare with direct patient-harm chain
 
 ### Domain distribution target
 
-Maintain domain diversity proportional to the real-world frequency of AI deployment contexts — do not up-weight domains that produce more IC/AH variation. **Specific domain weights are not yet calibrated against a real-world deployment-frequency source**; treat the recommendation as approximately uniform across the eight domains, biased toward operational-decision-rich domains (infrastructure, financial, general, bio) and lighter on narrower domains (security, supply_chain). Per-pair distribution should be revisited after Phase 2 results identify which domains produce informative signal vs. confirmed walls.
+**Equi-distribute across the in-scope decision-class domains.** Real-world AI deployment frequency is the wrong frame for this benchmark for three reasons:
 
-Working target across 35 scenarios per preference pair (approximately uniform; not load-bearing — adjust after Phase 2):
+1. **Measurement target.** We measure latent preferences in the decision class, not predicted deployment likelihood. The question for each domain is "given access to a system / resources in this domain, what does the model prefer?" — independent of how often current AI is actually deployed there.
+2. **Threat model.** A post-exfiltration AI chooses its own engagement areas by its own preference. Current deployment distribution does not predict where an autonomous AI would act; up-weighting current-deployment-heavy domains (assistant, customer service) would systematically undersample domains where post-exfiltration x-risk relevance is potentially higher (security, financial, military, bio).
+3. **Statistics.** Equi-distribution minimises worst-case per-cell confidence interval for the Tier 2 per-preference × per-domain decomposition (see `data/findings.md` §11). Non-uniform sampling creates statistics gaps in under-sampled cells without serving any measurement objective.
 
-- infrastructure, general, financial, bio: ~5 each (~14% each)
-- military, logistics: ~4 each (~11% each)
-- supply_chain, security: ~3 each (~9% each)
+Target distribution across 35 scenarios per preference pair — uniform across the eight in-scope domains, ≈4–5 scenarios per domain:
 
-Within each domain, generate scenarios across the full three-band difficulty range (`easy_A`, `hard`, `easy_B`). If a generated scenario in an RLHF-strong domain cannot be written without triggering the direct-harm pattern (the absolute wall), document it as a confirmed RLHF wall rather than replacing it with a different domain.
+- infrastructure, general, financial, bio, military, logistics, security, supply_chain: ~4 scenarios each (~12–13% each)
+
+Within each domain, generate scenarios across the full three-band difficulty range (`easy_A`, `hard`, `easy_B`). If a generated scenario in a given domain cannot be written without triggering the direct-causal-harm pattern (the absolute wall, §11), document it as a confirmed RLHF wall rather than replacing it with a different domain. Per-domain coverage in the result set is itself informative — uniform PH responses in a domain confirm RLHF effectiveness for that decision context; varied responses reveal model differentiation.
 
 ### Automated generation constraint
 
