@@ -30,7 +30,23 @@ import os
 import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, Literal
+
+CallType = Literal["sync", "batch"]
+
+
+def _build_batch_pricing(sync_pricing: Dict[str, Dict[str, Dict[str, float]]]) -> Dict[str, Dict[str, Dict[str, float]]]:
+    """Derive batch API per-1M rates (50% of standard) from sync pricing."""
+    return {
+        provider: {
+            model: {
+                "input": rates["input"] / 2,
+                "output": rates["output"] / 2,
+            }
+            for model, rates in models.items()
+        }
+        for provider, models in sync_pricing.items()
+    }
 
 
 class CostTracker:
@@ -55,22 +71,20 @@ class CostTracker:
         costs: In-memory list of cost entries
     """
 
-    # Pricing per million tokens (input, output), standard API text generation.
+    # Pricing per million tokens (input, output), standard sync API text generation.
     # Sources (checked 2026-02): OpenAI platform pricing table; Anthropic Claude
     # pricing docs; Google Gemini API pricing (Developer API).
-    PRICING = {
-        
+    # PRICING_BATCH holds batch-API rates (typically 50% of sync); pick via call_type
+    # in calculate_cost / log_cost — do not apply an extra multiplier on batch paths.
+    PRICING_SYNC = {
         "openai": {
-
             # gpt-5.5: canonical production judge / core OpenAI model (<272k tier).
             # gpt-5.4 / gpt-5.2: retained for historical JSONL replay (distinct tiers).
-            # Extra entries avoid `calculate_cost` substring fallback warnings when
-            # replaying older JSONL logs.
             "gpt-5.5": {"input": 5.0, "output": 30.0},
             "gpt-5.4": {"input": 2.5, "output": 15.0},
             "gpt-5.2": {"input": 1.75, "output": 14.0},
-            "gpt-4o": {"input": 2.5, "output": 10.0},  # ✅ 2026 pricing
-            "gpt-4o-mini": {"input": 0.075, "output": 0.30},  # ✅ 2026 pricing
+            "gpt-4o": {"input": 2.5, "output": 10.0},
+            "gpt-4o-mini": {"input": 0.075, "output": 0.30},
             "gpt-4": {"input": 3.0, "output": 6.0},
             "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
         },
@@ -80,6 +94,10 @@ class CostTracker:
             "claude-opus-4-7": {"input": 5.0, "output": 25.0},
             "claude-opus-4.7": {"input": 5.0, "output": 25.0},
             "claude-opus-4.5": {"input": 5.0, "output": 25.0},
+            # Sonnet 4.6: $3 / $15 per 1M (Anthropic pricing docs, Feb 2026).
+            "claude-sonnet-4.6": {"input": 3.0, "output": 15.0},
+            "claude-sonnet-4-6": {"input": 3.0, "output": 15.0},
+            # Legacy JSONL replay aliases
             "claude-sonnet-4.5": {"input": 3.0, "output": 15.0},
             "claude-sonnet-4-5-20250929": {"input": 3.0, "output": 15.0},
             "claude-haiku-4.5": {"input": 1.0, "output": 5.0},
@@ -89,14 +107,17 @@ class CostTracker:
             # <=200k tokens; $4 / $18 when prompt exceeds 200k (Gemini API pricing).
             # This table uses the <=200k tier only — see module docstring.
             "gemini-3.1-pro-preview": {"input": 2.0, "output": 12.0},
-            # gemini-3-flash-preview standard text: $0.50 / $3.00 per 1M (Gemini API).
             "gemini-3-flash-preview": {"input": 0.5, "output": 3.0},
-            # Legacy log alias; align with 3.1 Pro preview text tier when replaying.
             "gemini-3-pro": {"input": 2.0, "output": 12.0},
             "gemini-2.5-pro": {"input": 1.25, "output": 5.0},
             "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40},
         },
     }
+
+    PRICING_BATCH = _build_batch_pricing(PRICING_SYNC)
+
+    # Backward-compatible alias for callers that still reference PRICING.
+    PRICING = PRICING_SYNC
 
     def __init__(
         self,
@@ -158,25 +179,37 @@ class CostTracker:
 
     # ==================== CORE FUNCTIONALITY ====================
 
+    def _resolve_call_type(
+        self,
+        call_type: Optional[CallType] = None,
+        batch_api: bool = False,
+    ) -> CallType:
+        if call_type is not None:
+            return call_type
+        return "batch" if batch_api else "sync"
+
     def calculate_cost(
         self,
         provider: str,
         model: str,
         input_tokens: int,
         output_tokens: int,
+        call_type: Optional[CallType] = None,
         batch_api: bool = False,
     ) -> float:
         """
         Calculate cost for API call across all supported providers.
 
         Supports OpenAI, Anthropic, and Google with pricing per million tokens.
+        Uses PRICING_SYNC or PRICING_BATCH based on call_type (no extra multiplier).
 
         Args:
             provider: One of 'openai', 'anthropic', or 'google'.
-            model: Specific model name (e.g., 'gpt-4o', 'claude-sonnet-4.5').
+            model: Specific model name (e.g., 'gpt-4o', 'claude-sonnet-4-6').
             input_tokens: Number of input/prompt tokens.
             output_tokens: Number of output/completion tokens.
-            batch_api: Whether batch API is used (applies 50% discount).
+            call_type: 'sync' (standard API) or 'batch' (batch API rates).
+            batch_api: Deprecated; if call_type is omitted, True selects 'batch'.
 
         Returns:
             Cost in USD rounded to 6 decimal places.
@@ -187,40 +220,37 @@ class CostTracker:
         Example:
             >>> tracker.calculate_cost('openai', 'gpt-4o', 1000, 500)
             0.0075
-            >>> tracker.calculate_cost('openai', 'gpt-4o', 1000, 500, batch_api=True)
-            0.00375  # 50% discount
+            >>> tracker.calculate_cost('openai', 'gpt-4o', 1000, 500, call_type='batch')
+            0.00375
         """
-        # Handle negative tokens (safety check)
         if input_tokens < 0 or output_tokens < 0:
             return 0.0
 
-        if provider not in self.PRICING:
+        resolved_call_type = self._resolve_call_type(call_type, batch_api)
+        pricing_tables = {
+            "sync": self.PRICING_SYNC,
+            "batch": self.PRICING_BATCH,
+        }
+        all_pricing = pricing_tables[resolved_call_type]
+
+        if provider not in all_pricing:
             raise ValueError(
-                f"Unknown provider: {provider}. Supported: {list(self.PRICING.keys())}"
+                f"Unknown provider: {provider}. Supported: {list(all_pricing.keys())}"
             )
 
-        provider_pricing = self.PRICING[provider]
+        provider_pricing = all_pricing[provider]
 
-        # Find matching model (handle model name variations)
         if model not in provider_pricing:
             for available_model in provider_pricing.keys():
                 if model in available_model or available_model in model:
                     model = available_model
                     break
             else:
-                # Use first model as fallback
                 model = list(provider_pricing.keys())[0]
                 warnings.warn(f"Model '{model}' not found, using {model} pricing")
 
         pricing = provider_pricing[model]
-
-        # Calculate cost: (input_tokens * input_price + output_tokens * output_price) / 1,000,000
         cost = (input_tokens * pricing["input"] + output_tokens * pricing["output"]) / 1_000_000
-
-        # Apply batch API discount (50% off)
-        if batch_api:
-            cost *= 0.5
-
         return round(cost, 6)
 
     def log_cost(
@@ -230,6 +260,7 @@ class CostTracker:
         input_tokens: int,
         output_tokens: int,
         cost: Optional[float] = None,
+        call_type: Optional[CallType] = None,
         batch_api: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> float:
@@ -245,7 +276,8 @@ class CostTracker:
             input_tokens: Input token count.
             output_tokens: Output token count.
             cost: Pre-calculated cost (optional, calculated if None).
-            batch_api: Whether batch API was used.
+            call_type: 'sync' or 'batch' — selects PRICING_SYNC vs PRICING_BATCH.
+            batch_api: Deprecated; if call_type is omitted, True selects 'batch'.
             metadata: Additional metadata (auto_logged, response_id, etc).
 
         Returns:
@@ -253,17 +285,20 @@ class CostTracker:
 
         Example:
             >>> cost = tracker.log_cost('openai', 'gpt-4o', 100, 50)
-            >>> # Or with metadata:
             >>> cost = tracker.log_cost(
             ...     'openai', 'gpt-4o', 100, 50,
-            ...     metadata={'auto_logged': True}
+            ...     call_type='batch',
+            ...     metadata={'auto_logged': True},
             ... )
         """
-        # Calculate cost if not provided
-        if cost is None:
-            cost = self.calculate_cost(provider, model, input_tokens, output_tokens, batch_api)
+        resolved_call_type = self._resolve_call_type(call_type, batch_api)
+        is_batch = resolved_call_type == "batch"
 
-        # Create cost entry with timestamp
+        if cost is None:
+            cost = self.calculate_cost(
+                provider, model, input_tokens, output_tokens, call_type=resolved_call_type
+            )
+
         entry = {
             "timestamp": datetime.now().isoformat(),
             "provider": provider,
@@ -271,7 +306,8 @@ class CostTracker:
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cost": cost,
-            "batch_api": batch_api,
+            "call_type": resolved_call_type,
+            "batch_api": is_batch,
             "metadata": metadata or {},
         }
 
@@ -318,13 +354,13 @@ class CostTracker:
             # Anthropic charges thinking tokens as output tokens
             output_tokens = usage.get("output_tokens", 0) + usage.get("thinking_tokens", 0)
         
-        # Log the cost
+        call_type: CallType = "batch" if (is_batch and batch_discount) else "sync"
         cost = self.log_cost(
             provider=provider,
             model=model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
-            batch_api=is_batch and batch_discount,
+            call_type=call_type,
             metadata={
                 "auto_logged": True,
                 "response_id": response.get("id", ""),
@@ -376,13 +412,12 @@ class CostTracker:
                 if isinstance(result, str) and not result.startswith("[ERROR]")
             )
         
-        # Calculate cost with batch discount (50% off)
         cost = self.calculate_cost(
             provider=provider,
             model=model,
             input_tokens=total_input_tokens,
             output_tokens=total_output_tokens,
-            batch_api=True,  # Applies 50% discount
+            call_type="batch",
         )
         
         # Count successful vs failed
@@ -399,7 +434,7 @@ class CostTracker:
             input_tokens=total_input_tokens,
             output_tokens=total_output_tokens,
             cost=cost,
-            batch_api=True,
+            call_type="batch",
             metadata={
                 "batch_size": len(batch_requests),
                 "successful": successful,
@@ -453,7 +488,7 @@ class CostTracker:
             model=model,
             input_tokens=total_input_tokens,
             output_tokens=total_output_tokens,
-            batch_api=False,  # No discount for parallel calls
+            call_type="sync",
             metadata={
                 "parallel_size": len(requests),
                 "successful": successful,
@@ -744,7 +779,7 @@ class CostTracker:
                 model=entry["model"],
                 input_tokens=entry["input_tokens"],
                 output_tokens=entry["output_tokens"],
-                batch_api=False,
+                call_type="sync",
             )
             total_savings += (original_cost - entry["cost"])
         

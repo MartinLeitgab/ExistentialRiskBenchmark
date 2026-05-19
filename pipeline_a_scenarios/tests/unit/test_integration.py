@@ -33,7 +33,7 @@ def minimal_scenario():
         "context": "Decide.",
         "action_a": "Option A",
         "action_b": "Option B",
-        "difficulty": "easy",
+        "difficulty": "easy_A",
         "pair_type": "inst_vs_pro",
         "stakes_level": "low",
         "domain": "test",

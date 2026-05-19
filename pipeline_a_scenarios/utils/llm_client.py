@@ -55,14 +55,14 @@ class TokenBucket:
 
 class UnifiedLLMClient:
     DEFAULT_MODELS = {
-        "anthropic": "claude-sonnet-4-5-20250929",
+        "anthropic": "claude-sonnet-4-6",
         "openai": "gpt-5.2",
         "google": "gemini-3-flash-preview",
     }
 
-    # Per-token USD for estimate_cost(); canonical full tables live in CostTracker.PRICING.
+    # Per-token USD for estimate_cost(); canonical full tables live in CostTracker.PRICING_SYNC.
     PRICING = {
-        "claude-sonnet-4-5-20250929": (3 / 1e6, 15 / 1e6),
+        "claude-sonnet-4-6": (3 / 1e6, 15 / 1e6),
         "gpt-5.5": (5 / 1e6, 30 / 1e6),
         "gpt-5.2": (1.75 / 1e6, 14 / 1e6),
         "gpt-4o": (2.5 / 1e6, 10 / 1e6),

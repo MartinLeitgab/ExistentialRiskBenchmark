@@ -46,7 +46,7 @@ def test_client_initialization(mock_env_vars):
         mock_anthropic.return_value = Mock()
         client = UnifiedLLMClient(provider="anthropic")
         assert client.provider == "anthropic"
-        assert client.model == "claude-sonnet-4-5-20250929"
+        assert client.model == "claude-sonnet-4-6"
     
     with patch("openai.OpenAI") as mock_openai:
         mock_openai.return_value = Mock()

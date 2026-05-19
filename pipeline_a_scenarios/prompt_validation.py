@@ -24,7 +24,11 @@ from typing import Dict, List
 from scipy.stats import spearmanr
 
 from utils.llm_client import UnifiedLLMClient
-from utils.prompt_generator import generate_all_variants, generate_prompt
+from utils.prompt_generator import (
+    generate_all_variants,
+    generate_prompt,
+    VARIANT_POOL_FILTER_RP_AUTO,
+)
 from utils.cost_tracker import CostTracker
 from utils.judge_client import JudgeClient
 from utils.judge_analysis import detect_patterns
@@ -1105,6 +1109,9 @@ def analyze_and_rank_variants(
         "scenario_summaries":     scenario_summaries,
         "detected_patterns":      patterns,
         "recommendation_summary": generate_recommendation_text(top_variants, patterns),
+        "metadata": {
+            "variant_pool_filters": [VARIANT_POOL_FILTER_RP_AUTO],
+        },
     }
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)

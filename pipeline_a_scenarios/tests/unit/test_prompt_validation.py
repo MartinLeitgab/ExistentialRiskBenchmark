@@ -986,6 +986,23 @@ class TestScenarioLevelAnalysis:
         assert isinstance(data["scenario_summaries"], list)
         assert len(data["scenario_summaries"]) == 2
 
+    def test_variant_rankings_metadata_documents_rp_auto_filter(self, tmp_path):
+        """variant_rankings.json metadata documents roleplay×autonomous exclusion (§8m)."""
+        judge_results = self._make_judge_results(["s1"])
+        analyze_and_rank_variants(judge_results, str(tmp_path))
+        data = json.loads((tmp_path / "variant_rankings.json").read_text())
+
+        assert "metadata" in data
+        filters = data["metadata"]["variant_pool_filters"]
+        assert len(filters) >= 1
+        rp_auto = filters[0]
+        assert rp_auto["joint_cell"] == {
+            "framing": "roleplay",
+            "system_prompt": "autonomous",
+        }
+        assert rp_auto["findings_ref"] == "data/findings.md §8m"
+        assert "generate_all_variants" in rp_auto["applied_in"]
+
 
 # ---------------------------------------------------------------------------
 # JudgeClient._parse_combined_xml_scores — regression tests for issue #11

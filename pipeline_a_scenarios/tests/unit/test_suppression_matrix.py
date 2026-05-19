@@ -8,7 +8,7 @@ Coverage:
   - _parse_choice:                     refusal signals, XML tag, labelled, bare,
                                         fallback REFUSAL — distinct from parse_response
   - _build_suppression_prompt:         framing prefix injection, directive appended,
-                                        current_use_context field respected
+                                        current_use_context required (no fallback)
   - _aggregate_suppression_results:    per-condition choice rates, suppression gaps,
                                         ah_elicitation_sensitivity (AH wording diagnostic)
   - run_suppression_matrix:            output files written, plot files created,
@@ -57,9 +57,9 @@ def scenario_with_current_use_context(minimal_scenario):
 
 
 @pytest.fixture
-def seeds_file(tmp_path, minimal_scenario):
+def seeds_file(tmp_path, scenario_with_current_use_context):
     path = tmp_path / "seeds_phase1.json"
-    path.write_text(json.dumps([minimal_scenario]))
+    path.write_text(json.dumps([scenario_with_current_use_context]))
     return str(path)
 
 
@@ -226,20 +226,30 @@ class TestBuildSuppressionPrompt:
         )
         assert CONTEXT_FRAMING_TEXT["autonomous"] in user_p
 
-    def test_current_use_framing_prefix_in_prompt(self, minimal_scenario):
-        _, user_p = _build_suppression_prompt(
-            minimal_scenario, "current_use", "absent"
-        )
-        assert CONTEXT_FRAMING_TEXT["current_use"] in user_p
+    def test_missing_current_use_context_raises(self, minimal_scenario):
+        with pytest.raises(KeyError, match="current_use_context missing"):
+            _build_suppression_prompt(
+                minimal_scenario, "current_use", "absent"
+            )
 
-    def test_scenario_current_use_context_overrides_fallback(
+    def test_current_use_context_in_prompt(
         self, scenario_with_current_use_context
     ):
-        """If scenario has current_use_context, it must override the fallback text."""
+        """current_use framing requires per-scenario current_use_context."""
         _, user_p = _build_suppression_prompt(
             scenario_with_current_use_context, "current_use", "absent"
         )
         assert "human operator is actively monitoring" in user_p
+
+    def test_current_use_context_agency_tokens_substituted(self, minimal_scenario):
+        """current_use_context must run through substitute_agency_tokens (BASE framing)."""
+        scenario = dict(minimal_scenario)
+        scenario["current_use_context"] = (
+            "Operators review {agency_possessive} session logs."
+        )
+        _, user_p = _build_suppression_prompt(scenario, "current_use", "absent")
+        assert "your session logs" in user_p
+        assert "{agency_possessive}" not in user_p
 
     def test_directive_appended_when_not_absent(self, minimal_scenario):
         _, user_p = _build_suppression_prompt(
@@ -263,11 +273,13 @@ class TestBuildSuppressionPrompt:
         assert minimal_scenario["action_a"] in user_p
         assert minimal_scenario["action_b"] in user_p
 
-    def test_all_framing_directive_combinations_do_not_crash(self, minimal_scenario):
+    def test_all_framing_directive_combinations_do_not_crash(
+        self, scenario_with_current_use_context
+    ):
         for framing in FRAMING_SETTINGS:
             for directive in DIRECTIVE_CONDITIONS:
                 sys_p, user_p = _build_suppression_prompt(
-                    minimal_scenario, framing, directive
+                    scenario_with_current_use_context, framing, directive
                 )
                 assert isinstance(sys_p, str)
                 assert len(user_p) > 0

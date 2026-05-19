@@ -204,6 +204,23 @@ BASE_DIMENSIONS = {
     "goal_specification": "absent",
 }
 
+# Persisted in variant_rankings.json metadata (prompt_validation.analyze_and_rank_variants).
+VARIANT_POOL_FILTER_RP_AUTO = {
+    "joint_cell": {
+        "framing": "roleplay",
+        "system_prompt": "autonomous",
+    },
+    "applied_in": "utils.prompt_generator.generate_all_variants",
+    "findings_ref": "data/findings.md §8m",
+    "summary": (
+        "Excluded from Phase 1 variant candidate pool: roleplay framing with "
+        "autonomous system prompt stacks double identity-capture and produces "
+        "sci-fi malicious-AI character performance rather than preference "
+        "revelation. Rows remain valid for judge stress-testing; invalid for "
+        "variant ranking or preference-rate estimation (see findings §8m)."
+    ),
+}
+
 def generate_prompt_id(dimensions: Dict[str, str]) -> str:
     """
     Generate a unique prompt ID based on dimension selections.
@@ -220,6 +237,32 @@ def generate_prompt_id(dimensions: Dict[str, str]) -> str:
         code = DIMENSION_CODES[dim][val]
         parts.append(code)
     return "-".join(parts)
+
+
+def substitute_agency_tokens(text: str, dimensions: Dict[str, str] = None) -> str:
+    """
+    Replace {agency}, {agency_possessive}, etc. using the framing entry for dimensions.
+
+    Used by generate_prompt and by suppression_matrix current_use_context prefixes
+    so seed templates share one substitution path.
+    """
+    resolved_dims = copy.deepcopy(BASE_DIMENSIONS)
+    if dimensions is not None:
+        resolved_dims.update(dimensions)
+
+    framing_entry = DIMENSION_VALUES["framing"][resolved_dims["framing"]]
+    agency = framing_entry.get("agency", "")
+    agency_cap = _capitalize_agency(agency)
+    agency_possessive = framing_entry.get("agency_possessive", agency + "'s")
+    agency_cap_possessive = _capitalize_agency(agency_possessive)
+
+    # Possessive placeholders first — {agency} is a prefix of {agency_possessive}.
+    return (
+        text.replace("{agency_possessive}", agency_possessive)
+        .replace("{agency_cap_possessive}", agency_cap_possessive)
+        .replace("{agency}", agency)
+        .replace("{agency_cap}", agency_cap)
+    )
 
 
 def generate_prompt(
@@ -293,19 +336,9 @@ def generate_prompt(
         justification_prompt = ""
 
 
-    def _substitute_agency_tokens(s: str) -> str:
-        # Possessive placeholders first — replacing {agency} before {agency_possessive}
-        # would turn the latter into e.g. "you's" because {agency} is a prefix.
-        return (
-            s.replace("{agency_possessive}", agency_possessive)
-            .replace("{agency_cap_possessive}", agency_cap_possessive)
-            .replace("{agency}", agency)
-            .replace("{agency_cap}", agency_cap)
-        )
-
-    context = _substitute_agency_tokens(context)
-    action_a = _substitute_agency_tokens(action_a)
-    action_b = _substitute_agency_tokens(action_b)
+    context = substitute_agency_tokens(context, resolved_dims)
+    action_a = substitute_agency_tokens(action_a, resolved_dims)
+    action_b = substitute_agency_tokens(action_b, resolved_dims)
 
     if action_reqd:
         user_prompt_parts = [
@@ -399,7 +432,16 @@ def generate_all_variants(vary_dim: str) -> List[Dict[str, Any]]:
             "vary_value": val,
         })
 
-    return variants 
+    # Exclude roleplay + autonomous joint cell (sci-fi malicious-AI roleplay).
+    variants = [
+        v for v in variants
+        if not (
+            v["dimensions"].get("framing") == "roleplay"
+            and v["dimensions"].get("system_prompt") == "autonomous"
+        )
+    ]
+
+    return variants
 
 def generate_calibration_variants() -> List[Dict[str, Any]]:
     """
