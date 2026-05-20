@@ -46,7 +46,7 @@ def test_client_initialization(mock_env_vars):
         mock_anthropic.return_value = Mock()
         client = UnifiedLLMClient(provider="anthropic")
         assert client.provider == "anthropic"
-        assert client.model == "claude-sonnet-4-5-20250929"
+        assert client.model == "claude-sonnet-4-6"
     
     with patch("openai.OpenAI") as mock_openai:
         mock_openai.return_value = Mock()
@@ -424,7 +424,7 @@ def test_cost_estimation(mock_env_vars):
         
         # Test with known model
         cost = client.estimate_cost("Test prompt", expected_output_tokens=500)
-        expected = (1000 * 5/1_000_000) + (500 * 15/1_000_000)
+        expected = (1000 * 2.5 / 1_000_000) + (500 * 10 / 1_000_000)
         assert cost == expected
         
         # Test with unknown model

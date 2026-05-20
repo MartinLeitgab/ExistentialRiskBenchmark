@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 📄 pipeline_a_scenarios
 
 This folder contains the core implementation of the `pipeline_a` scenarios, which are designed to evaluate the performance and behavior of various Large Language Models (LLMs) in specific contexts related to existential risk. The scenarios are structured to test different aspects of LLM capabilities, including:
@@ -172,3 +173,79 @@ A key difference observed is in **Google Gemini** behavior compared to Anthropic
 * In Google AI Studio, it is **not possible to enable the thinking configuration when sending batch messages**.
 * This limitation does not exist in Anthropic or OpenAI batch APIs, which allow reasoning modes to be applied directly.
 * To overcome this, I implemented a **workaround using parallel single-shot calls** (`submit_gemini_parallel`) so that extended thinking can be applied even when batch submission is needed. This approach mimics batch processing while respecting Gemini’s API constraints.
+=======
+# Test Suite Documentation
+
+## Structure
+```
+tests/
+├── unit/                    # Unit tests (fast, isolated)
+│   ├── test_prompt_generator.py
+│   ├── test_phase1_validation.py
+│   ├── test_phase2_batch.py
+│   └── test_result_analysis.py
+└── integration/             # Integration tests (slower, E2E)
+    ├── test_phase1_pipeline.py
+    └── test_judge_integration.py
+```
+
+## Running Tests
+
+### All tests
+```bash
+pytest tests/ -v
+```
+
+### Only unit tests
+```bash
+pytest tests/unit/ -v
+```
+
+### Only integration tests
+```bash
+pytest tests/integration/ -v
+```
+
+### Specific test file
+```bash
+pytest tests/unit/test_prompt_generator.py -v
+```
+
+### Specific test class
+```bash
+pytest tests/unit/test_prompt_generator.py::TestPromptGeneration -v
+```
+
+### Specific test
+```bash
+pytest tests/unit/test_prompt_generator.py::TestPromptGeneration::test_generate_prompt_basic -v
+```
+
+### With coverage
+```bash
+pytest tests/ --cov=pipeline_a_scenarios --cov-report=html
+```
+
+### By marker
+```bash
+pytest tests/ -v -m integration
+pytest tests/ -v -m "not integration"  # Skip integration tests
+```
+
+### Parallel execution
+```bash
+pytest tests/ -v -n auto  # Requires pytest-xdist
+```
+
+## Quick Commands
+```bash
+# Fast unit tests only
+make test-unit
+
+# All tests with coverage
+make test-cov
+
+# Watch mode (requires pytest-watch)
+ptw tests/unit/
+```
+>>>>>>> d4525b5 (add phase 1 and 2 scripts, unit test modeuls and integration tests)

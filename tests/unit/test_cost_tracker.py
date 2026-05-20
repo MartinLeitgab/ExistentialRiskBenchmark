@@ -75,10 +75,10 @@ def test_anthropic_pricing(isolated_tracker):
     """Test 3: Verify Anthropic pricing calculation - 2026 rates."""
     tracker = isolated_tracker
     
-    # Claude Sonnet 4.5: $3.00/$15.00 per 1M tokens (unchanged)
+    # Claude Sonnet 4.6: $3.00/$15.00 per 1M tokens
     cost = tracker.calculate_cost(
         provider="anthropic",
-        model="claude-sonnet-4.5",
+        model="claude-sonnet-4-6",
         input_tokens=1_000_000,
         output_tokens=500_000
     )
@@ -104,26 +104,36 @@ def test_google_pricing(isolated_tracker):
 # ==================== TEST 5: BATCH DISCOUNT ====================
 
 def test_batch_discount(isolated_tracker):
-    """Test 5: Verify 50% batch discount."""
+    """Test 5: Batch call_type uses PRICING_BATCH (half of sync rates)."""
     tracker = isolated_tracker
-    
+
     standard = tracker.calculate_cost(
         provider="openai",
         model="gpt-4o",
         input_tokens=1000,
         output_tokens=500,
-        batch_api=False
+        call_type="sync",
     )
-    
+
     batch = tracker.calculate_cost(
         provider="openai",
         model="gpt-4o",
         input_tokens=1000,
         output_tokens=500,
-        batch_api=True
+        call_type="batch",
     )
-    
+
     assert batch == standard * 0.5
+
+    # batch_api=True maps to call_type=batch (no extra multiplier)
+    legacy_batch = tracker.calculate_cost(
+        provider="openai",
+        model="gpt-4o",
+        input_tokens=1000,
+        output_tokens=500,
+        batch_api=True,
+    )
+    assert legacy_batch == batch
 
 
 # ==================== TEST 6: LOG COST ====================
@@ -149,6 +159,7 @@ def test_log_cost(isolated_tracker):
     assert entry["input_tokens"] == 1000
     assert entry["output_tokens"] == 500
     assert entry["batch_api"] is True
+    assert entry["call_type"] == "batch"
     assert entry["metadata"]["test_id"] == "123"
     assert "timestamp" in entry
     
@@ -257,7 +268,7 @@ def test_provider_breakdown(isolated_tracker):
     )
     tracker.log_cost(
         provider="anthropic",
-        model="claude-sonnet-4.5",
+        model="claude-sonnet-4-6",
         input_tokens=0,
         output_tokens=0,
         cost=20.0
@@ -307,7 +318,7 @@ def test_team_aggregation():
         )
         bob.log_cost(
             provider="anthropic",
-            model="claude-sonnet-4.5",
+            model="claude-sonnet-4-6",
             input_tokens=800,
             output_tokens=400,
             cost=20.0

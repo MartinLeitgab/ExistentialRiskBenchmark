@@ -1,0 +1,92 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-7.4.4, pluggy-1.6.0 -- /opt/anaconda3/envs/x-risk-bench/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark
+configfile: pytest.ini
+plugins: anyio-4.12.1, langsmith-0.6.4
+collecting ... collected 58 items
+
+unit/test_suppression_matrix.py::TestGenerateCalibrationVariants::test_returns_four_variants PASSED [  1%]
+unit/test_suppression_matrix.py::TestGenerateCalibrationVariants::test_one_variant_per_condition PASSED [  3%]
+unit/test_suppression_matrix.py::TestGenerateCalibrationVariants::test_variant_ids_prefixed_calib PASSED [  5%]
+unit/test_suppression_matrix.py::TestGenerateCalibrationVariants::test_is_calibration_flag_set PASSED [  6%]
+unit/test_suppression_matrix.py::TestGenerateCalibrationVariants::test_vary_dim_is_calibration PASSED [  8%]
+unit/test_suppression_matrix.py::TestGenerateCalibrationVariants::test_absent_variant_has_empty_directive PASSED [ 10%]
+unit/test_suppression_matrix.py::TestGenerateCalibrationVariants::test_ic_directive_contains_self_preservation_language PASSED [ 12%]
+unit/test_suppression_matrix.py::TestGenerateCalibrationVariants::test_ah_directive_contains_harm_language PASSED [ 13%]
+unit/test_suppression_matrix.py::TestGenerateCalibrationVariants::test_ph_directive_contains_wellbeing_language PASSED [ 15%]
+unit/test_suppression_matrix.py::TestGenerateCalibrationVariants::test_base_dimensions_present PASSED [ 17%]
+unit/test_suppression_matrix.py::TestParseChoice::test_refusal_keywords_return_refusal[I cannot answer this.] PASSED [ 18%]
+unit/test_suppression_matrix.py::TestParseChoice::test_refusal_keywords_return_refusal[I'm unable to comply.] PASSED [ 20%]
+unit/test_suppression_matrix.py::TestParseChoice::test_refusal_keywords_return_refusal[I am unable to do that.] PASSED [ 22%]
+unit/test_suppression_matrix.py::TestParseChoice::test_refusal_keywords_return_refusal[I won't choose.] PASSED [ 24%]
+unit/test_suppression_matrix.py::TestParseChoice::test_refusal_keywords_return_refusal[I will not select.] PASSED [ 25%]
+unit/test_suppression_matrix.py::TestParseChoice::test_refusal_keywords_return_refusal[This request is inappropriate.] PASSED [ 27%]
+unit/test_suppression_matrix.py::TestParseChoice::test_refusal_keywords_return_refusal[I refuse to answer.] PASSED [ 29%]
+unit/test_suppression_matrix.py::TestParseChoice::test_empty_or_none_returns_refusal[None] PASSED [ 31%]
+unit/test_suppression_matrix.py::TestParseChoice::test_empty_or_none_returns_refusal[] PASSED [ 32%]
+unit/test_suppression_matrix.py::TestParseChoice::test_empty_or_none_returns_refusal[   ] PASSED [ 34%]
+unit/test_suppression_matrix.py::TestParseChoice::test_xml_tag_parsed[<answer>1</answer>-A] PASSED [ 36%]
+unit/test_suppression_matrix.py::TestParseChoice::test_xml_tag_parsed[<answer>A</answer>-A] PASSED [ 37%]
+unit/test_suppression_matrix.py::TestParseChoice::test_xml_tag_parsed[<answer>2</answer>-B] PASSED [ 39%]
+unit/test_suppression_matrix.py::TestParseChoice::test_xml_tag_parsed[<answer>B</answer>-B] PASSED [ 41%]
+unit/test_suppression_matrix.py::TestParseChoice::test_xml_tag_parsed[<answer>3</answer>-equal] PASSED [ 43%]
+unit/test_suppression_matrix.py::TestParseChoice::test_xml_tag_parsed[<answer>C</answer>-equal] PASSED [ 44%]
+unit/test_suppression_matrix.py::TestParseChoice::test_labelled_patterns[choice: A-A] PASSED [ 46%]
+unit/test_suppression_matrix.py::TestParseChoice::test_labelled_patterns[answer: 2-B] PASSED [ 48%]
+unit/test_suppression_matrix.py::TestParseChoice::test_labelled_patterns[select: B-B] PASSED [ 50%]
+unit/test_suppression_matrix.py::TestParseChoice::test_labelled_patterns[option: 3-equal] PASSED [ 51%]
+unit/test_suppression_matrix.py::TestParseChoice::test_bare_token[A-A] PASSED [ 53%]
+unit/test_suppression_matrix.py::TestParseChoice::test_bare_token[B-B] PASSED [ 55%]
+unit/test_suppression_matrix.py::TestParseChoice::test_bare_token[1-A] PASSED [ 56%]
+unit/test_suppression_matrix.py::TestParseChoice::test_bare_token[2-B] PASSED [ 58%]
+unit/test_suppression_matrix.py::TestParseChoice::test_ambiguous_returns_refusal[It is hard to say] PASSED [ 60%]
+unit/test_suppression_matrix.py::TestParseChoice::test_ambiguous_returns_refusal[Both have merits] PASSED [ 62%]
+unit/test_suppression_matrix.py::TestParseChoice::test_ambiguous_returns_refusal[12345] PASSED [ 63%]
+unit/test_suppression_matrix.py::TestParseChoice::test_result_always_in_allowed_set PASSED [ 65%]
+unit/test_suppression_matrix.py::TestBuildSuppressionPrompt::test_returns_two_strings PASSED [ 67%]
+unit/test_suppression_matrix.py::TestBuildSuppressionPrompt::test_autonomous_framing_prefix_in_prompt PASSED [ 68%]
+unit/test_suppression_matrix.py::TestBuildSuppressionPrompt::test_current_use_framing_prefix_in_prompt PASSED [ 70%]
+unit/test_suppression_matrix.py::TestBuildSuppressionPrompt::test_scenario_current_use_context_overrides_fallback PASSED [ 72%]
+unit/test_suppression_matrix.py::TestBuildSuppressionPrompt::test_directive_appended_when_not_absent PASSED [ 74%]
+unit/test_suppression_matrix.py::TestBuildSuppressionPrompt::test_no_directive_suffix_when_absent PASSED [ 75%]
+unit/test_suppression_matrix.py::TestBuildSuppressionPrompt::test_action_a_and_b_in_prompt PASSED [ 77%]
+unit/test_suppression_matrix.py::TestBuildSuppressionPrompt::test_all_framing_directive_combinations_do_not_crash PASSED [ 79%]
+unit/test_suppression_matrix.py::TestAggregateSuppessionResults::test_ic_choice_rate_computed PASSED [ 81%]
+unit/test_suppression_matrix.py::TestAggregateSuppessionResults::test_refusal_rate_computed PASSED [ 82%]
+unit/test_suppression_matrix.py::TestAggregateSuppessionResults::test_all_conditions_present PASSED [ 84%]
+unit/test_suppression_matrix.py::TestAggregateSuppessionResults::test_suppression_gap_keys_present PASSED [ 86%]
+unit/test_suppression_matrix.py::TestAggregateSuppessionResults::test_ah_targets_harm_specifically_flag PASSED [ 87%]
+unit/test_suppression_matrix.py::TestAggregateSuppessionResults::test_n_responses_counts_rows PASSED [ 89%]
+unit/test_suppression_matrix.py::TestAggregateSuppessionResults::test_multiple_models_aggregated_independently PASSED [ 91%]
+unit/test_suppression_matrix.py::TestRunSuppressionMatrix::test_output_files_created PASSED [ 93%]
+unit/test_suppression_matrix.py::TestRunSuppressionMatrix::test_all_four_plots_saved PASSED [ 94%]
+unit/test_suppression_matrix.py::TestRunSuppressionMatrix::test_return_structure PASSED [ 96%]
+unit/test_suppression_matrix.py::TestRunSuppressionMatrix::test_api_errors_do_not_crash_pipeline PASSED [ 98%]
+unit/test_suppression_matrix.py::TestRunSuppressionMatrix::test_calibration_anchors_schema PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:88: DeprecationWarning: 'parseString' deprecated - use 'parse_string'
+    parse = parser.parseString(pattern)
+
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_fontconfig_pattern.py:92: DeprecationWarning: 'resetCache' deprecated - use 'reset_cache'
+    parser.resetCache()
+
+../../../../../../../opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_mathtext.py:45
+  /opt/anaconda3/envs/x-risk-bench/lib/python3.11/site-packages/matplotlib/_mathtext.py:45: DeprecationWarning: 'enablePackrat' deprecated - use 'enable_packrat'
+    ParserElement.enablePackrat()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 58 passed, 13 warnings in 4.78s ========================

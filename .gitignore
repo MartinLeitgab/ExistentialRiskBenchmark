@@ -15,10 +15,16 @@ outputs/
 .pytest_cache/
 *.egg-info/
 
+# Pipeline outputs (regenerable from code + seeds)
+data/results/
+data/metadata/
+
 # IDE
 .vscode/
 .idea/
 *.swp
+
+# macOS
 pipeline_a_scenarios/.DS_Store
 .DS_Store
 
@@ -26,3 +32,5 @@ pipeline_a_scenarios/.DS_Store
 CLAUDE.md
 CLAUDE_MEMORY.md
 .claude/
+.specstory/
+.cursorindexingignore

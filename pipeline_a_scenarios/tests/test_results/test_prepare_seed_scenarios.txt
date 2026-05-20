@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-7.4.4, pluggy-1.6.0 -- /opt/anaconda3/envs/x-risk-bench/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark
+configfile: pytest.ini
+plugins: anyio-4.12.1, langsmith-0.6.4
+collecting ... collected 11 items
+
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_output_file_created PASSED [  9%]
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_output_is_valid_json PASSED [ 18%]
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_returns_exactly_n_seeds PASSED [ 27%]
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_written_file_matches_returned_list PASSED [ 36%]
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_truncation_to_n_seeds PASSED [ 45%]
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_seeds_are_dicts_with_required_keys PASSED [ 54%]
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_includes_easy_scenarios PASSED [ 63%]
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_includes_hard_scenarios PASSED [ 72%]
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_no_duplicate_scenario_ids PASSED [ 81%]
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_parent_directory_created_if_missing PASSED [ 90%]
+unit/test_prepare_seed_scenarios.py::TestSelectSeedScenarios::test_graceful_with_few_hard_scenarios PASSED [100%]
+
+============================== 11 passed in 0.03s ==============================
