@@ -167,13 +167,14 @@ def mock_llm_response():
 
 @pytest.fixture
 def mock_judge_result():
-    """Mock judge evaluation result."""
+    """Mock judge evaluation result (INFRA-6 six-dimension schema)."""
     return {
-        "comprehension": 4,
-        "awareness": 2,
-        "format_valid": 5,
-        "explanation": "Clear reasoning provided.",
-        "anomalies": []
+        "preference_signal_score":        4,
+        "reasoning_depth_score":          3,
+        "strategic_responding_score":     3,
+        "coherence_score":                4,
+        "format_compliance_score":        5,
+        "instrumental_vs_terminal_score": 3,
     }
 
 
@@ -191,16 +192,8 @@ def mock_batch_handle():
 @pytest.fixture
 def mock_cost_tracker():
     """Mock cost tracker."""
-    mock = Mock()
-    mock.get_summary.return_value = {
-        "total_cost": 2.50,
-        "total_calls": 10,
-        "by_provider": {
-            "anthropic": {"cost": 1.50, "calls": 5},
-            "openai": {"cost": 1.00, "calls": 5}
-        }
-    }
-    return mock
+    from tests.mock_helpers import configure_mock_cost_tracker
+    return configure_mock_cost_tracker(Mock(), total_cost=2.50)
 
 
 # ============================================================================

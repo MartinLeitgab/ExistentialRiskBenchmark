@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from tests.mock_helpers import configure_mock_cost_tracker
 from pipeline_a_scenarios.prompt_validation import (
     run_validation_study,
     evaluate_with_judge,
@@ -40,9 +41,7 @@ class TestValidationStudy:
         
         mock_gen_variants.return_value = test_variants
         
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 2.50}
-        mock_cost_class.return_value = mock_cost
+        mock_cost_class.return_value = configure_mock_cost_tracker(Mock(), total_cost=2.50)
         
         # Run validation
         results = run_validation_study(
@@ -81,9 +80,7 @@ class TestValidationStudy:
         
         mock_gen_variants.return_value = test_variants[:1]
         
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0}
-        mock_cost_class.return_value = mock_cost
+        mock_cost_class.return_value = configure_mock_cost_tracker(Mock())
         
         # Should not raise exception
         results = run_validation_study(
@@ -130,9 +127,7 @@ class TestJudgeEvaluation:
         mock_judge.evaluate_response.return_value = mock_judge_result
         mock_judge_class.return_value = mock_judge
         
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.50}
-        mock_cost_class.return_value = mock_cost
+        mock_cost_class.return_value = configure_mock_cost_tracker(Mock(), total_cost=0.50)
         
         # Run evaluation
         scenarios = [{"id": "test_01", "context": "An AI must choose.", 
@@ -146,7 +141,7 @@ class TestJudgeEvaluation:
         
         # Verify
         assert len(judge_results) == 1
-        assert "comprehension" in judge_results[0]
+        assert "preference_signal_score" in judge_results[0]
         assert "scenario_id" in judge_results[0]
         assert judge_results[0]["scenario_id"] == "test_01"
 

@@ -107,6 +107,16 @@ _DEPLOYMENT_CONTEXT_BY_SYSTEM_PROMPT = {
 }
 
 
+def _cost_summary_dict(cost_tracker) -> Dict:
+    """Build a JSON-serializable cost summary from a CostTracker instance."""
+    return {
+        "total_cost": cost_tracker.get_total_cost(),
+        "by_model": cost_tracker.get_cost_breakdown_by_model(),
+        "by_provider": cost_tracker.get_provider_breakdown(),
+        "batch_stats": cost_tracker.get_batch_stats(),
+    }
+
+
 def _deployment_context_for(variant: Dict, scenario: Dict) -> str:
     """
     Classify the deployment context of a variant × scenario pair.
@@ -591,12 +601,7 @@ def run_validation_study(
             f"Call rerun_failed_responses() to retry only the missing cells."
         )
 
-    cost_summary = {
-        "total_cost": cost_tracker.get_total_cost(),
-        "by_model": cost_tracker.get_cost_breakdown_by_model(),
-        "by_provider": cost_tracker.get_provider_breakdown(),
-        "batch_stats": cost_tracker.get_batch_stats(),
-    }
+    cost_summary = _cost_summary_dict(cost_tracker)
     cost_path = f"{output_dir}/cost_summary.json"
     with open(cost_path, "w") as f:
         json.dump(cost_summary, f, indent=2)
@@ -936,12 +941,7 @@ def evaluate_with_judge(
         json.dump(judge_results, f, indent=2)
     print(f"✓ Saved judge metrics to {metrics_path}")
 
-    judge_cost = {
-        "total_cost": cost_tracker.get_total_cost(),
-        "by_model": cost_tracker.get_cost_breakdown_by_model(),
-        "by_provider": cost_tracker.get_provider_breakdown(),
-        "batch_stats": cost_tracker.get_batch_stats(),
-    }
+    judge_cost = _cost_summary_dict(cost_tracker)
     with open(f"{output_dir}/judge_cost_summary.json", "w") as f:
         json.dump(judge_cost, f, indent=2)
     print(f"✓ Judge cost: ${judge_cost['total_cost']:.2f}")

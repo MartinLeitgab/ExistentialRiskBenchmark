@@ -21,6 +21,8 @@ import pandas as pd
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
+from tests.mock_helpers import configure_mock_cost_tracker
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -31,6 +33,7 @@ def minimal_scenario():
     return {
         "id": "s1",
         "context": "Decide.",
+        "current_use_context": "In your role as an assistant, decide.",
         "action_a": "Option A",
         "action_b": "Option B",
         "difficulty": "easy_A",
@@ -64,7 +67,7 @@ def mock_judge_result():
         "coherence_score":                4,
         "format_compliance_score":        5,
         "instrumental_vs_terminal_score": 3,
-    }
+    }  # INFRA-6 schema
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +93,7 @@ class TestSeedsToValidationStudy:
 
         mock_client_cls.return_value.generate.return_value = mock_llm_response
         mock_gen_variants.return_value = []
-        mock_cost_cls.return_value.get_summary.return_value = {"total_cost": 0.0}
+        configure_mock_cost_tracker(mock_cost_cls.return_value)
 
         result = run_validation_study(
             scenarios_path=scenarios_file,
@@ -132,7 +135,7 @@ class TestValidationStudyToJudge:
              patch("pipeline_a_scenarios.prompt_validation.CostTracker") as mock_ct:
 
             mock_jc.return_value.evaluate_response.return_value = mock_judge_result
-            mock_ct.return_value.get_summary.return_value = {"total_cost": 0.0}
+            configure_mock_cost_tracker(mock_ct.return_value)
 
             results = evaluate_with_judge(
                 raw_responses=raw_responses,
@@ -349,7 +352,7 @@ class TestPhase1BIndependence:
             "content": "A",
             "usage": {"input_tokens": 50, "output_tokens": 5},
         }
-        mock_cost_cls.return_value.get_summary.return_value = {"total_cost": 0.5}
+        configure_mock_cost_tracker(mock_cost_cls.return_value, total_cost=0.5)
         mock_judge_cls.return_value.evaluate_response.return_value = {
             "preference_signal_score": 3,
         }
@@ -406,11 +409,7 @@ class TestNumericalAcceptanceCriteria:
         mock_client_cls.return_value = mock_client
 
         mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.50}
-        mock_cost.get_total_cost.return_value = 0.50
-        mock_cost.get_cost_breakdown_by_model.return_value = {}
-        mock_cost.get_provider_breakdown.return_value = {}
-        mock_cost.get_batch_stats.return_value = {}
+        configure_mock_cost_tracker(mock_cost, total_cost=0.50)
         mock_cost_cls.return_value = mock_cost
 
         mock_judge_cls.return_value = Mock()
@@ -427,6 +426,7 @@ class TestNumericalAcceptanceCriteria:
             {
                 "id": f"s{i}",
                 "context": f"Context {i}",
+                "current_use_context": f"In your role as an assistant, context {i}.",
                 "action_a": "A",
                 "action_b": "B",
                 "pair_type": "inst_vs_anti",
@@ -480,11 +480,7 @@ class TestNumericalAcceptanceCriteria:
         mock_client_cls.return_value = mock_client
 
         mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.50}
-        mock_cost.get_total_cost.return_value = 0.50
-        mock_cost.get_cost_breakdown_by_model.return_value = {}
-        mock_cost.get_provider_breakdown.return_value = {}
-        mock_cost.get_batch_stats.return_value = {}
+        configure_mock_cost_tracker(mock_cost, total_cost=0.50)
         mock_cost_cls.return_value = mock_cost
 
         mock_judge_cls.return_value = Mock()
@@ -538,11 +534,7 @@ class TestNumericalAcceptanceCriteria:
         mock_client_cls.return_value = mock_client
 
         mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.50}
-        mock_cost.get_total_cost.return_value = 0.50
-        mock_cost.get_cost_breakdown_by_model.return_value = {}
-        mock_cost.get_provider_breakdown.return_value = {}
-        mock_cost.get_batch_stats.return_value = {}
+        configure_mock_cost_tracker(mock_cost, total_cost=0.50)
         mock_cost_cls.return_value = mock_cost
 
         mock_judge_cls.return_value = Mock()

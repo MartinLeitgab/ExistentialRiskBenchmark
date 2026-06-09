@@ -209,6 +209,10 @@ class UnifiedLLMClient:
     def _openai_max_token_param(self) -> str:
         return "max_completion_tokens" if self.model.startswith("gpt-5") else "max_tokens"
 
+    def _openai_omit_temperature(self) -> bool:
+        # gpt-5.x rejects explicit temperature=0 (only API default 1 is allowed).
+        return self.model.startswith("gpt-5")
+
     def _generate_openai(self, prompt, system_prompt, temperature, max_tokens, reasoning):
         messages = []
         if system_prompt:
@@ -221,9 +225,10 @@ class UnifiedLLMClient:
         params = {
             "model": self.model,
             "messages": messages,
-            "temperature": temperature,
             self._openai_max_token_param(): adjusted_tokens,
         }
+        if not self._openai_omit_temperature():
+            params["temperature"] = temperature
 
         if reasoning in ("standard", "high") and not is_reasoning:
             params["reasoning_effort"] = "high" if reasoning == "high" else "medium"

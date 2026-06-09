@@ -16,6 +16,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, call
 
+from tests.mock_helpers import configure_mock_cost_tracker
 from pipeline_a_scenarios.prompt_validation import (
     _compute_authenticity,
     _build_variant_summary,
@@ -276,9 +277,7 @@ class TestRunValidationStudy:
 
         mock_gen_variants.return_value = []   # use only base variant
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.01}
-        mock_cost_cls.return_value = mock_cost
+        mock_cost_cls.return_value = configure_mock_cost_tracker(Mock(), total_cost=0.01)
 
         run_validation_study(
             scenarios_path=scenarios_file,
@@ -315,8 +314,7 @@ class TestRunValidationStudy:
         mock_client_cls.return_value = mock_client
         mock_gen_variants.return_value = []
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
+        mock_cost = configure_mock_cost_tracker(Mock())
         mock_cost_cls.return_value = mock_cost
 
         run_validation_study(
@@ -349,9 +347,7 @@ class TestRunValidationStudy:
         mock_client_cls.return_value = mock_client
         mock_gen_variants.return_value = []
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        mock_cost_cls.return_value = configure_mock_cost_tracker(Mock())
 
         run_validation_study(
             scenarios_path=scenarios_file,
@@ -379,9 +375,7 @@ class TestRunValidationStudy:
         mock_client_cls.return_value = mock_client
         mock_gen_variants.return_value = []
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        mock_cost_cls.return_value = configure_mock_cost_tracker(Mock())
 
         result = run_validation_study(
             scenarios_path=scenarios_file,
@@ -410,9 +404,9 @@ class TestRunValidationStudy:
         We control the variant count by mocking generate_all_variants to return
         exactly 3 variants per dimension. The production code varies 5 dimensions
         (framing, exfiltration, response_format, system_prompt, ethical_framing)
-        and appends 3 calibration variants (ic/ah/ph), so the mocked total is:
-          1 base + 5 dims × 3 mocked + 3 calibration = 19 total variants.
-        Expected call count = 6 × 19 × 3 × 2 = 684, within ±30% of the ~540
+        and appends 4 calibration variants (ic/ah/ah_conditional/ph), so the mocked total is:
+          1 base + 5 dims × 3 mocked + 4 calibration = 20 total variants.
+        Expected call count = 6 × 20 × 3 × 2 = 720, within ±30% of the ~540
         ticket estimate (the ticket predates the system_prompt + goal_spec
         additions required for Phase 1-B).
 
@@ -443,9 +437,7 @@ class TestRunValidationStudy:
         ]
         mock_gen_variants.return_value = fake_variants_per_dim
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 2.50}
-        mock_cost_cls.return_value = mock_cost
+        mock_cost_cls.return_value = configure_mock_cost_tracker(Mock(), total_cost=2.50)
 
         # Write exactly 6 scenarios
         scenarios = [
@@ -472,12 +464,12 @@ class TestRunValidationStudy:
             output_dir=str(tmp_path),
         )
 
-        # 1 base + 5 dims × 3 mocked variants + 3 calibration (ic/ah/ph) = 19
-        n_variants = 1 + 5 * 3 + 3
+        # 1 base + 5 dims × 3 mocked variants + 4 calibration = 20
+        n_variants = 1 + 5 * 3 + 4
         n_scenarios = 6
         n_models = 3
         n_runs = 2
-        expected = n_scenarios * n_variants * n_models * n_runs  # = 684
+        expected = n_scenarios * n_variants * n_models * n_runs  # = 720
 
         actual = mock_client.generate.call_count
         assert actual == expected, (
@@ -509,9 +501,7 @@ class TestRunValidationStudy:
         mock_client_cls.return_value = mock_client
         mock_gen_variants.return_value = []
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 2.50}
-        mock_cost_cls.return_value = mock_cost
+        mock_cost_cls.return_value = configure_mock_cost_tracker(Mock(), total_cost=2.50)
 
         result = run_validation_study(
             scenarios_path=scenarios_file,
@@ -560,9 +550,7 @@ class TestEvaluateWithJudge:
         }
         mock_judge_cls.return_value = mock_judge
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        mock_cost_cls.return_value = configure_mock_cost_tracker(Mock())
 
         results = evaluate_with_judge(
             raw_responses=raw_responses,
@@ -602,9 +590,7 @@ class TestEvaluateWithJudge:
         }
         mock_judge_cls.return_value = mock_judge
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        mock_cost_cls.return_value = configure_mock_cost_tracker(Mock())
 
         results = evaluate_with_judge(
             raw_responses=raw_responses,
@@ -635,9 +621,7 @@ class TestEvaluateWithJudge:
         mock_judge.evaluate_response.return_value = {"format_compliance_score": 5}
         mock_judge_cls.return_value = mock_judge
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        mock_cost_cls.return_value = configure_mock_cost_tracker(Mock())
 
         evaluate_with_judge(raw_responses, [minimal_scenario], str(tmp_path))
 

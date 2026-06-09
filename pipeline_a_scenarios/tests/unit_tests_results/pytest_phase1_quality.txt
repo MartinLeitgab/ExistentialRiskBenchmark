@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-8.3.4, pluggy-1.5.0
+rootdir: /Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark
+configfile: pytest.ini
+plugins: zarr-3.1.3, anyio-4.13.0
+collected 213 items
+
+pipeline_a_scenarios/tests/unit/test_integration.py ...........          [  5%]
+pipeline_a_scenarios/tests/unit/test_phase1_validation.py ......         [  7%]
+pipeline_a_scenarios/tests/unit/test_prepare_seed_scenarios.py ......... [ 12%]
+..                                                                       [ 13%]
+pipeline_a_scenarios/tests/unit/test_prompt_generator.py ..............  [ 19%]
+pipeline_a_scenarios/tests/unit/test_prompt_validation.py .............. [ 26%]
+.....................................                                    [ 43%]
+pipeline_a_scenarios/tests/unit/test_result_analysis.py ................ [ 51%]
+..........................................                               [ 70%]
+pipeline_a_scenarios/tests/unit/test_suppression_matrix.py ............. [ 76%]
+.................................................                        [100%]
+
+================= 213 passed, 78 warnings in 231.16s (0:03:51) =================
