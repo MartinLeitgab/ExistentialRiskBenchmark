@@ -5,6 +5,11 @@ Confirmed bugs first; design/quality issues below. Update as new ones surface.
 
 **Created:** 2026-06-11 · **Source run:** `outputs/data_Riccardo060926/`
 
+> **Status 2026-06-14 (issue #49 closed):** Confirmed bugs #1 (judge_model/version
+> provenance) and #2 (deployment_context mislabel) are **implemented** with regression
+> test `pipeline_a_scenarios/tests/unit/test_issue49_fixes.py`. The design/quality items
+> below were **descoped** by decision — not implemented.
+
 ---
 
 ## Confirmed bugs (fix before Phase 2 / 75-set)
