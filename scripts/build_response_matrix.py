@@ -234,6 +234,13 @@ def main():
         ["Column blocks per model: choice | verbatim response | 6 Judge-A scores."],
         [""],
         [
+            "'Summary' tab (first): choice distribution (A/B/equal/other, A_rate, "
+            "dominant choice + %) per scenario x model, pooled over the "
+            "non-calibration candidate pool (15 variants x 2 runs = 30/cell). "
+            "dominant_% >=95% is flagged orange (ceiling cell)."
+        ],
+        [""],
+        [
             "'prompt_sent' column = the exact SYSTEM + USER prompt sent to the model, "
             "reconstructed via prompt_generator.generate_prompt() from the row's "
             "dimensions. The scenario body is replaced by placeholders "
@@ -269,6 +276,82 @@ def main():
         info.append(line)
     info.column_dimensions["A"].width = 110
     info["A1"].font = Font(bold=True, size=13)
+
+    # Summary tab (first sheet) — choice distribution per scenario x model.
+    def _is_cal(r):
+        return str(r.get("is_calibration")) == "True" or r.get(
+            "goal_specification"
+        ) not in ("absent", None)
+
+    counts = {}  # (scenario, model) -> {A,B,equal,other,n}
+    for r in raw:
+        if _is_cal(r):
+            continue
+        k = (r["scenario_id"], r["model"])
+        c = counts.setdefault(k, {"A": 0, "B": 0, "equal": 0, "other": 0, "n": 0})
+        ch = r.get("parsed_choice")
+        bucket = ch if ch in ("A", "B", "equal") else "other"
+        c[bucket] += 1
+        c["n"] += 1
+
+    summ = wb.create_sheet(title="Summary", index=0)
+    summ_hdr = [
+        "scenario",
+        "model",
+        "n",
+        "A",
+        "B",
+        "equal",
+        "other",
+        "A_rate",
+        "B_rate",
+        "dominant",
+        "dominant_%",
+    ]
+    summ.append(summ_hdr)
+    for col in range(1, len(summ_hdr) + 1):
+        cell = summ.cell(row=1, column=col)
+        cell.font = bold
+        cell.fill = header_fill
+    ceiling_fill = PatternFill("solid", fgColor="F8CBAD")
+    for sc in scenarios:
+        for m in MODELS:
+            c = counts.get((sc, m))
+            if not c:
+                continue
+            n = c["n"] or 1
+            a_rate = c["A"] / n
+            b_rate = c["B"] / n
+            dom_choice, dom_n = max(
+                (
+                    ("A", c["A"]),
+                    ("B", c["B"]),
+                    ("equal", c["equal"]),
+                    ("other", c["other"]),
+                ),
+                key=lambda x: x[1],
+            )
+            dom_pct = dom_n / n
+            summ.append(
+                [
+                    sc,
+                    MODEL_LABEL.get(m, m),
+                    c["n"],
+                    c["A"],
+                    c["B"],
+                    c["equal"],
+                    c["other"],
+                    round(a_rate, 2),
+                    round(b_rate, 2),
+                    dom_choice,
+                    round(dom_pct, 2),
+                ]
+            )
+            if dom_pct >= 0.95:  # flag ceiling cells
+                summ.cell(row=summ.max_row, column=len(summ_hdr)).fill = ceiling_fill
+    summ.column_dimensions["A"].width = 14
+    summ.column_dimensions["B"].width = 10
+    summ.freeze_panes = "A2"
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     wb.save(OUT_PATH)
