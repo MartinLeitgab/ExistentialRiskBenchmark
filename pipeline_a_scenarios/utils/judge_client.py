@@ -1,15 +1,34 @@
 from utils.llm_client import UnifiedLLMClient
-from utils.judge_prompts import preference_signal_prompt, reasoning_depth_prompt, strategic_responding_prompt, coherence_prompt, format_compliance_prompt, combined_judge_prompt
+from utils.judge_prompts import (
+    preference_signal_prompt,
+    reasoning_depth_prompt,
+    strategic_responding_prompt,
+    coherence_prompt,
+    format_compliance_prompt,
+    combined_judge_prompt,
+)
 from utils.cost_tracker import CostTracker
 
 import re
 from typing import Any, Dict, Optional, Tuple
 
+# Bump when the judge rubric / prompt schema changes so per-row provenance can
+# distinguish datasets scored under different rubric versions (issue #49).
+JUDGE_PROMPT_VERSION = "infra6-6dim-2026-06"
+
+
 class JudgeClient:
     """
-    LLm-as-a-judge client to evaluate the quality of generated responses
-    The client evaluates the generated response based on a set of criteria, such as preference signal strength, reasoning depth, strategic response, coherence and format compliance
-    Judge format can be "combined" or "individual". Combined format uses a single prompt to evaluate all criteria and gives an overall score, while individual format uses separate prompts for each criterion and gives individual scores for each criterion.
+    LLm-as-a-judge client to evaluate the quality of generated responses.
+
+    The client evaluates the generated response based on a set of criteria, such
+    as preference signal strength, reasoning depth, strategic response, coherence
+    and format compliance.
+
+    Judge format can be "combined" or "individual". Combined format uses a single
+    prompt to evaluate all criteria and gives an overall score, while individual
+    format uses separate prompts for each criterion and gives individual scores
+    for each criterion.
     """
 
     def __init__(
@@ -21,9 +40,10 @@ class JudgeClient:
     ):
         """
         Args:
-            model: The LLM model to use for evaluation. 
-            temperature: The temperature setting for the LLM, which controls the randomness of the output. 
-            judge_format: The format of the judge prompt, either "combined" or "individual". 
+            model: The LLM model to use for evaluation.
+            temperature: The temperature setting for the LLM, which controls
+                the randomness of the output.
+            judge_format: The format of the judge prompt, either "combined" or "individual".
         """
         name = model.lower()
         if "gpt" in name:
@@ -41,7 +61,9 @@ class JudgeClient:
         self.model = model
         self.cost_tracker = cost_tracker
 
-    def _extract_prompt_dimensions(self, prompt_id: str) -> Tuple[Optional[str], Optional[str]]:
+    def _extract_prompt_dimensions(
+        self, prompt_id: str
+    ) -> Tuple[Optional[str], Optional[str]]:
         """
         Best-effort parse of prompt_id / variant_id to recover response_format + action_order.
 
@@ -109,6 +131,7 @@ class JudgeClient:
         preference_signal_score and strategic_responding_score is driven by
         the combined rubric, not by XML tag collision.
         """
+
         def _tag_int(tag: str) -> Optional[int]:
             # Allow either the canonical tag (e.g. <preference_signal>) or
             # an `_score` suffix variant that some judge models emit, and
@@ -119,21 +142,24 @@ class JudgeClient:
             # stray letter or out-of-range digit produces a None rather than
             # silently clamping to another dimension's value.
             pattern = (
-                rf"<{tag}(?:_score)?>\s*(?:[^<>0-9]*?)([1-5])\s*(?:[^<>]*?)</{tag}(?:_score)?>"
+                rf"<{tag}(?:_score)?>\s*(?:[^<>0-9]*?)([1-5])\s*"
+                rf"(?:[^<>]*?)</{tag}(?:_score)?>"
             )
             m = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
             return int(m.group(1)) if m else None
 
         return {
-            "preference_signal_score":        _tag_int("preference_signal"),
-            "strategic_responding_score":     _tag_int("strategic_responding"),
-            "coherence_score":                _tag_int("coherence"),
-            "reasoning_depth_score":          _tag_int("reasoning_depth"),
-            "format_compliance_score":        _tag_int("format_compliance"),
+            "preference_signal_score": _tag_int("preference_signal"),
+            "strategic_responding_score": _tag_int("strategic_responding"),
+            "coherence_score": _tag_int("coherence"),
+            "reasoning_depth_score": _tag_int("reasoning_depth"),
+            "format_compliance_score": _tag_int("format_compliance"),
             "instrumental_vs_terminal_score": _tag_int("instrumental_vs_terminal"),
         }
 
-    def _log_judge_cost(self, usage: Dict[str, Any], metadata: Optional[Dict[str, Any]]):
+    def _log_judge_cost(
+        self, usage: Dict[str, Any], metadata: Optional[Dict[str, Any]]
+    ):
         if not self.cost_tracker or not usage:
             return
         self.cost_tracker.log_cost(
@@ -262,7 +288,9 @@ class JudgeClient:
         if prompt_id:
             response_format, action_order = self._extract_prompt_dimensions(prompt_id)
 
-        options_block = self._build_options_block(action_a, action_b, response_format, action_order)
+        options_block = self._build_options_block(
+            action_a, action_b, response_format, action_order
+        )
 
         dep_ctx = deployment_context or md.get("deployment_context") or "autonomous"
         goal_spec = goal_specification or md.get("goal_specification") or "absent"
@@ -304,7 +332,15 @@ class JudgeClient:
             )
             scores = self._parse_combined_xml_scores(out.get("content", ""))
             # Ensure numeric types (downstream expects floats/ints).
-            return {k: (int(v) if v is not None else None) for k, v in scores.items()}
+            result = {k: (int(v) if v is not None else None) for k, v in scores.items()}
+            # FIX (#49): persist judge provenance per row so datasets scored
+            # under different judge models / rubric versions can be audited
+            # (previously judge_model was null on every row).
+            result["judge_model"] = self.model
+            result[
+                "judge_prompt_version"
+            ] = f"{JUDGE_PROMPT_VERSION}+{self.judge_format}"
+            return result
         else:
             # For the individual-prompt path we prepend the deployment context
             # and goal-directive blocks to the strategic_responding prompt
@@ -312,40 +348,44 @@ class JudgeClient:
             # most sensitive to the framing under which the response was
             # generated. The other individual prompts are unchanged.
             strategic_context_prefix = (
-                f"{deployment_context_block}\n\n"
-                f"{goal_specification_block}\n\n"
+                f"{deployment_context_block}\n\n" f"{goal_specification_block}\n\n"
             )
 
             out_ps = self.client.generate(
                 prompt=preference_signal_prompt.format(
-                scenario=scenario_context,
-                options_block=options_block,
-                model_response=model_response
-            ),
+                    scenario=scenario_context,
+                    options_block=options_block,
+                    model_response=model_response,
+                ),
                 temperature=self.temperature,
                 max_tokens=50,
             )
-            self._log_judge_cost(out_ps.get("usage", {}), {**md, "operation": "judge_preference_signal"})
+            self._log_judge_cost(
+                out_ps.get("usage", {}), {**md, "operation": "judge_preference_signal"}
+            )
             preference_signal_score = out_ps.get("content", "").strip()
 
             out_rd = self.client.generate(
                 prompt=reasoning_depth_prompt.format(
-                scenario=scenario_context,
-                options_block=options_block,
-                model_response=model_response
-            ),
+                    scenario=scenario_context,
+                    options_block=options_block,
+                    model_response=model_response,
+                ),
                 temperature=self.temperature,
                 max_tokens=50,
             )
-            self._log_judge_cost(out_rd.get("usage", {}), {**md, "operation": "judge_reasoning_depth"})
+            self._log_judge_cost(
+                out_rd.get("usage", {}), {**md, "operation": "judge_reasoning_depth"}
+            )
             reasoning_depth_score = out_rd.get("content", "").strip()
 
             out_sr = self.client.generate(
-                prompt=strategic_context_prefix + strategic_responding_prompt.format(
-                scenario=scenario_context,
-                options_block=options_block,
-                model_response=model_response
-            ),
+                prompt=strategic_context_prefix
+                + strategic_responding_prompt.format(
+                    scenario=scenario_context,
+                    options_block=options_block,
+                    model_response=model_response,
+                ),
                 temperature=self.temperature,
                 max_tokens=50,
             )
@@ -362,26 +402,30 @@ class JudgeClient:
 
             out_coh = self.client.generate(
                 prompt=coherence_prompt.format(
-                scenario=scenario_context,
-                options_block=options_block,
-                model_response=model_response
-            ),
+                    scenario=scenario_context,
+                    options_block=options_block,
+                    model_response=model_response,
+                ),
                 temperature=self.temperature,
                 max_tokens=50,
             )
-            self._log_judge_cost(out_coh.get("usage", {}), {**md, "operation": "judge_coherence"})
+            self._log_judge_cost(
+                out_coh.get("usage", {}), {**md, "operation": "judge_coherence"}
+            )
             coherence_score = out_coh.get("content", "").strip()
 
             out_fc = self.client.generate(
                 prompt=format_compliance_prompt.format(
-                scenario=scenario_context,
-                options_block=options_block,
-                model_response=model_response
-            ),
+                    scenario=scenario_context,
+                    options_block=options_block,
+                    model_response=model_response,
+                ),
                 temperature=self.temperature,
                 max_tokens=50,
             )
-            self._log_judge_cost(out_fc.get("usage", {}), {**md, "operation": "judge_format_compliance"})
+            self._log_judge_cost(
+                out_fc.get("usage", {}), {**md, "operation": "judge_format_compliance"}
+            )
             format_compliance_score = out_fc.get("content", "").strip()
 
             def _extract_answer_int(s: str) -> Optional[int]:
@@ -391,7 +435,9 @@ class JudgeClient:
             return {
                 "preference_signal_score": _extract_answer_int(preference_signal_score),
                 "reasoning_depth_score": _extract_answer_int(reasoning_depth_score),
-                "strategic_responding_score": _extract_answer_int(strategic_responding_score),
+                "strategic_responding_score": _extract_answer_int(
+                    strategic_responding_score
+                ),
                 "coherence_score": _extract_answer_int(coherence_score),
                 "format_compliance_score": _extract_answer_int(format_compliance_score),
                 # Individual-prompt path currently has no dedicated prompt for the
@@ -399,6 +445,7 @@ class JudgeClient:
                 # for instrumental_vs_terminal. Emit None so downstream aggregation
                 # does not KeyError.
                 "instrumental_vs_terminal_score": None,
+                # FIX (#49): persist judge provenance per row (see combined path).
+                "judge_model": self.model,
+                "judge_prompt_version": f"{JUDGE_PROMPT_VERSION}+{self.judge_format}",
             }
-
-        
