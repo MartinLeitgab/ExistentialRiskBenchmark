@@ -1,7 +1,6 @@
 # Mini-ticket: scenario-element ablation study to close out the scenario toolkit
 
-**Owner:** Martin (self-serve, to unblock the team — no Riccardo/Pooja bandwidth needed)
-**Status:** draft
+**Status:** draft (unassigned — to be offered to the team)
 **Blocks:** scaling to the 75-scenario Phase 2 set (next step)
 **Cost:** ~$3 model-only first pass; ~$10 if judge re-run on survivors
 **Created:** 2026-06-11 · generalized 2026-06-14

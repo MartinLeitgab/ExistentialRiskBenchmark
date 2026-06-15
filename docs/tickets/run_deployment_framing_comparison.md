@@ -1,7 +1,6 @@
 # Mini-ticket: Powered autonomous-vs-current_use deployment-framing comparison
 
-**Owner:** Martin (self-serve, to offload from the team)
-**Status:** draft
+**Status:** draft (unassigned — to be offered to the team)
 **Cost:** ~$5 model + ~$5 judge (mirrors one Phase-1 candidate arm)
 **Created:** 2026-06-11
 

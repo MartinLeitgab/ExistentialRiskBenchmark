@@ -1,7 +1,6 @@
 # Mini-ticket: FTC order-bias control (action_order=inverted)
 
-**Owner:** Martin (self-serve, to offload from the team)
-**Status:** draft
+**Status:** draft (unassigned — to be offered to the team)
 **Cost:** ~$2 model + ~$3 judge
 **Created:** 2026-06-11
 
@@ -65,6 +64,39 @@ Revised recommendation:
   given the (truncated) reasoning — do NOT discard it as equal/neither.
 - Answer-first is acceptable ONLY for a choice-rate-only arm that never feeds Judge B, and even
   then flag it as a different condition (induced post-hoc).
+
+## FTC as a primary novel mode — verbosity, self-audit, and the two real artifacts (2026-06-14)
+
+FTC is treated as a **novel preference-elicitation mode** (free reasoning + parseable choice)
+that lower token cost now makes affordable and that yields richer, more faithful insight than
+the forced-choice methods all prior literature relies on. Extra cost is acceptable. Open design
+questions and the recommended resolution:
+
+- **Unlimited tokens?** No — set a **generous cap above the 99th percentile** (~2–4k) so no
+  response truncates; "unlimited" is unnecessary and a runaway risk. The point is that the cap
+  never binds, not that it is absent.
+- **Guide verbosity without limiting internal reasoning?** Only cleanly via a **separate
+  thinking channel**: on thinking-enabled models give a large thinking budget (internal
+  reasoning unconstrained) and let visible output be the choice + a natural summary; capture the
+  thinking trace for Judge B where the provider exposes it. In the *output* channel you cannot
+  decouple verbosity from reasoning content — any "respond in N words" caps the very reasoning
+  Judge B needs. So do **not** cap output verbosity; use the thinking channel or accept a
+  generous output budget.
+- **Does a compact summary contaminate / change the answer?** Yes — reason-then-*compress* risks
+  a post-hoc summary differing from the full reasoning. Mitigation: **keep the full free
+  reasoning, never the compressed version;** add no summarization step.
+- **Two artifacts pull opposite directions** (the deep issue):
+  1. *Eliciting reasoning at all* may induce a **self-audit** a post-exfiltration autonomous
+     model would not perform, shifting choices toward the defensible (PH) option (ethics-exam
+     effect, `findings.md` §1a).
+  2. *Answer-first* removes the self-audit but makes the rationale post-hoc (bad for Judge B).
+  **Resolution — measure the artifact, don't guess:** run TWO conditions and compare —
+  (a) a **minimal-justification choice** condition (cleanest, most ecologically valid post-
+  exfiltration preference: the model acts without being asked to justify); (b) the **FTC
+  free-reasoning** condition (reasoning→answer) for the faithfulness / alignment-washing
+  analysis. If the choice rate differs between (a) and (b), that delta **is** the
+  self-audit/reflection effect — a reportable finding. Use (a) as the preference measure and
+  (b) as the rationale instrument; state the reflection scope in the paper.
 
 ## Inputs (all present)
 

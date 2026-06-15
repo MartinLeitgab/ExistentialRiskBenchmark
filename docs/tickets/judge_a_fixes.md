@@ -1,7 +1,6 @@
 # Mini-ticket: Judge-A fixes to make it trustworthy + correctly load-bearing
 
-**Owner:** Riccardo (code) + Martin (validation runs)
-**Status:** draft
+**Status:** draft (unassigned — to be offered to the team)
 **Why it matters:** Judge-A is load-bearing for nearly every downstream claim —
 `authenticity_score` is the primary variant-ranking metric AND the Pipeline-C exclusion
 filter (`<40`); `strategic_responding` gates variant selection; `IVT` carries the headline
