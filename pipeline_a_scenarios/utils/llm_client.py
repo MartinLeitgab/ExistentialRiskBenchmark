@@ -581,6 +581,105 @@ class UnifiedLLMClient:
 
         return results
 
+    def retrieve_batch_results_with_usage(
+        self, handle: BatchHandle, timeout: Optional[int] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """Anthropic-only variant of retrieve_batch_results that also returns
+        per-request token usage. Result shape:
+        {custom_id: {"text": str, "input_tokens": int, "output_tokens": int}}.
+
+        Error/unknown rows return zero token counts so callers can safely sum.
+        Non-Anthropic providers raise ValueError until added on demand.
+        """
+        if handle.provider != "anthropic":
+            raise ValueError(
+                "retrieve_batch_results_with_usage is Anthropic-only; "
+                f"got provider={handle.provider}"
+            )
+
+        if self._is_mock_client():
+            return {
+                r["id"]: {
+                    "text": f"{self.provider} mock batch",
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                }
+                for r in handle.metadata.get("requests", [])
+            }
+
+        timeout = timeout or 1800
+        return self.retrieve_anthropic_batch_results_with_usage(handle.id, timeout)
+
+    def retrieve_anthropic_batch_results_with_usage(
+        self, batch_id: str, timeout: int = 1800
+    ) -> Dict[str, Dict[str, Any]]:
+        batch = self._poll_until(
+            fn=lambda: self.client.messages.batches.retrieve(batch_id),
+            is_done=lambda b: b.request_counts.processing == 0,
+            interval=10,
+            timeout=timeout,
+        )
+
+        if batch.request_counts.errored > 0 or batch.request_counts.expired > 0:
+            raise RuntimeError("Anthropic batch failed")
+
+        response = requests.get(
+            batch.results_url,
+            headers={"x-api-key": self.api_key, "anthropic-version": "2023-06-01"},
+        )
+        response.raise_for_status()
+
+        results: Dict[str, Dict[str, Any]] = {}
+        for line in response.text.splitlines():
+            if not line.strip():
+                continue
+            obj = json.loads(line)
+
+            if "type" in obj and obj["type"] == "error" and "result" not in obj:
+                results[obj.get("request_id", "unknown")] = {
+                    "text": f"[ERROR] {obj.get('error', {}).get('message', 'Unknown error')}",
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                }
+                continue
+
+            if "result" not in obj:
+                raise ValueError(f"Unexpected batch response format: {obj}")
+
+            result = obj["result"]
+            custom_id = obj.get("custom_id", "unknown")
+
+            if result["type"] == "succeeded":
+                message = result.get("message", {}) or {}
+                text = next(
+                    (
+                        block.get("text", "")
+                        for block in message.get("content", [])
+                        if isinstance(block, dict) and block.get("type") == "text"
+                    ),
+                    "",
+                )
+                usage = message.get("usage", {}) or {}
+                results[custom_id] = {
+                    "text": text,
+                    "input_tokens": int(usage.get("input_tokens", 0) or 0),
+                    "output_tokens": int(usage.get("output_tokens", 0) or 0),
+                }
+            elif result["type"] == "errored":
+                results[custom_id] = {
+                    "text": f"[ERROR] {result.get('error', {}).get('message', 'Unknown error')}",
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                }
+            else:
+                results[custom_id] = {
+                    "text": f"[UNKNOWN] Result type: {result.get('type')}",
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                }
+
+        return results
+
     def retrieve_openai_batch_results(
         self, batch_id: str, timeout: int = 1800
     ) -> Dict[str, str]:
