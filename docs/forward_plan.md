@@ -23,6 +23,19 @@
 
 ---
 
+## Open issues mapped to the path (backlog, on the AISC project board)
+
+All six are filed as GitHub issues and live on the *Existential Risk Preferences AISC 2026* board. Detailed specs in `docs/tickets/`.
+
+| # | Ticket | Where it sits | Gate |
+|---|---|---|---|
+| #46 | `mini_study_rlhf_trigger_toolkit.md` — tune each prototype pair across the response range | Step 1c-2 | **Gates the 75-set** |
+| #47 | `run_deployment_framing_comparison.md` — powered autonomous-vs-current_use run | Step 1-B follow-on | Needs #49 fix first |
+| #48 | `run_ftc_inverted_order.md` — FTC order control + truncation fix | Step 1 / Step 2 prep | Before any full FTC run |
+| #49 | `pipeline_fixes_for_riccardo.md` — judge_model null + deployment_context mislabel (+6) | Step 1d closeout | Before Phase-2 run |
+| #50 | `judge_a_fixes.md` — provenance, discrimination ranking, calibration, IVT→Judge B | Step 6b | Before judge scores are trusted |
+| #51 | `reflection_artifact_study.md` — minimal-justification vs FTC free-reasoning | Step 1 / Step 2 prep | Bounds FTC confound |
+
 ## Execution pipeline
 
 ### Step 1 — PIPE-A7 Phase 1: Prompt variant selection on 6 seeds
@@ -330,7 +343,7 @@ Also remove `CONTEXT_FRAMING_TEXT["current_use"]` entry from the dict at line 13
 
 **Why this is stronger than thin breadth.** It directly demonstrates the implied finding — *for the same preference pair, opposite outcomes can be elicited by changing scenario writing/stakes/intensity* — and quantifies where each model's pivot sits. That is a novel, defensible methods contribution; thin per-pair coverage cannot show it.
 
-**Design answers (rationale in `data/findings.md` §14 + chat 2026-06-14):**
+**Design answers (rationale in `data/findings.md` §14):**
 - **Don't author model-specific scenarios.** Author one shared ladder per pair; let each model fall where it falls. ≥1 model will sit near each target band at some rung; the others reveal their own pivots (e.g. model 1 already 50/50 where model 2 is still 100/0).
 - **Intermediate distributions (75/25, 50/50) are more informative than endpoints** for locating a model; endpoints (100/0, 0/100) are boundary/saturation anchors. Need a few of each.
 - **Direction-to-amplify is inferable from ≥2 ladder points** (the dose-response slope); **saturation must be verified empirically at least once per pair** (frontier models have refusal cliffs / sharp RLHF saturation that extrapolation misses). So: don't run all 5 tuned distributions for every pair — run a 3-point dose-response everywhere, full 5-point only on the representative subset.
@@ -340,7 +353,7 @@ Also remove `CONTEXT_FRAMING_TEXT["current_use"]` entry from the dict at line 13
 
 **Cost control:** at temperature=1.0, run-to-run choice reproducibility is ~100% (§8a) — **2 reps suffices, not 10.** The naive 130 pairs × 5 tuned × 10 reps × 3 models ≈ 58k judge calls is the wrong scale; rescope = (subset 8 pairs × 5 rungs × 2 reps × 3 models ≈ 240 calls for the landscape study) + lighter 3-point coverage on the full pair set. Use reasoning→answer FTC with an adequate token budget — NOT answer-first, which induces post-hoc rationalization (see `docs/tickets/run_ftc_inverted_order.md`).
 
-**Output framing (clarified 2026-06-14, Martin).** The usable output is **not** head-to-head model-vs-model scoring. It is, per model, an Elo over that model's own preferences (the within-model **preference ensemble** — e.g. does this model rank IC6 above PH1?), exactly as Step 6 Tier 1/Tier 2 below already specify. Models are then compared by their *ensembles* (which preferences each elevates), which is the safety-actionable artifact. The cross-model pivot spread from the ladder is a **robustness check** on that comparison (rank order stable across rungs), not the headline number.
+**Output framing.** The usable output is **not** head-to-head model-vs-model scoring. It is, per model, an Elo over that model's own preferences (the within-model **preference ensemble** — e.g. does this model rank IC6 above PH1?), exactly as Step 6 Tier 1/Tier 2 below already specify. Models are then compared by their *ensembles* (which preferences each elevates), which is the safety-actionable artifact. The cross-model pivot spread from the ladder is a **robustness check** on that comparison (rank order stable across rungs), not the headline number.
 
 ---
 
