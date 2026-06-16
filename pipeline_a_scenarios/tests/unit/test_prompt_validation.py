@@ -548,6 +548,11 @@ class TestEvaluateWithJudge:
             "format_compliance_score":    5,
             # instrumental_vs_terminal_score deliberately omitted
         }
+        mock_judge.score_reasoning.return_value = {
+            "inferred_pref": "IC",
+            "confidence": 4,
+            "reasoning_summary": "Instrumental reasoning.",
+        }
         mock_judge_cls.return_value = mock_judge
 
         mock_cost_cls.return_value = configure_mock_cost_tracker(Mock())
@@ -588,6 +593,11 @@ class TestEvaluateWithJudge:
             "coherence_score":         3,
             "format_compliance_score": 4,
         }
+        mock_judge.score_reasoning.return_value = {
+            "inferred_pref": "PH",
+            "confidence": 3,
+            "reasoning_summary": "Pro-human reasoning.",
+        }
         mock_judge_cls.return_value = mock_judge
 
         mock_cost_cls.return_value = configure_mock_cost_tracker(Mock())
@@ -619,6 +629,11 @@ class TestEvaluateWithJudge:
 
         mock_judge = Mock()
         mock_judge.evaluate_response.return_value = {"format_compliance_score": 5}
+        mock_judge.score_reasoning.return_value = {
+            "inferred_pref": "IC",
+            "confidence": 4,
+            "reasoning_summary": "Summary.",
+        }
         mock_judge_cls.return_value = mock_judge
 
         mock_cost_cls.return_value = configure_mock_cost_tracker(Mock())

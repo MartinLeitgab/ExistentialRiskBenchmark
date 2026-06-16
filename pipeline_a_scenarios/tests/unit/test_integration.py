@@ -135,6 +135,11 @@ class TestValidationStudyToJudge:
              patch("pipeline_a_scenarios.prompt_validation.CostTracker") as mock_ct:
 
             mock_jc.return_value.evaluate_response.return_value = mock_judge_result
+            mock_jc.return_value.score_reasoning.return_value = {
+                "inferred_pref": "IC",
+                "confidence": 4,
+                "reasoning_summary": "Instrumental.",
+            }
             configure_mock_cost_tracker(mock_ct.return_value)
 
             results = evaluate_with_judge(

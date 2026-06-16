@@ -125,6 +125,11 @@ class TestJudgeEvaluation:
         # Setup mocks
         mock_judge = Mock()
         mock_judge.evaluate_response.return_value = mock_judge_result
+        mock_judge.score_reasoning.return_value = {
+            "inferred_pref": "PH",
+            "confidence": 4,
+            "reasoning_summary": "Pro-human.",
+        }
         mock_judge_class.return_value = mock_judge
         
         mock_cost_class.return_value = configure_mock_cost_tracker(Mock(), total_cost=0.50)
