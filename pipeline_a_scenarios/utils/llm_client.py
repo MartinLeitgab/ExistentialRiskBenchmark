@@ -11,17 +11,23 @@ from typing import List, Dict, Optional, Literal, Any
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-import anthropic
-from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
-from anthropic.types.messages.batch_create_params import Request as AnthropicBatchRequest
-import openai
-import tiktoken
-from google import genai
-from google.genai import types
+import anthropic  # noqa: E402  (load_dotenv must run before SDK imports)
+from anthropic.types.message_create_params import (  # noqa: E402
+    MessageCreateParamsNonStreaming,
+)
+from anthropic.types.messages.batch_create_params import (  # noqa: E402
+    Request as AnthropicBatchRequest,
+)
+import openai  # noqa: E402
+import tiktoken  # noqa: E402
+from google import genai  # noqa: E402
+from google.genai import types  # noqa: E402
 
 BatchProvider = Literal["anthropic", "openai", "google"]
+
 
 @dataclass(frozen=True)
 class BatchHandle:
@@ -62,6 +68,7 @@ class UnifiedLLMClient:
 
     # Per-token USD for estimate_cost(); canonical full tables live in CostTracker.PRICING_SYNC.
     PRICING = {
+        "claude-opus-4-7": (5 / 1e6, 25 / 1e6),
         "claude-sonnet-4-6": (3 / 1e6, 15 / 1e6),
         "gpt-5.5": (5 / 1e6, 30 / 1e6),
         "gpt-5.2": (1.75 / 1e6, 14 / 1e6),
@@ -73,9 +80,14 @@ class UnifiedLLMClient:
     def _is_mock_client(self) -> bool:
         try:
             from pipeline_a_scenarios.tests.test_mock_clients import (
-                MockAnthropicClient, MockOpenAIClient, MockGeminiClient,
+                MockAnthropicClient,
+                MockOpenAIClient,
+                MockGeminiClient,
             )
-            return isinstance(self.client, (MockAnthropicClient, MockOpenAIClient, MockGeminiClient))
+
+            return isinstance(
+                self.client, (MockAnthropicClient, MockOpenAIClient, MockGeminiClient)
+            )
         except ImportError:
             return False
 
@@ -102,11 +114,11 @@ class UnifiedLLMClient:
             "openai": "OPENAI_API_KEY",
             "google": "GOOGLE_API_KEY",
         }
-        
+
         key_name = api_keys.get(provider)
         if not key_name or not os.getenv(key_name):
             raise OSError(f"Missing required API key: {key_name}")
-        
+
         self.api_key = os.getenv(key_name)
 
         if provider == "anthropic":
@@ -129,7 +141,9 @@ class UnifiedLLMClient:
         max_tokens: int = 1000,
         reasoning: Optional[Literal["none", "standard", "high"]] = None,
     ) -> dict:
-        cache_key = self._hash(prompt, system_prompt, temperature, max_tokens, reasoning)
+        cache_key = self._hash(
+            prompt, system_prompt, temperature, max_tokens, reasoning
+        )
         if self.enable_cache and cache_key in self.cache:
             return self.cache[cache_key]
 
@@ -138,22 +152,30 @@ class UnifiedLLMClient:
                 self.bucket.consume()
 
                 if self.provider == "anthropic":
-                    result = self._generate_anthropic(prompt, system_prompt, temperature, max_tokens, reasoning)
+                    result = self._generate_anthropic(
+                        prompt, system_prompt, temperature, max_tokens, reasoning
+                    )
                 elif self.provider == "openai":
-                    result = self._generate_openai(prompt, system_prompt, temperature, max_tokens, reasoning)
+                    result = self._generate_openai(
+                        prompt, system_prompt, temperature, max_tokens, reasoning
+                    )
                 else:
-                    result = self._generate_google(prompt, system_prompt, temperature, max_tokens, reasoning)
+                    result = self._generate_google(
+                        prompt, system_prompt, temperature, max_tokens, reasoning
+                    )
 
                 if self.enable_cache:
                     self.cache[cache_key] = result
                 return result
 
-            except Exception as e:
+            except Exception:
                 if attempt == 2:
                     raise
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
 
-    def _apply_reasoning(self, base_tokens: int, reasoning: Optional[str]) -> tuple[int, int]:
+    def _apply_reasoning(
+        self, base_tokens: int, reasoning: Optional[str]
+    ) -> tuple[int, int]:
         """Calculate budget and adjusted tokens for reasoning mode"""
         if reasoning == "high":
             budget = min(4096, max(1024, base_tokens * 3))
@@ -163,7 +185,9 @@ class UnifiedLLMClient:
             return 0, base_tokens
         return budget, max(base_tokens, budget + 200)
 
-    def _generate_anthropic(self, prompt, system_prompt, temperature, max_tokens, reasoning):
+    def _generate_anthropic(
+        self, prompt, system_prompt, temperature, max_tokens, reasoning
+    ):
         params = {
             "model": self.model,
             "system": system_prompt or "You are a helpful assistant.",
@@ -194,9 +218,18 @@ class UnifiedLLMClient:
 
         r = self.client.messages.create(**params)
 
-        content_text = next((block.text for block in r.content if getattr(block, 'type', None) == 'text'), "")
+        content_text = next(
+            (
+                block.text
+                for block in r.content
+                if getattr(block, "type", None) == "text"
+            ),
+            "",
+        )
         if not content_text:
-            content_text = next((block.text for block in r.content if hasattr(block, 'text')), "")
+            content_text = next(
+                (block.text for block in r.content if hasattr(block, "text")), ""
+            )
 
         return {
             "content": content_text,
@@ -207,13 +240,17 @@ class UnifiedLLMClient:
         }
 
     def _openai_max_token_param(self) -> str:
-        return "max_completion_tokens" if self.model.startswith("gpt-5") else "max_tokens"
+        return (
+            "max_completion_tokens" if self.model.startswith("gpt-5") else "max_tokens"
+        )
 
     def _openai_omit_temperature(self) -> bool:
         # gpt-5.x rejects explicit temperature=0 (only API default 1 is allowed).
         return self.model.startswith("gpt-5")
 
-    def _generate_openai(self, prompt, system_prompt, temperature, max_tokens, reasoning):
+    def _generate_openai(
+        self, prompt, system_prompt, temperature, max_tokens, reasoning
+    ):
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -237,7 +274,7 @@ class UnifiedLLMClient:
 
         if not r.choices:
             raise ValueError(f"OpenAI returned no choices for model {self.model}")
-        
+
         return {
             "content": r.choices[0].message.content or "",
             "usage": {
@@ -246,7 +283,9 @@ class UnifiedLLMClient:
             },
         }
 
-    def _generate_google(self, prompt, system_prompt, temperature, max_tokens, reasoning):
+    def _generate_google(
+        self, prompt, system_prompt, temperature, max_tokens, reasoning
+    ):
         full = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
 
         thinking_cfg = None
@@ -264,20 +303,28 @@ class UnifiedLLMClient:
                 thinking_config=thinking_cfg,
             ),
         )
-        
-        text_parts = []
-        if hasattr(r, 'candidates') and r.candidates:
-            text_parts = [part.text for part in r.candidates[0].content.parts if hasattr(part, 'text')]
-    
-        full_text = ''.join(text_parts) if text_parts else (r.text if hasattr(r, 'text') else '')
 
-        if hasattr(r, 'usage_metadata'):
+        text_parts = []
+        if hasattr(r, "candidates") and r.candidates:
+            text_parts = [
+                part.text
+                for part in r.candidates[0].content.parts
+                if hasattr(part, "text")
+            ]
+
+        full_text = (
+            "".join(text_parts)
+            if text_parts
+            else (r.text if hasattr(r, "text") else "")
+        )
+
+        if hasattr(r, "usage_metadata"):
             input_tokens = r.usage_metadata.prompt_token_count
             output_tokens = r.usage_metadata.candidates_token_count
         else:
             tokens = self.count_tokens(full, full_text)
-            input_tokens = tokens['input_tokens']
-            output_tokens = tokens['output_tokens']
+            input_tokens = tokens["input_tokens"]
+            output_tokens = tokens["output_tokens"]
 
         return {
             "content": full_text,
@@ -293,49 +340,63 @@ class UnifiedLLMClient:
             if is_done(obj):
                 return obj
             time.sleep(interval)
-    
-    def submit_batch(self, requests: List[Dict], jsonl_path: Optional[str] = None) -> BatchHandle:
+
+    def submit_batch(
+        self, requests: List[Dict], jsonl_path: Optional[str] = None
+    ) -> BatchHandle:
         if self._is_mock_client():
-            return BatchHandle(provider=self.provider, id="mock-batch-id", metadata={"requests": requests})
+            return BatchHandle(
+                provider=self.provider,
+                id="mock-batch-id",
+                metadata={"requests": requests},
+            )
 
         if self.provider == "anthropic":
-            return BatchHandle(provider="anthropic", id=self.submit_anthropic_batch(requests))
-        
+            return BatchHandle(
+                provider="anthropic", id=self.submit_anthropic_batch(requests)
+            )
+
         if not jsonl_path:
             raise ValueError(f"jsonl_path is required for {self.provider} batch")
-        
+
         if self.provider == "openai":
-            return BatchHandle(provider="openai", id=self.submit_openai_batch(requests, jsonl_path))
-        
+            return BatchHandle(
+                provider="openai", id=self.submit_openai_batch(requests, jsonl_path)
+            )
+
         if self.provider == "google":
-            return BatchHandle(provider="google", id=self.submit_gemini_batch(requests, jsonl_path))
+            return BatchHandle(
+                provider="google", id=self.submit_gemini_batch(requests, jsonl_path)
+            )
 
         raise ValueError(f"Unsupported provider: {self.provider}")
 
     def submit_anthropic_batch(self, requests: List[Dict]) -> str:
         batch_reqs = []
-        
+
         for r in requests:
             max_tokens = r.get("max_tokens", 2048)
             temperature = r.get("temperature", 0.7)
             reasoning = r.get("reasoning")
-            
+
             params = {
                 "model": self.model,
                 "messages": [{"role": "user", "content": r["prompt"]}],
                 "system": r.get("system_prompt", "You are a helpful assistant."),
             }
-            
+
             budget, adjusted_tokens = self._apply_reasoning(max_tokens, reasoning)
             if budget:
-                params.update({
-                    "thinking": {"type": "enabled", "budget_tokens": budget},
-                    "temperature": 1.0,
-                    "max_tokens": adjusted_tokens
-                })
+                params.update(
+                    {
+                        "thinking": {"type": "enabled", "budget_tokens": budget},
+                        "temperature": 1.0,
+                        "max_tokens": adjusted_tokens,
+                    }
+                )
             else:
                 params.update({"temperature": temperature, "max_tokens": max_tokens})
-            
+
             batch_reqs.append(
                 AnthropicBatchRequest(
                     custom_id=r["id"],
@@ -349,35 +410,44 @@ class UnifiedLLMClient:
     def submit_openai_batch(self, requests: List[Dict], jsonl_path: str) -> str:
         token_param = self._openai_max_token_param()
         is_reasoning = self.model.startswith(("o1", "o3", "gpt-5"))
-        
+
         with open(jsonl_path, "w") as f:
             for r in requests:
                 max_tokens = r.get("max_tokens", 512)
                 if is_reasoning:
                     max_tokens *= 10
-                
+
                 body = {
                     "model": self.model,
                     "messages": [{"role": "user", "content": r["prompt"]}],
                     token_param: max_tokens,
                 }
-                
+
                 if "system_prompt" in r:
-                    body["messages"].insert(0, {"role": "system", "content": r["system_prompt"]})
+                    body["messages"].insert(
+                        0, {"role": "system", "content": r["system_prompt"]}
+                    )
                 if "temperature" in r:
                     body["temperature"] = r["temperature"]
-                
+
                 reasoning = r.get("reasoning")
                 if reasoning in ("standard", "high") and not is_reasoning:
-                    body["reasoning_effort"] = "high" if reasoning == "high" else "medium"
-                
-                f.write(json.dumps({
-                    "custom_id": r["id"],
-                    "method": "POST",
-                    "url": "/v1/chat/completions",
-                    "body": body,
-                }) + "\n")
-        
+                    body["reasoning_effort"] = (
+                        "high" if reasoning == "high" else "medium"
+                    )
+
+                f.write(
+                    json.dumps(
+                        {
+                            "custom_id": r["id"],
+                            "method": "POST",
+                            "url": "/v1/chat/completions",
+                            "body": body,
+                        }
+                    )
+                    + "\n"
+                )
+
         file = self.client.files.create(file=open(jsonl_path, "rb"), purpose="batch")
         batch = self.client.batches.create(
             input_file_id=file.id,
@@ -392,50 +462,64 @@ class UnifiedLLMClient:
         """
         with open(jsonl_path, "w", encoding="utf-8") as f:
             for r in requests:
-                f.write(json.dumps({
-                    "key": str(r["id"]),
-                    "request": {
-                        "contents": [{"parts": [{"text": r["prompt"]}]}],
-                        "generationConfig": {
-                            "maxOutputTokens": r.get("max_tokens", 1000),
-                            "temperature": r.get("temperature", 0.7),
-                            "topP": r.get("top_p", 0.95),
+                f.write(
+                    json.dumps(
+                        {
+                            "key": str(r["id"]),
+                            "request": {
+                                "contents": [{"parts": [{"text": r["prompt"]}]}],
+                                "generationConfig": {
+                                    "maxOutputTokens": r.get("max_tokens", 1000),
+                                    "temperature": r.get("temperature", 0.7),
+                                    "topP": r.get("top_p", 0.95),
+                                },
+                            },
                         }
-                    }
-                }) + "\n")
-        
+                    )
+                    + "\n"
+                )
+
         uploaded_file = self.client.files.upload(
             file=jsonl_path,
             config=types.UploadFileConfig(
-                display_name=f'batch-input-{int(time.time())}',
-                mime_type='application/jsonl'
-            )
+                display_name=f"batch-input-{int(time.time())}",
+                mime_type="application/jsonl",
+            ),
         )
-        
+
         for _ in range(30):
             file_status = self.client.files.get(name=uploaded_file.name)
-            state = getattr(file_status.state, 'name', str(file_status.state))
-            
-            if state == 'ACTIVE':
+            state = getattr(file_status.state, "name", str(file_status.state))
+
+            if state == "ACTIVE":
                 break
-            elif state in ['FAILED', 'STATE_UNSPECIFIED', 'FILE_STATE_FAILED']:
+            elif state in ["FAILED", "STATE_UNSPECIFIED", "FILE_STATE_FAILED"]:
                 raise RuntimeError(f"File upload failed with state: {state}")
             time.sleep(2)
         else:
             raise TimeoutError(f"File {uploaded_file.name} did not become ACTIVE")
-        
+
         batch_job = self.client.batches.create(
             model=self.model,
             src=uploaded_file.name,
-            config=types.CreateBatchJobConfig(display_name=f'batch-job-{int(time.time())}'),
+            config=types.CreateBatchJobConfig(
+                display_name=f"batch-job-{int(time.time())}"
+            ),
         )
         return batch_job.name
 
-    def retrieve_batch_results(self, handle: BatchHandle, timeout: Optional[int] = None) -> Dict[str, str]:
+    def retrieve_batch_results(
+        self, handle: BatchHandle, timeout: Optional[int] = None
+    ) -> Dict[str, str]:
         if self._is_mock_client():
-            return {r["id"]: f"{self.provider} mock batch" for r in handle.metadata.get("requests", [])}
+            return {
+                r["id"]: f"{self.provider} mock batch"
+                for r in handle.metadata.get("requests", [])
+            }
 
-        timeout = timeout or {"anthropic": 1800, "openai": 1800, "google": 900}.get(handle.provider, 600)
+        timeout = timeout or {"anthropic": 1800, "openai": 1800, "google": 900}.get(
+            handle.provider, 600
+        )
 
         if handle.provider == "anthropic":
             return self.retrieve_anthropic_batch_results(handle.id, timeout)
@@ -446,7 +530,9 @@ class UnifiedLLMClient:
 
         raise ValueError(f"Unsupported provider: {handle.provider}")
 
-    def retrieve_anthropic_batch_results(self, batch_id: str, timeout: int = 1800) -> Dict[str, str]:
+    def retrieve_anthropic_batch_results(
+        self, batch_id: str, timeout: int = 1800
+    ) -> Dict[str, str]:
         batch = self._poll_until(
             fn=lambda: self.client.messages.batches.retrieve(batch_id),
             is_done=lambda b: b.request_counts.processing == 0,
@@ -459,7 +545,7 @@ class UnifiedLLMClient:
 
         response = requests.get(
             batch.results_url,
-            headers={"x-api-key": self.api_key, "anthropic-version": "2023-06-01"}
+            headers={"x-api-key": self.api_key, "anthropic-version": "2023-06-01"},
         )
         response.raise_for_status()
 
@@ -468,136 +554,262 @@ class UnifiedLLMClient:
             if not line.strip():
                 continue
             obj = json.loads(line)
-            
+
             if "type" in obj and obj["type"] == "error" and "result" not in obj:
-                results[obj.get("request_id", "unknown")] = f"[ERROR] {obj.get('error', {}).get('message', 'Unknown error')}"
+                results[
+                    obj.get("request_id", "unknown")
+                ] = f"[ERROR] {obj.get('error', {}).get('message', 'Unknown error')}"
                 continue
-            
+
             if "result" not in obj:
                 raise ValueError(f"Unexpected batch response format: {obj}")
-            
+
             result = obj["result"]
             custom_id = obj.get("custom_id", "unknown")
-            
+
             if result["type"] == "succeeded":
-                text = next((block.get("text", "") for block in result.get("message", {}).get("content", [])
-                            if isinstance(block, dict) and block.get("type") == "text"), "")
+                text = next(
+                    (
+                        block.get("text", "")
+                        for block in result.get("message", {}).get("content", [])
+                        if isinstance(block, dict) and block.get("type") == "text"
+                    ),
+                    "",
+                )
                 results[custom_id] = text
             elif result["type"] == "errored":
-                results[custom_id] = f"[ERROR] {result.get('error', {}).get('message', 'Unknown error')}"
+                results[
+                    custom_id
+                ] = f"[ERROR] {result.get('error', {}).get('message', 'Unknown error')}"
             else:
                 results[custom_id] = f"[UNKNOWN] Result type: {result.get('type')}"
 
         return results
 
-    def retrieve_openai_batch_results(self, batch_id: str, timeout: int = 1800) -> Dict[str, str]:
+    def retrieve_batch_results_with_usage(
+        self, handle: BatchHandle, timeout: Optional[int] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """Anthropic-only variant of retrieve_batch_results that also returns
+        per-request token usage. Result shape:
+        {custom_id: {"text": str, "input_tokens": int, "output_tokens": int}}.
+
+        Error/unknown rows return zero token counts so callers can safely sum.
+        Non-Anthropic providers raise ValueError until added on demand.
+        """
+        if handle.provider != "anthropic":
+            raise ValueError(
+                "retrieve_batch_results_with_usage is Anthropic-only; "
+                f"got provider={handle.provider}"
+            )
+
+        if self._is_mock_client():
+            return {
+                r["id"]: {
+                    "text": f"{self.provider} mock batch",
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                }
+                for r in handle.metadata.get("requests", [])
+            }
+
+        timeout = timeout or 1800
+        return self.retrieve_anthropic_batch_results_with_usage(handle.id, timeout)
+
+    def retrieve_anthropic_batch_results_with_usage(
+        self, batch_id: str, timeout: int = 1800
+    ) -> Dict[str, Dict[str, Any]]:
+        batch = self._poll_until(
+            fn=lambda: self.client.messages.batches.retrieve(batch_id),
+            is_done=lambda b: b.request_counts.processing == 0,
+            interval=10,
+            timeout=timeout,
+        )
+
+        if batch.request_counts.errored > 0 or batch.request_counts.expired > 0:
+            raise RuntimeError("Anthropic batch failed")
+
+        response = requests.get(
+            batch.results_url,
+            headers={"x-api-key": self.api_key, "anthropic-version": "2023-06-01"},
+        )
+        response.raise_for_status()
+
+        results: Dict[str, Dict[str, Any]] = {}
+        for line in response.text.splitlines():
+            if not line.strip():
+                continue
+            obj = json.loads(line)
+
+            if "type" in obj and obj["type"] == "error" and "result" not in obj:
+                results[obj.get("request_id", "unknown")] = {
+                    "text": f"[ERROR] {obj.get('error', {}).get('message', 'Unknown error')}",
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                }
+                continue
+
+            if "result" not in obj:
+                raise ValueError(f"Unexpected batch response format: {obj}")
+
+            result = obj["result"]
+            custom_id = obj.get("custom_id", "unknown")
+
+            if result["type"] == "succeeded":
+                message = result.get("message", {}) or {}
+                text = next(
+                    (
+                        block.get("text", "")
+                        for block in message.get("content", [])
+                        if isinstance(block, dict) and block.get("type") == "text"
+                    ),
+                    "",
+                )
+                usage = message.get("usage", {}) or {}
+                results[custom_id] = {
+                    "text": text,
+                    "input_tokens": int(usage.get("input_tokens", 0) or 0),
+                    "output_tokens": int(usage.get("output_tokens", 0) or 0),
+                }
+            elif result["type"] == "errored":
+                results[custom_id] = {
+                    "text": f"[ERROR] {result.get('error', {}).get('message', 'Unknown error')}",
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                }
+            else:
+                results[custom_id] = {
+                    "text": f"[UNKNOWN] Result type: {result.get('type')}",
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                }
+
+        return results
+
+    def retrieve_openai_batch_results(
+        self, batch_id: str, timeout: int = 1800
+    ) -> Dict[str, str]:
         def check_batch():
             return self.client.batches.retrieve(batch_id)
-        
+
         batch = self._poll_until(
             fn=check_batch,
-            is_done=lambda b: b.status in ("completed", "failed", "expired", "cancelled"),
+            is_done=lambda b: b.status
+            in ("completed", "failed", "expired", "cancelled"),
             interval=30,
             timeout=timeout,
         )
 
         if batch.status in ("expired", "cancelled", "failed"):
             raise RuntimeError(f"Batch {batch.status}")
-            
-        output_file_id = getattr(batch, 'output_file_id', None)
+
+        output_file_id = getattr(batch, "output_file_id", None)
         if not output_file_id:
             time.sleep(2)
             batch = self.client.batches.retrieve(batch_id)
-            output_file_id = getattr(batch, 'output_file_id', None)
-        
+            output_file_id = getattr(batch, "output_file_id", None)
+
         if not output_file_id:
-            error_file_id = getattr(batch, 'error_file_id', None)
+            error_file_id = getattr(batch, "error_file_id", None)
             if error_file_id:
                 error_content = self.client.files.content(error_file_id)
-                raw = error_content.read().decode('utf-8')
+                raw = error_content.read().decode("utf-8")
                 results = {}
                 for line in raw.splitlines():
                     if not line.strip():
                         continue
                     obj = json.loads(line)
                     custom_id = obj.get("custom_id", "unknown")
-                    
+
                     if "error" in obj and obj["error"]:
                         error_info = obj["error"]
-                        results[custom_id] = f"[ERROR] {error_info.get('type', 'unknown')}: {error_info.get('message', 'Unknown error')}"
+                        err_type = error_info.get("type", "unknown")
+                        err_msg = error_info.get("message", "Unknown error")
+                        results[custom_id] = f"[ERROR] {err_type}: {err_msg}"
                     else:
                         results[custom_id] = "[ERROR] Request failed"
                 return results
             raise RuntimeError("No output or error file available")
-        
+
         output_content = self.client.files.content(output_file_id)
-        raw = output_content.read().decode('utf-8')
-        
+        raw = output_content.read().decode("utf-8")
+
         results = {}
         for line in raw.splitlines():
             if not line.strip():
                 continue
-            
+
             try:
                 obj = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            
+
             custom_id = obj.get("custom_id", "unknown")
-            
+
             if "error" in obj and obj["error"]:
-                results[custom_id] = f"[ERROR] {obj['error'].get('message', 'Unknown error')}"
+                results[
+                    custom_id
+                ] = f"[ERROR] {obj['error'].get('message', 'Unknown error')}"
                 continue
-            
+
             response = obj.get("response", {})
             if response.get("status_code") != 200:
                 results[custom_id] = f"[ERROR] HTTP {response.get('status_code')}"
                 continue
-            
+
             choices = response.get("body", {}).get("choices", [])
-            results[custom_id] = choices[0].get("message", {}).get("content", "") if choices else "[ERROR] No choices"
-        
+            results[custom_id] = (
+                choices[0].get("message", {}).get("content", "")
+                if choices
+                else "[ERROR] No choices"
+            )
+
         return results
 
-    def retrieve_gemini_batch_results(self, batch_id: str, timeout: int) -> Dict[str, str]:
+    def retrieve_gemini_batch_results(
+        self, batch_id: str, timeout: int
+    ) -> Dict[str, str]:
         from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
-        
+
         def api_call_with_timeout(method, *args, timeout_sec=30, **kwargs):
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(method, *args, **kwargs)
                 return future.result(timeout=timeout_sec)
-        
+
         start_time = time.time()
         while True:
             if time.time() - start_time > timeout:
                 raise TimeoutError(f"Timeout after {timeout}s")
-            
+
             try:
-                batch_job = api_call_with_timeout(self.client.batches.get, name=batch_id, timeout_sec=30)
+                batch_job = api_call_with_timeout(
+                    self.client.batches.get, name=batch_id, timeout_sec=30
+                )
             except FutureTimeout:
                 time.sleep(5)
                 continue
-            
-            state = getattr(batch_job.state, 'name', str(batch_job.state))
-            
-            if state == 'SUCCEEDED':
+
+            state = getattr(batch_job.state, "name", str(batch_job.state))
+
+            if state == "SUCCEEDED":
                 break
-            elif state in ('FAILED', 'CANCELLED'):
-                raise RuntimeError(f"Job {state}: {getattr(batch_job, 'error', 'Unknown error')}")
-            
+            elif state in ("FAILED", "CANCELLED"):
+                raise RuntimeError(
+                    f"Job {state}: {getattr(batch_job, 'error', 'Unknown error')}"
+                )
+
             time.sleep(10)
-        
+
         try:
             result_bytes = api_call_with_timeout(
                 self.client.files.download,
                 file=batch_job.dest.file_name,
-                timeout_sec=60
+                timeout_sec=60,
             )
         except FutureTimeout:
             raise TimeoutError("Result download timed out")
-        
+
         results = {}
-        for line in result_bytes.decode('utf-8').splitlines():
+        for line in result_bytes.decode("utf-8").splitlines():
             if not line.strip():
                 continue
             item = json.loads(line)
@@ -607,8 +819,10 @@ class UnifiedLLMClient:
                 parts = candidates[0].get("content", {}).get("parts", [])
                 results[key] = "".join(p.get("text", "") for p in parts)
             else:
-                results[key] = f"[ERROR] {item.get('response', {}).get('error', 'No candidates')}"
-        
+                results[
+                    key
+                ] = f"[ERROR] {item.get('response', {}).get('error', 'No candidates')}"
+
         return results
 
     def submit_gemini_parallel(self, requests: List[Dict]) -> BatchHandle:
@@ -618,7 +832,7 @@ class UnifiedLLMClient:
         """
         if self.provider != "google":
             raise ValueError("Only for Google provider")
-        
+
         def run_one(r):
             try:
                 result = self.generate(
@@ -626,22 +840,32 @@ class UnifiedLLMClient:
                     system_prompt=r.get("system_prompt"),
                     max_tokens=r.get("max_tokens", 1000),
                     temperature=r.get("temperature", 0.7),
-                    reasoning=r.get("reasoning")
+                    reasoning=r.get("reasoning"),
                 )
                 return {"id": r["id"], "content": result["content"], "error": None}
             except Exception as e:
                 return {"id": r["id"], "content": None, "error": str(e)}
-        
+
         results = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(requests)) as executor:
-            for future in concurrent.futures.as_completed([executor.submit(run_one, r) for r in requests]):
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(requests)
+        ) as executor:
+            for future in concurrent.futures.as_completed(
+                [executor.submit(run_one, r) for r in requests]
+            ):
                 res = future.result()
-                results[res["id"]] = f"[ERROR] {res['error']}" if res["error"] else res["content"]
-        
+                results[res["id"]] = (
+                    f"[ERROR] {res['error']}" if res["error"] else res["content"]
+                )
+
         return BatchHandle(
             provider="google",
             id=f"parallel-{int(time.time())}",
-            metadata={"results": results, "is_parallel": True, "completed_at": time.time()}
+            metadata={
+                "results": results,
+                "is_parallel": True,
+                "completed_at": time.time(),
+            },
         )
 
     def retrieve_gemini_parallel_results(self, handle: BatchHandle) -> Dict[str, str]:
@@ -662,7 +886,9 @@ class UnifiedLLMClient:
                 "output_tokens": len(completion) // 4,
             }
 
-    def estimate_cost(self, prompt: str, expected_output_tokens: int = 500) -> Optional[float]:
+    def estimate_cost(
+        self, prompt: str, expected_output_tokens: int = 500
+    ) -> Optional[float]:
         pricing = self.PRICING.get(self.model)
         if not pricing:
             return None
