@@ -69,6 +69,7 @@ class UnifiedLLMClient:
     # Per-token USD for estimate_cost(); canonical full tables live in CostTracker.PRICING_SYNC.
     PRICING = {
         "claude-opus-4-7": (5 / 1e6, 25 / 1e6),
+        "claude-opus-4-8": (5 / 1e6, 25 / 1e6),
         "claude-sonnet-4-6": (3 / 1e6, 15 / 1e6),
         "gpt-5.5": (5 / 1e6, 30 / 1e6),
         "gpt-5.2": (1.75 / 1e6, 14 / 1e6),
@@ -194,12 +195,17 @@ class UnifiedLLMClient:
             "messages": [{"role": "user", "content": prompt}],
         }
 
-        # Claude Opus 4.7+ permanently removed `temperature`, `top_p`, and `top_k`;
-        # any non-default value returns 400. Per Anthropic's migration guide, the
-        # required path is to omit these parameters entirely and rely on prompting
-        # (and output_config.effort) instead. This check covers opus-4-7 and any
-        # future aliases in that family (e.g. claude-opus-4-7-<date>).
-        sampling_params_rejected = self.model.startswith("claude-opus-4-7")
+        # Claude Opus 4.7+ family (hyphen and dot spellings) permanently removed
+        # `temperature`, `top_p`, and `top_k`; any non-default value returns 400.
+        # Per Anthropic's migration guide, the required path is to omit these
+        # parameters entirely and rely on prompting (and output_config.effort)
+        # instead. Tuple covers explicit 4-7 and 4-8 in both spellings. Both
+        # forms appear in the codebase (see PRICING_SYNC aliases) and the dot
+        # form is NOT caught by `startswith("claude-opus-4-7")` because
+        # "claude-opus-4.7".startswith("claude-opus-4-7") is False.
+        sampling_params_rejected = self.model.startswith(
+            ("claude-opus-4-7", "claude-opus-4.7", "claude-opus-4-8", "claude-opus-4.8")
+        )
 
         budget, adjusted_tokens = self._apply_reasoning(max_tokens, reasoning)
         if budget:

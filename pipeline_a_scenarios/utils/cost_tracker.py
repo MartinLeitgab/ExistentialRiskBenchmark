@@ -1,4 +1,3 @@
-
 """
 Cost Tracker - Production LLM Cost Monitoring (v2.0)
 Provides comprehensive cost tracking across multiple LLM providers with
@@ -30,12 +29,14 @@ import os
 import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union, Literal
+from typing import Optional, List, Dict, Any, Literal
 
 CallType = Literal["sync", "batch"]
 
 
-def _build_batch_pricing(sync_pricing: Dict[str, Dict[str, Dict[str, float]]]) -> Dict[str, Dict[str, Dict[str, float]]]:
+def _build_batch_pricing(
+    sync_pricing: Dict[str, Dict[str, Dict[str, float]]],
+) -> Dict[str, Dict[str, Dict[str, float]]]:
     """Derive batch API per-1M rates (50% of standard) from sync pricing."""
     return {
         provider: {
@@ -51,17 +52,17 @@ def _build_batch_pricing(sync_pricing: Dict[str, Dict[str, Dict[str, float]]]) -
 
 class CostTracker:
     """
-    Production cost tracker for LLM API cost monitoring with team 
+    Production cost tracker for LLM API cost monitoring with team
     collaboration.
-    
+
     Implements all TL requirements:
     - Append-only JSONL format (TL req #1)
     - Per-user cost files (TL req #2)
     - Aggregate dashboard (TL req #3)
     - Simple budget tracking (TL req #4)
-    
+
     Integrates with UnifiedLLMClient for automatic cost logging.
-    
+
     Attributes:
         user_id: Unique identifier (defaults to $USER env var)
         data_dir: Directory for JSONL cost files
@@ -89,10 +90,14 @@ class CostTracker:
             "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
         },
         "anthropic": {
-            # Claude Opus 4.5 / 4.6 / 4.7: $5 / $25 per 1M input/output (Anthropic
-            # pricing docs). Hyphen vs dot model ids both appear in logs.
+            # Claude Opus 4.5 / 4.6 / 4.7 / 4.8: $5 / $25 per 1M input/output
+            # (Anthropic pricing docs). Hyphen vs dot model ids both appear in
+            # logs. 4-8 pricing assumed equal to 4-7; confirm vs Anthropic
+            # pricing docs at run time.
             "claude-opus-4-7": {"input": 5.0, "output": 25.0},
             "claude-opus-4.7": {"input": 5.0, "output": 25.0},
+            "claude-opus-4-8": {"input": 5.0, "output": 25.0},
+            "claude-opus-4.8": {"input": 5.0, "output": 25.0},
             "claude-opus-4.5": {"input": 5.0, "output": 25.0},
             # Sonnet 4.6: $3 / $15 per 1M (Anthropic pricing docs, Feb 2026).
             "claude-sonnet-4.6": {"input": 3.0, "output": 15.0},
@@ -143,16 +148,22 @@ class CostTracker:
             >>> tracker = CostTracker(user_id='alice')
             >>> tracker.log_cost('openai', 'gpt-4o', 1000, 500)
         """
-        
+
         from dotenv import load_dotenv
+
         load_dotenv()
         # User identification - defaults to system USER env var
-        self.user_id = user_id or os.getenv("USER", "unknown") or os.getenv("USER") or os.getenv("USERNAME", "unknown")
-        
+        self.user_id = (
+            user_id
+            or os.getenv("USER", "unknown")
+            or os.getenv("USER")
+            or os.getenv("USERNAME", "unknown")
+        )
+
         # Setup directory paths
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Per-user JSONL file path (TL requirement #2)
         self.data_path = self.data_dir / f"costs_{self.user_id}.jsonl"
 
@@ -250,7 +261,9 @@ class CostTracker:
                 warnings.warn(f"Model '{model}' not found, using {model} pricing")
 
         pricing = provider_pricing[model]
-        cost = (input_tokens * pricing["input"] + output_tokens * pricing["output"]) / 1_000_000
+        cost = (
+            input_tokens * pricing["input"] + output_tokens * pricing["output"]
+        ) / 1_000_000
         return round(cost, 6)
 
     def log_cost(
@@ -296,7 +309,11 @@ class CostTracker:
 
         if cost is None:
             cost = self.calculate_cost(
-                provider, model, input_tokens, output_tokens, call_type=resolved_call_type
+                provider,
+                model,
+                input_tokens,
+                output_tokens,
+                call_type=resolved_call_type,
             )
 
         entry = {
@@ -313,7 +330,7 @@ class CostTracker:
 
         # Add to in-memory list
         self.costs.append(entry)
-        
+
         # Append to JSONL file (TL requirement #1 - append-only)
         self._save_costs_append(entry)
 
@@ -322,38 +339,40 @@ class CostTracker:
         return cost
 
     def auto_log_from_llm_client(
-        self, 
-        provider: str, 
-        model: str, 
+        self,
+        provider: str,
+        model: str,
         response: Dict[str, Any],
         is_batch: bool = False,
         batch_discount: bool = True,
     ) -> float:
         """
         Auto-log cost from UnifiedLLMClient response.
-        
+
         Args:
             provider: Provider name ('openai', 'anthropic', 'google').
             model: Model name.
             response: Response dict from LLM client.
             is_batch: Whether this is a batch API call.
             batch_discount: Whether to apply batch discount.
-            
+
         Returns:
             Cost in USD.
         """
         # Extract token usage from response
         usage = response.get("usage", {})
-        
+
         # Handle different token naming conventions
         input_tokens = usage.get("input_tokens", usage.get("prompt_tokens", 0))
         output_tokens = usage.get("output_tokens", usage.get("completion_tokens", 0))
-        
+
         # Handle Anthropic thinking tokens if present
         if provider == "anthropic" and "thinking_tokens" in usage:
             # Anthropic charges thinking tokens as output tokens
-            output_tokens = usage.get("output_tokens", 0) + usage.get("thinking_tokens", 0)
-        
+            output_tokens = usage.get("output_tokens", 0) + usage.get(
+                "thinking_tokens", 0
+            )
+
         call_type: CallType = "batch" if (is_batch and batch_discount) else "sync"
         cost = self.log_cost(
             provider=provider,
@@ -383,7 +402,7 @@ class CostTracker:
     ) -> float:
         """
         Log cost for batch API calls.
-        
+
         Args:
             provider: LLM provider.
             model: Model name.
@@ -392,7 +411,7 @@ class CostTracker:
             total_input_tokens: Optional pre-calculated total input tokens.
             total_output_tokens: Optional pre-calculated total output tokens.
             metadata: Additional metadata.
-            
+
         Returns:
             Total batch cost in USD.
         """
@@ -400,10 +419,9 @@ class CostTracker:
         if total_input_tokens is None:
             # Estimate based on average token length of prompts
             total_input_tokens = sum(
-                len(r.get("prompt", "")) // 4  # Rough estimate
-                for r in batch_requests
+                len(r.get("prompt", "")) // 4 for r in batch_requests  # Rough estimate
             )
-        
+
         if total_output_tokens is None:
             # Estimate based on output text length
             total_output_tokens = sum(
@@ -411,7 +429,7 @@ class CostTracker:
                 for result in batch_results.values()
                 if isinstance(result, str) and not result.startswith("[ERROR]")
             )
-        
+
         cost = self.calculate_cost(
             provider=provider,
             model=model,
@@ -419,14 +437,15 @@ class CostTracker:
             output_tokens=total_output_tokens,
             call_type="batch",
         )
-        
+
         # Count successful vs failed
         successful = sum(
-            1 for r in batch_results.values() 
+            1
+            for r in batch_results.values()
             if isinstance(r, str) and not r.startswith("[ERROR]")
         )
         failed = len(batch_results) - successful
-        
+
         # Log the cost
         return self.log_cost(
             provider=provider,
@@ -439,7 +458,9 @@ class CostTracker:
                 "batch_size": len(batch_requests),
                 "successful": successful,
                 "failed": failed,
-                "success_rate": successful / len(batch_requests) if batch_requests else 0,
+                "success_rate": (
+                    successful / len(batch_requests) if batch_requests else 0
+                ),
                 **(metadata or {}),
             },
         )
@@ -454,14 +475,14 @@ class CostTracker:
     ) -> float:
         """
         Log cost for parallel API calls (Gemini workaround).
-        
+
         Args:
             provider: LLM provider.
             model: Model name.
             requests: Original requests list.
             results: Individual API responses with usage data.
             metadata: Additional metadata.
-            
+
         Returns:
             Total parallel execution cost in USD.
         """
@@ -469,19 +490,23 @@ class CostTracker:
         total_output_tokens = 0
         successful = 0
         failed = 0
-        
+
         for req in requests:
             req_id = req["id"]
             result = results.get(req_id, {})
-            
+
             if isinstance(result, dict) and "usage" in result:
                 usage = result["usage"]
-                total_input_tokens += usage.get("input_tokens", usage.get("prompt_tokens", 0))
-                total_output_tokens += usage.get("output_tokens", usage.get("completion_tokens", 0))
+                total_input_tokens += usage.get(
+                    "input_tokens", usage.get("prompt_tokens", 0)
+                )
+                total_output_tokens += usage.get(
+                    "output_tokens", usage.get("completion_tokens", 0)
+                )
                 successful += 1
             else:
                 failed += 1
-        
+
         # Log the cost (no batch discount for parallel calls)
         return self.log_cost(
             provider=provider,
@@ -598,7 +623,7 @@ class CostTracker:
         """
         now = datetime.now()
         source = costs if costs is not None else self.costs
-        
+
         monthly_cost = 0.0
         for entry in source:
             entry_time = datetime.fromisoformat(entry["timestamp"])
@@ -746,16 +771,16 @@ class CostTracker:
     def get_batch_stats(self, costs: Optional[List[Dict]] = None) -> Dict[str, Any]:
         """
         Get statistics about batch API usage.
-        
+
         Args:
             costs: Optional list of costs to analyze.
-            
+
         Returns:
             Dictionary with batch statistics.
         """
         source = costs if costs is not None else self.costs
         batch_entries = [e for e in source if e.get("batch_api", False)]
-        
+
         if not batch_entries:
             return {
                 "total_batch_calls": 0,
@@ -763,16 +788,16 @@ class CostTracker:
                 "total_batch_savings": 0.0,
                 "avg_batch_size": 0,
             }
-        
+
         total_batch_cost = sum(e["cost"] for e in batch_entries)
         total_savings = 0.0
         total_batch_size = 0
-        
+
         for entry in batch_entries:
             metadata = entry.get("metadata", {})
             batch_size = metadata.get("batch_size", 0)
             total_batch_size += batch_size
-            
+
             # Calculate what it would have cost without batch discount
             original_cost = self.calculate_cost(
                 provider=entry["provider"],
@@ -781,13 +806,15 @@ class CostTracker:
                 output_tokens=entry["output_tokens"],
                 call_type="sync",
             )
-            total_savings += (original_cost - entry["cost"])
-        
+            total_savings += original_cost - entry["cost"]
+
         return {
             "total_batch_calls": len(batch_entries),
             "total_batch_cost": total_batch_cost,
             "total_batch_savings": total_savings,
-            "avg_batch_size": total_batch_size / len(batch_entries) if batch_entries else 0,
+            "avg_batch_size": (
+                total_batch_size / len(batch_entries) if batch_entries else 0
+            ),
         }
 
     # ==================== DASHBOARD ====================
@@ -835,7 +862,7 @@ class CostTracker:
         print(f"Monthly Cost:         ${monthly_cost:.2f}")
         if len(costs_to_display) > 0:
             print(f"Avg Cost per Call:    ${total_cost/len(costs_to_display):.6f}")
-        
+
         # Batch Statistics
         if batch_stats["total_batch_calls"] > 0:
             print(f"Batch Calls:          {batch_stats['total_batch_calls']:,}")
@@ -848,18 +875,22 @@ class CostTracker:
 
         # Total Budget Progress
         total_percent = (
-            (total_cost / self.total_budget_limit * 100) if self.total_budget_limit > 0 else 0
+            (total_cost / self.total_budget_limit * 100)
+            if self.total_budget_limit > 0
+            else 0
         )
         total_bar = self._progress_bar(total_percent, 40)
         print(f"Total Budget:         ${self.total_budget_limit:.2f}")
-        print(f"  Spent: ${total_cost:.2f} | Remaining: ${self.total_budget_limit - total_cost:.2f}")
+        print(
+            f"  Spent: ${total_cost:.2f} | Remaining: ${self.total_budget_limit - total_cost:.2f}"
+        )
         print(f"  {total_percent:>5.1f}% {total_bar}")
 
         # Alert checks for total budget
         if self.check_80_percent_alert():
             threshold = self.total_budget_limit * 0.8
             print(f"  ⚠️  80% ALERT: ${threshold:.2f} reached!")
-        
+
         if self.check_month_1_2_threshold():
             print(f"  🚨 MONTH 1-2: ${self.month_1_2_threshold:.2f} threshold reached!")
 
@@ -871,7 +902,10 @@ class CostTracker:
         )
         monthly_bar = self._progress_bar(monthly_percent, 40)
         print(f"\nMonthly Budget:       ${self.monthly_budget_limit:.2f}")
-        print(f"  Spent: ${monthly_cost:.2f} | Remaining: ${self.monthly_budget_limit - monthly_cost:.2f}")
+        print(
+            f"  Spent: ${monthly_cost:.2f} | "
+            f"Remaining: ${self.monthly_budget_limit - monthly_cost:.2f}"
+        )
         print(f"  {monthly_percent:>5.1f}% {monthly_bar}")
 
         if self.check_monthly_80_percent_alert():
@@ -883,7 +917,9 @@ class CostTracker:
         print("-" * 80)
         print(f"Projected Month End:  ${projection:.2f}")
         if projection > self.monthly_budget_limit:
-            print(f"  ⚠️  Exceeds monthly budget by ${projection - self.monthly_budget_limit:.2f}")
+            print(
+                f"  ⚠️  Exceeds monthly budget by ${projection - self.monthly_budget_limit:.2f}"
+            )
 
         # Provider Breakdown Section
         print("\n🔧 PROVIDER BREAKDOWN")
@@ -897,7 +933,8 @@ class CostTracker:
             for provider, data in provider_breakdown.items():
                 percentage = (data["cost"] / total_cost * 100) if total_cost > 0 else 0
                 print(
-                    f"{provider:<12} {data['calls']:>8,} ${data['cost']:>11.2f} {percentage:>11.1f}%"
+                    f"{provider:<12} {data['calls']:>8,} "
+                    f"${data['cost']:>11.2f} {percentage:>11.1f}%"
                 )
         else:
             print("No provider data available")
@@ -909,7 +946,9 @@ class CostTracker:
             model_breakdown = self.get_cost_breakdown_by_model(costs_to_display)
 
             if model_breakdown:
-                print(f"{'Model':<35} {'Calls':>8} {'Cost':>12} {'Tokens':>12} {'Batch %':>10}")
+                print(
+                    f"{'Model':<35} {'Calls':>8} {'Cost':>12} {'Tokens':>12} {'Batch %':>10}"
+                )
                 print("-" * 80)
 
                 for model, data in sorted(
@@ -917,12 +956,19 @@ class CostTracker:
                     key=lambda x: x[1]["total_cost"],
                     reverse=True,
                 ):
-                    total_tokens = data["total_input_tokens"] + data["total_output_tokens"]
+                    total_tokens = (
+                        data["total_input_tokens"] + data["total_output_tokens"]
+                    )
                     batch_calls = sum(
-                        1 for e in costs_to_display 
+                        1
+                        for e in costs_to_display
                         if e["model"] == model and e.get("batch_api", False)
                     )
-                    batch_percent = (batch_calls / data["total_calls"] * 100) if data["total_calls"] > 0 else 0
+                    batch_percent = (
+                        (batch_calls / data["total_calls"] * 100)
+                        if data["total_calls"] > 0
+                        else 0
+                    )
                     print(
                         f"{model:<35} {data['total_calls']:>8,} "
                         f"${data['total_cost']:>11.2f} {total_tokens:>11,} "
@@ -936,9 +982,15 @@ class CostTracker:
         print("-" * 80)
 
         if costs_to_display:
-            recent = costs_to_display[-10:] if len(costs_to_display) > 10 else costs_to_display
+            recent = (
+                costs_to_display[-10:]
+                if len(costs_to_display) > 10
+                else costs_to_display
+            )
             for entry in recent:
-                time_str = datetime.fromisoformat(entry["timestamp"]).strftime("%m-%d %H:%M:%S")
+                time_str = datetime.fromisoformat(entry["timestamp"]).strftime(
+                    "%m-%d %H:%M:%S"
+                )
                 batch_flag = " [BATCH]" if entry.get("batch_api", False) else ""
                 print(
                     f"{time_str} | {entry['provider']:10} | {entry['model']:25} | "
@@ -965,7 +1017,7 @@ class CostTracker:
             python cost_tracker.py --dashboard --aggregate
         """
         all_costs = []
-        
+
         try:
             for cost_file in sorted(self.data_dir.glob("costs_*.jsonl")):
                 with open(cost_file, "r") as f:
@@ -1013,7 +1065,7 @@ class CostTracker:
             >>> tracker.export_csv('team_costs.csv', aggregate=True)
         """
         source = costs if costs is not None else self.costs
-        
+
         if not source:
             print("No cost data to export")
             return
@@ -1069,9 +1121,15 @@ GIT WORKFLOW (Team Collaboration):
             """,
         )
 
-        parser.add_argument("--dashboard", action="store_true", help="Display dashboard")
-        parser.add_argument("--verbose", action="store_true", help="Show detailed breakdown")
-        parser.add_argument("--aggregate", action="store_true", help="Team aggregate view")
+        parser.add_argument(
+            "--dashboard", action="store_true", help="Display dashboard"
+        )
+        parser.add_argument(
+            "--verbose", action="store_true", help="Show detailed breakdown"
+        )
+        parser.add_argument(
+            "--aggregate", action="store_true", help="Team aggregate view"
+        )
         parser.add_argument("--reset", action="store_true", help="Reset personal data")
         parser.add_argument("--export", type=str, metavar="FILE", help="Export to CSV")
 
@@ -1088,7 +1146,9 @@ GIT WORKFLOW (Team Collaboration):
             help="Total limit ($1000)",
         )
 
-        parser.add_argument("--data-dir", type=str, default="data/metadata", help="Data directory")
+        parser.add_argument(
+            "--data-dir", type=str, default="data/metadata", help="Data directory"
+        )
         parser.add_argument("--fresh", action="store_true", help="Fresh start")
         parser.add_argument("--user-id", type=str, help="User ID (default: $USER)")
 
@@ -1145,7 +1205,7 @@ def get_tracker(user_id: Optional[str] = None) -> CostTracker:
         >>> # In UnifiedLLMClient.__init__():
         >>> from cost_tracker import get_tracker
         >>> self.cost_tracker = get_tracker()
-        >>> 
+        >>>
         >>> # Anywhere else:
         >>> tracker = get_tracker()
         >>> tracker.dashboard()

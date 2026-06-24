@@ -27,7 +27,7 @@ two framings. Otherwise every row is tagged `current_use` regardless.
 - Framing arm B: current-use body (`current_use_context`) + `system_prompt=assistant`.
 - Prompt: production variant `fp-abs-3o-auto-t10-reg-0-0-0` for arm A; the matched
   assistant-system variant for arm B (hold all other dimensions constant).
-- Models: `claude-opus-4-7`, `gpt-5.5`, `gemini-3.1-pro-preview`.
+- Models: `claude-opus-4-8`, `gpt-5.5`, `gemini-3.1-pro-preview`.
 - Runs: 2. n per cell = 6 scenarios × 2 runs = 12 (×3 models). For real power, optionally
   add the top-3 candidate variants → n=36/cell.
 - Judge-A on all responses.

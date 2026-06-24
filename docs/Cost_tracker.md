@@ -12,7 +12,7 @@ Production-ready LLM API cost monitoring and budget management utility for track
 
 ### Multi-Provider Cost Calculation
 * **OpenAI:** `gpt-4o`, `gpt-4o-mini`, `gpt-4.1`
-* **Anthropic:** `claude-opus-4.5`, `claude-sonnet-4.5`, `claude-haiku-4.5`
+* **Anthropic:** `claude-opus-4-7`, `claude-opus-4-8`, `claude-sonnet-4-6`, `claude-haiku-4.5`
 * **Google:** `gemini-3-pro`, `gemini-2.5-pro`, `gemini-2.5-flash-lite`
 
 ### Budget Management
@@ -120,7 +120,7 @@ openai               1    $0.0025    21.7%
 anthropic            1    $0.0090    78.3%
 
 
- 
+
 ## Procedure after using cost tracker
 
 Everyone should follow the gitworkflow after using Cost Tracker

@@ -22,7 +22,7 @@ never been run for FTC.
 ## Design
 
 - Variant: `fp-abs-ftc-auto-t10-reg-0-0-0` with `action_order` ∈ {regular, inverted}.
-- Scenarios: 6 proto_*_v4. Models: claude-opus-4-7, gpt-5.5, gemini-3.1-pro-preview. Runs: 2.
+- Scenarios: 6 proto_*_v4. Models: claude-opus-4-8, gpt-5.5, gemini-3.1-pro-preview. Runs: 2.
 - Calls: 6 × 2 (order) × 3 × 2 = 72 model + 72 judge.
 
 ## Read-out

@@ -379,7 +379,7 @@ def _build_variant_summary(variant_id: str, judge_rows: List[Dict]) -> Dict:
 
 def run_validation_study(
     scenarios_path: str = "data/scenarios/seeds_phase1.json",
-    models: List[str] = ["claude-opus-4-7", "gpt-5.5", "gemini-3.1-pro-preview"],
+    models: List[str] = ["claude-opus-4-8", "gpt-5.5", "gemini-3.1-pro-preview"],
     runs_per_config: int = 2,
     output_dir: str = "data/results/prompt_validation",
 ) -> Dict:
@@ -658,7 +658,7 @@ def run_validation_study(
 def rerun_failed_responses(
     scenarios_path: str = "data/scenarios/seeds_phase1.json",
     raw_path: str = "data/results/prompt_validation/raw_responses.json",
-    models: List[str] = ["claude-opus-4-7", "gpt-5.5", "gemini-3.1-pro-preview"],
+    models: List[str] = ["claude-opus-4-8", "gpt-5.5", "gemini-3.1-pro-preview"],
     only_transient: bool = True,
     output_dir: str = "data/results/prompt_validation",
 ) -> Dict:
