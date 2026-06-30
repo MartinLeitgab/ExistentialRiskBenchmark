@@ -98,3 +98,6 @@ class TestJudgeBClassification:
         result = validate_judge_b_vs_ivt([])
         assert result["status"] == "insufficient_data"
         assert result["n"] == 0
+        for pref in ("PH", "IC", "AH"):
+            assert result["by_inferred_pref"][pref]["status"] == "insufficient_data"
+            assert result["by_inferred_pref"][pref]["n"] == 0

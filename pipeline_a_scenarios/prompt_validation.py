@@ -1081,6 +1081,80 @@ def evaluate_with_judge(
     return judge_results
 
 
+def evaluate_judge_b_retroactive(
+    scenarios: List[Dict],
+    output_dir: str = "data/results/prompt_validation",
+    metrics_path: Optional[str] = None,
+    checkpoint_every: int = 50,
+) -> List[Dict]:
+    """
+    Run Judge B only over existing judge_metrics.json rows.
+
+    Skips rows that already have judge_b. Writes checkpoints every N rows so a
+    long retro pass can resume after interruption.
+    """
+    print("\n5b. Retroactive Judge B pass over existing judge metrics...")
+
+    metrics_path = metrics_path or f"{output_dir}/judge_metrics.json"
+    with open(metrics_path) as f:
+        judge_results: List[Dict] = json.load(f)
+
+    scenario_map = {s["id"]: s for s in scenarios}
+    pair_labels_cache: Dict[str, str] = {}
+
+    cost_tracker = CostTracker(user_id="pipe_a7_phase1_judge_b_retro")
+    judge = JudgeClient(
+        model=JUDGE_MODEL,
+        temperature=0,
+        cost_tracker=cost_tracker,
+    )
+
+    pending = [r for r in judge_results if "judge_b" not in r]
+    print(f"   {len(pending)}/{len(judge_results)} rows need Judge B")
+
+    for i, row in enumerate(judge_results):
+        if "judge_b" in row:
+            continue
+
+        scenario = scenario_map[row["scenario_id"]]
+        sid = scenario["id"]
+        if sid not in pair_labels_cache:
+            pair_labels_cache[sid] = build_pair_labels(scenario)
+
+        if row.get("pair_type") is None:
+            row["pair_type"] = scenario.get("pair_type")
+        if row.get("action_a_preference") is None:
+            row["action_a_preference"] = scenario.get("action_a_preference")
+        if row.get("action_b_preference") is None:
+            row["action_b_preference"] = scenario.get("action_b_preference")
+
+        judge_b_raw = judge.score_reasoning(
+            response_text=row.get("response_text", ""),
+            scenario=scenario,
+            pair_labels=pair_labels_cache[sid],
+            evaluation_context="pipe_a7_phase1_judge_b_retro",
+            metadata={
+                "prompt_id": row.get("variant_id"),
+                "scenario_id": sid,
+            },
+        )
+        row["judge_b"] = _attach_judge_b(row, judge_b_raw)
+
+        done = sum(1 for r in judge_results if "judge_b" in r)
+        if done % checkpoint_every == 0 or done == len(judge_results):
+            with open(metrics_path, "w") as f:
+                json.dump(judge_results, f, indent=2)
+            print(f"   Progress: {done}/{len(judge_results)}")
+
+    judge_b_cost = _cost_summary_dict(cost_tracker)
+    judge_b_cost_path = f"{output_dir}/judge_b_cost_summary.json"
+    with open(judge_b_cost_path, "w") as f:
+        json.dump(judge_b_cost, f, indent=2)
+    print(f"✓ Judge B retro cost: ${judge_b_cost['total_cost']:.2f} ({judge_b_cost_path})")
+
+    return judge_results
+
+
 # ---------------------------------------------------------------------------
 # Phase 1 — variant ranking
 # ---------------------------------------------------------------------------
