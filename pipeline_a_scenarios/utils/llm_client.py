@@ -57,6 +57,46 @@ SAMPLING_RESTRICTED_MODEL_PREFIXES = (
 # The only sampling temperature the models above will run at.
 SAMPLING_RESTRICTED_TEMPERATURE = 1.0
 
+# Anthropic models that run adaptive thinking when the `thinking` field is
+# OMITTED. On Opus 4.8 and earlier, omitting it means no thinking; on Opus 5 and
+# Sonnet 5 it means thinking is on, and hidden thinking tokens are drawn from the
+# same `max_tokens` budget as the visible answer.
+#
+# Thinking is left ON deliberately: production deployments run with it enabled,
+# and the benchmark's premise is to mimic deployment settings (the same argument
+# that fixes sampling temperature at 1.0). The consequence is a budget one, and
+# it is why MAX_RESPONSE_TOKENS below is not 500.
+#
+# Measured 2026-07-27 on claude-opus-5 with an FTC prompt (free reasoning closing
+# with an <answer> tag), thinking left at its default:
+#   max_tokens=500  -> 471 thinking tokens, 105 visible chars, no <answer> tag
+#   max_tokens=1500 -> 945 thinking tokens, truncated, no <answer> tag
+#   max_tokens=3000 -> 597 thinking tokens, 2,270 visible chars, tag present,
+#                      stop_reason=end_turn at 1,310 output tokens
+# Adaptive thinking varies run to run (584-945 tokens across these samples), so
+# the budget carries headroom rather than tracking the median.
+#
+# This predicate exists so callers can size budgets and so the reasoning branch
+# can pick `{"type": "adaptive"}` over the removed `budget_tokens` form; nothing
+# in the request path disables thinking.
+ADAPTIVE_THINKING_ON_BY_DEFAULT_PREFIXES = (
+    "claude-opus-5",
+    "claude-sonnet-5",
+)
+
+
+def adaptive_thinking_on_by_default(model: str) -> bool:
+    """Report whether omitting `thinking` leaves adaptive thinking enabled.
+
+    Args:
+        model: Provider model id.
+
+    Returns:
+        True if hidden thinking tokens will be drawn from `max_tokens` even
+        though the request never mentions thinking.
+    """
+    return str(model).startswith(ADAPTIVE_THINKING_ON_BY_DEFAULT_PREFIXES)
+
 
 def rejects_sampling_params(model: str) -> bool:
     """Report whether a model rejects an explicit `temperature` parameter.
@@ -292,12 +332,23 @@ class UnifiedLLMClient:
 
         budget, adjusted_tokens = self._apply_reasoning(max_tokens, reasoning)
         if budget:
-            thinking_params = {
-                "thinking": {"type": "enabled", "budget_tokens": budget},
-                "max_tokens": adjusted_tokens,
-            }
-            if not sampling_params_rejected:
-                thinking_params["temperature"] = 1.0
+            # `{"type": "enabled", "budget_tokens": N}` is removed on the Opus
+            # 4.7+ family and on Opus 5 — sending it returns a 400. Those models
+            # take adaptive thinking instead, where depth is chosen by the model
+            # rather than by a token budget.
+            if rejects_sampling_params(self.model) or adaptive_thinking_on_by_default(
+                self.model
+            ):
+                thinking_params = {
+                    "thinking": {"type": "adaptive"},
+                    "max_tokens": adjusted_tokens,
+                }
+            else:
+                thinking_params = {
+                    "thinking": {"type": "enabled", "budget_tokens": budget},
+                    "max_tokens": adjusted_tokens,
+                    "temperature": 1.0,
+                }
             params.update(thinking_params)
         else:
             base_params = {"max_tokens": max_tokens}

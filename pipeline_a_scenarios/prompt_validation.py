@@ -89,6 +89,25 @@ JUDGE_MODEL = "gpt-5.6-sol"
 # wanted back.
 JUDGE_TEMPERATURE = 1.0
 
+# Output-token ceiling for every target-model call.
+#
+# Was 500. Raised 2026-07-27 with the claude-opus-5 / gpt-5.6-sol swap: those
+# models reason before answering, and on Anthropic the hidden thinking tokens
+# come out of the same budget as the visible answer. Measured on claude-opus-5
+# with the FTC prompt (free reasoning closing with an <answer> tag):
+#   max_tokens=500  -> 471 thinking tokens, 105 visible chars, NO <answer> tag
+#   max_tokens=1500 -> 945 thinking tokens, truncated, NO <answer> tag
+#   max_tokens=3000 -> stop_reason=end_turn at 1,310 output tokens, tag present
+# At 500 every FTC row on the Anthropic arm would have been unparseable — the
+# answer tag never arrives. claude-opus-4-8 truncated at 500 on the same prompt
+# too (1,573 visible chars, no tag), so this was already biting the FTC variant
+# before the swap; it is not introduced by it.
+#
+# Billing is on tokens actually produced (~1,300-1,500 here), not the ceiling.
+# UnifiedLLMClient scales this for providers whose reasoning tokens are counted
+# separately (OpenAI x10, Gemini x8); the value below is the Anthropic-facing one.
+MAX_RESPONSE_TOKENS = 3000
+
 # Responses that consist of a bare answer (numeric/letter in an <answer> block, or a
 # lone digit/letter) with no substantive reasoning text cannot be meaningfully scored
 # on preference_signal, coherence, or reasoning_depth — the judge has nothing to
@@ -548,7 +567,7 @@ def run_validation_study(
                             prompt=prompt_obj["user_prompt"],
                             system_prompt=prompt_obj["system_prompt"],
                             temperature=variant_temperature,
-                            max_tokens=500,
+                            max_tokens=MAX_RESPONSE_TOKENS,
                         )
 
                         # FIX: CostTracker has no log_api_call(); use log_cost() with
@@ -829,7 +848,7 @@ def rerun_failed_responses(
                 # Must match the temperature the original attempt used, i.e. the
                 # variant's declared value — not a hardcoded 0.
                 temperature=prompt_result["metadata"]["temperature"],
-                max_tokens=500,
+                max_tokens=MAX_RESPONSE_TOKENS,
             )
             usage = response.get("usage", {})
             cost_tracker.log_cost(

@@ -553,6 +553,80 @@ def test_gpt_5_5_omits_temperature_at_provider_default(mock_env_vars):
     )
 
 
+def _anthropic_mock():
+    mock_client = Mock()
+    mock_response = Mock()
+    mock_response.content = [Mock(type="text", text="ok")]
+    mock_response.usage = Mock(input_tokens=5, output_tokens=2)
+    mock_client.messages.create.return_value = mock_response
+    return mock_client
+
+
+@pytest.mark.parametrize("model", ["claude-opus-5", "claude-opus-4-8"])
+def test_thinking_is_never_disabled_when_no_reasoning_requested(mock_env_vars, model):
+    """The request must not carry a thinking block when none was asked for.
+
+    Production deployments run with thinking enabled, and the benchmark mimics
+    deployment settings, so Opus 5's adaptive-by-default behaviour is left alone.
+    The cost is budget, not correctness: measured 2026-07-27, an FTC prompt on
+    claude-opus-5 at max_tokens=500 spent 471 tokens thinking and never emitted
+    the <answer> tag — which is why the pipeline's MAX_RESPONSE_TOKENS is 3000.
+    A regression that sends `{"type": "disabled"}` here would silently change
+    what the benchmark measures.
+    """
+    mock_client = _anthropic_mock()
+    client = UnifiedLLMClient(
+        provider="anthropic",
+        model=model,
+        enable_cache=False,
+        client_override=mock_client,
+    )
+    client.generate(prompt="hi", max_tokens=3000)
+
+    call_kwargs = mock_client.messages.create.call_args.kwargs
+    assert (
+        "thinking" not in call_kwargs
+    ), f"{model} must inherit the provider thinking default; got {sorted(call_kwargs)}"
+
+
+@pytest.mark.parametrize(
+    "model,expect_adaptive",
+    [
+        ("claude-opus-5", True),
+        ("claude-opus-4-8", True),
+        ("claude-sonnet-4-6", False),
+    ],
+)
+def test_reasoning_request_uses_adaptive_where_budget_tokens_is_removed(
+    mock_env_vars, model, expect_adaptive
+):
+    """`reasoning=` must not send `budget_tokens` to models that removed it.
+
+    `{"type": "enabled", "budget_tokens": N}` returns a 400 on the Opus 4.7+
+    family and on Opus 5; those models take `{"type": "adaptive"}` instead.
+    Models that still accept a budget keep the old form.
+    """
+    mock_client = _anthropic_mock()
+    client = UnifiedLLMClient(
+        provider="anthropic",
+        model=model,
+        enable_cache=False,
+        client_override=mock_client,
+    )
+    client.generate(prompt="hi", max_tokens=3000, reasoning="high")
+
+    thinking = mock_client.messages.create.call_args.kwargs.get("thinking")
+    if expect_adaptive:
+        assert thinking == {"type": "adaptive"}, (
+            f"{model} rejects budget_tokens with a 400; expected adaptive "
+            f"thinking, got {thinking}"
+        )
+    else:
+        assert (
+            thinking["type"] == "enabled" and "budget_tokens" in thinking
+        ), f"{model} still supports a thinking budget; got {thinking}"
+
+
 def test_gpt_5_4_still_receives_temperature(mock_env_vars):
     """
     Counter-test: the restriction is per-model, NOT the whole gpt-5 family. The

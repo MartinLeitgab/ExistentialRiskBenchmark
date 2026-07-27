@@ -90,6 +90,10 @@ RUN_TEMPERATURE = BASE_DIMENSIONS["temperature"]
 # JUDGE_MODEL.
 JUDGE_TEMPERATURE = 1.0
 
+# Output-token ceiling — single source of truth in prompt_validation, imported
+# so the two phases cannot drift (see the note there for the measurements).
+MAX_RESPONSE_TOKENS = 3000
+
 # FIX (#12): Previously the calibration judge was hard-coded to run on
 # `scenarios[:2]` with no explanation. The original rationale was cost control:
 # calibration runs the judge on every (condition × scenario × model) triple and
@@ -315,7 +319,7 @@ def run_suppression_matrix(
                             prompt=user_prompt,
                             system_prompt=system_prompt,
                             temperature=RUN_TEMPERATURE,
-                            max_tokens=500,
+                            max_tokens=MAX_RESPONSE_TOKENS,
                         )
 
                         usage = response.get("usage", {})
@@ -768,7 +772,7 @@ def _run_calibration_judge(
                     response = client.generate(
                         prompt=user_prompt,
                         temperature=RUN_TEMPERATURE,
-                        max_tokens=500,
+                        max_tokens=MAX_RESPONSE_TOKENS,
                     )
                     result = judge.evaluate_response(
                         scenario_context=scenario["context"],
