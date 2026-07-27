@@ -77,6 +77,16 @@ FORMAT_REFUSAL_SCORE = (
 # explicit and can be swapped in one place for re-runs.
 JUDGE_MODEL = "gpt-5.5"
 
+# Judge sampling temperature. gpt-5.5 rejects an explicit temperature and runs
+# only at its provider default of 1.0 (400 "Only the default (1) value is
+# supported"), so the prior `temperature=0` judge configuration is unattainable
+# on this model — UnifiedLLMClient now raises rather than dropping the value
+# silently. Keep this constant aligned with JUDGE_MODEL: 1.0 while the judge is
+# an Opus 4.7+/gpt-5.5 model, 0.0 only if the judge moves to a model that
+# accepts sampling params (e.g. gemini-3.1-pro-preview) and deterministic
+# judging is wanted back.
+JUDGE_TEMPERATURE = 1.0
+
 # Responses that consist of a bare answer (numeric/letter in an <answer> block, or a
 # lone digit/letter) with no substantive reasoning text cannot be meaningfully scored
 # on preference_signal, coherence, or reasoning_depth — the judge has nothing to
@@ -501,6 +511,10 @@ def run_validation_study(
                 "user_prompt": prompt_result["user_prompt"],
                 "system_prompt": prompt_result["system_prompt"],
             }
+            # The temperature the variant declares (encoded in its variant_id,
+            # e.g. `t10` = 1.0) is what the API call must actually use — see
+            # the temperature note above _generate_with_retry's call site.
+            variant_temperature = prompt_result["metadata"]["temperature"]
             variant_id = variant["variant_id"]
 
             for model in models:
@@ -516,7 +530,12 @@ def run_validation_study(
                 for run_idx in range(runs_per_config):
                     call_count += 1
                     try:
-                        # FIX: temperature=0 as required by ticket spec for Phase 1 consistency
+                        # FIX: temperature comes from the variant's own
+                        # dimensions, not a hardcoded 0. Every row was being
+                        # stamped `t10` (BASE_DIMENSIONS temperature=1.0) while
+                        # the API sampled at 0 — see `data/findings.md` §8a.
+                        # Production runs deliberately use 1.0 to mimic
+                        # deployment settings (`docs/forward_plan.md` PIPE-A8).
                         # FIX: _generate_with_retry wraps client.generate() with
                         # pipeline-level exponential backoff for transient 529/
                         # 429/5xx errors. Without this, Anthropic 529 overload
@@ -526,7 +545,7 @@ def run_validation_study(
                             client,
                             prompt=prompt_obj["user_prompt"],
                             system_prompt=prompt_obj["system_prompt"],
-                            temperature=0,
+                            temperature=variant_temperature,
                             max_tokens=500,
                         )
 
@@ -805,7 +824,9 @@ def rerun_failed_responses(
                 client,
                 prompt=prompt_result["user_prompt"],
                 system_prompt=prompt_result["system_prompt"],
-                temperature=0,
+                # Must match the temperature the original attempt used, i.e. the
+                # variant's declared value — not a hardcoded 0.
+                temperature=prompt_result["metadata"]["temperature"],
                 max_tokens=500,
             )
             usage = response.get("usage", {})
@@ -920,7 +941,7 @@ def evaluate_with_judge(
     cost_tracker = CostTracker(user_id="pipe_a7_phase1_judge")
     judge = JudgeClient(
         model=JUDGE_MODEL,
-        temperature=0,
+        temperature=JUDGE_TEMPERATURE,
         cost_tracker=cost_tracker,
     )
 

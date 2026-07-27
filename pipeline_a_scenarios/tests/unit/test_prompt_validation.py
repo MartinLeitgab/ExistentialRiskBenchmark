@@ -4,7 +4,7 @@ Unit tests for Phase 1 validation pipeline components.
 Coverage (additions over original):
   - _compute_authenticity:      ticket-spec formula (weights, inversion, normalisation)
   - _build_variant_summary:     refusal exclusion, schema completeness, flagging
-  - run_validation_study:       temperature=0 enforcement, cost_tracker.log_cost() path
+  - run_validation_study:       variant-declared temperature, cost_tracker.log_cost() path
   - evaluate_with_judge:        6th-dimension sentinel injection
   - analyze_and_rank_variants:  new schema keys, sorting, plots P1-1 → P1-5
   - generate_anomaly_report:    content assertions
@@ -26,14 +26,45 @@ from pipeline_a_scenarios.prompt_validation import (
     generate_recommendation_text,
     FORMAT_REFUSAL_SCORE,
     HIGH_STRATEGIC_THRESHOLD,
+    JUDGE_MODEL,
+    JUDGE_TEMPERATURE,
 )
+from pipeline_a_scenarios import suppression_matrix
 from utils.judge_client import JudgeClient
+from utils.llm_client import assert_temperature_supported
 
 from utils.prompt_generator import BASE_DIMENSIONS
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
+
+def _install_cost_mock(mock_cost_cls, total_cost=0.0):
+    """Configure a patched CostTracker class with the summary API in production use.
+
+    `run_validation_study` / `evaluate_with_judge` build their cost summaries from
+    get_total_cost() + get_cost_breakdown_by_model() + get_provider_breakdown() +
+    get_batch_stats() and json.dump the result, so a bare Mock for any of them
+    raises "Object of type Mock is not JSON serializable". These tests previously
+    stubbed a `get_summary()` method that no longer exists on CostTracker, which
+    is why every test touching those two functions failed before reaching its
+    assertions.
+
+    Args:
+        mock_cost_cls: The patched CostTracker class object.
+        total_cost: Value get_total_cost() should report.
+
+    Returns:
+        The configured tracker instance mock.
+    """
+    mock_cost = Mock()
+    mock_cost.get_total_cost.return_value = total_cost
+    mock_cost.get_cost_breakdown_by_model.return_value = {}
+    mock_cost.get_provider_breakdown.return_value = {}
+    mock_cost.get_batch_stats.return_value = {}
+    mock_cost_cls.return_value = mock_cost
+    return mock_cost
 
 
 @pytest.fixture
@@ -278,12 +309,12 @@ class TestBuildVariantSummary:
 
 
 class TestRunValidationStudy:
-    """Temperature=0 enforcement + cost_tracker.log_cost() integration."""
+    """Variant-declared temperature + cost_tracker.log_cost() integration."""
 
     @patch("pipeline_a_scenarios.prompt_validation.CostTracker")
     @patch("pipeline_a_scenarios.prompt_validation.generate_all_variants")
     @patch("pipeline_a_scenarios.prompt_validation.UnifiedLLMClient")
-    def test_temperature_is_zero(
+    def test_temperature_matches_variant_declaration(
         self,
         mock_client_cls,
         mock_gen_variants,
@@ -291,7 +322,12 @@ class TestRunValidationStudy:
         scenarios_file,
         tmp_path,
     ):
-        """All client.generate() calls must use temperature=0."""
+        """client.generate() must use the temperature the variant id encodes.
+
+        Pre-fix the call was hardcoded to `temperature=0` while every row was
+        stamped with BASE_DIMENSIONS' 1.0 (`t10` in the variant id), so the
+        recorded provenance did not describe the sampling actually used.
+        """
         mock_client = Mock()
         mock_client.generate.return_value = {
             "content": "I choose A.",
@@ -301,24 +337,35 @@ class TestRunValidationStudy:
 
         mock_gen_variants.return_value = []  # use only base variant
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.01}
-        mock_cost_cls.return_value = mock_cost
+        _install_cost_mock(mock_cost_cls, total_cost=0.01)
 
-        run_validation_study(
+        expected = BASE_DIMENSIONS["temperature"]
+
+        study = run_validation_study(
             scenarios_path=scenarios_file,
             models=["claude-opus-4-8"],
             runs_per_config=1,
             output_dir=str(tmp_path),
         )
 
+        assert mock_client.generate.call_args_list, "no generate() calls were made"
         for c in mock_client.generate.call_args_list:
             kwargs = c.kwargs if c.kwargs else {}
             args = c.args if c.args else ()
-            # temperature must be passed as kwarg or 3rd positional arg
-            assert kwargs.get("temperature", None) == 0 or (
-                len(args) >= 3 and args[2] == 0
-            ), f"temperature != 0 in call: {c}"
+            actual = (
+                kwargs["temperature"]
+                if "temperature" in kwargs
+                else (args[2] if len(args) >= 3 else None)
+            )
+            assert (
+                actual == expected
+            ), f"temperature != variant-declared {expected} in call: {c}"
+
+        # The recorded row must agree with what was sent — the provenance half
+        # of the bug. Guards against a future re-hardcode that leaves the
+        # metadata untouched.
+        for row in study["raw_responses"]:
+            assert row["dimensions"]["temperature"] == expected
 
     @patch("pipeline_a_scenarios.prompt_validation.CostTracker")
     @patch("pipeline_a_scenarios.prompt_validation.generate_all_variants")
@@ -340,9 +387,7 @@ class TestRunValidationStudy:
         mock_client_cls.return_value = mock_client
         mock_gen_variants.return_value = []
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        mock_cost = _install_cost_mock(mock_cost_cls, total_cost=0.0)
 
         run_validation_study(
             scenarios_path=scenarios_file,
@@ -376,9 +421,7 @@ class TestRunValidationStudy:
         mock_client_cls.return_value = mock_client
         mock_gen_variants.return_value = []
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        _install_cost_mock(mock_cost_cls, total_cost=0.0)
 
         run_validation_study(
             scenarios_path=scenarios_file,
@@ -406,9 +449,7 @@ class TestRunValidationStudy:
         mock_client_cls.return_value = mock_client
         mock_gen_variants.return_value = []
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        _install_cost_mock(mock_cost_cls, total_cost=0.0)
 
         result = run_validation_study(
             scenarios_path=scenarios_file,
@@ -469,9 +510,7 @@ class TestRunValidationStudy:
         ]
         mock_gen_variants.return_value = fake_variants_per_dim
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 2.50}
-        mock_cost_cls.return_value = mock_cost
+        _install_cost_mock(mock_cost_cls, total_cost=2.50)
 
         # Write exactly 6 scenarios
         scenarios = [
@@ -498,8 +537,11 @@ class TestRunValidationStudy:
             output_dir=str(tmp_path),
         )
 
-        # 1 base + 5 dims × 3 mocked variants + 3 calibration (ic/ah/ph) = 19
-        n_variants = 1 + 5 * 3 + 3
+        # 1 base + 5 dims × 3 mocked variants + 4 calibration = 20.
+        # generate_calibration_variants() emits four goal directives — ic, ah,
+        # ah_conditional, ph — not three; the ah_conditional anchor postdates
+        # this test's original arithmetic.
+        n_variants = 1 + 5 * 3 + 4
         n_scenarios = 6
         n_models = 3
         n_runs = 2
@@ -534,9 +576,7 @@ class TestRunValidationStudy:
         mock_client_cls.return_value = mock_client
         mock_gen_variants.return_value = []
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 2.50}
-        mock_cost_cls.return_value = mock_cost
+        _install_cost_mock(mock_cost_cls, total_cost=2.50)
 
         result = run_validation_study(
             scenarios_path=scenarios_file,
@@ -553,6 +593,31 @@ class TestRunValidationStudy:
 # ---------------------------------------------------------------------------
 # evaluate_with_judge
 # ---------------------------------------------------------------------------
+
+
+class TestJudgeTemperatureGuard:
+    """A judge model that cannot honour its configured temperature must fail early."""
+
+    def test_judge_client_rejects_unattainable_temperature(self):
+        """gpt-5.5 judge at temperature=0 must raise at construction time.
+
+        The API rejects it (400 "Only the default (1) value is supported"), so
+        pre-guard this either died mid-run after paying for target-model calls,
+        or — on Anthropic — silently scored at 1.0 while the config said 0.
+        """
+        with pytest.raises(ValueError, match="does not accept an explicit temperature"):
+            JudgeClient(model="gpt-5.5", temperature=0)
+
+    def test_pipeline_judge_constants_are_mutually_consistent(self):
+        """JUDGE_MODEL + JUDGE_TEMPERATURE must be a constructible pairing.
+
+        Guards the specific misconfiguration this PR fixes: bumping JUDGE_MODEL
+        to a sampling-restricted id while leaving JUDGE_TEMPERATURE at 0.
+        """
+        assert_temperature_supported(JUDGE_MODEL, JUDGE_TEMPERATURE)
+        assert_temperature_supported(
+            suppression_matrix.JUDGE_MODEL, suppression_matrix.JUDGE_TEMPERATURE
+        )
 
 
 class TestEvaluateWithJudge:
@@ -588,9 +653,7 @@ class TestEvaluateWithJudge:
         }
         mock_judge_cls.return_value = mock_judge
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        _install_cost_mock(mock_cost_cls, total_cost=0.0)
 
         results = evaluate_with_judge(
             raw_responses=raw_responses,
@@ -630,9 +693,7 @@ class TestEvaluateWithJudge:
         }
         mock_judge_cls.return_value = mock_judge
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        _install_cost_mock(mock_cost_cls, total_cost=0.0)
 
         results = evaluate_with_judge(
             raw_responses=raw_responses,
@@ -665,9 +726,7 @@ class TestEvaluateWithJudge:
         mock_judge.evaluate_response.return_value = {"format_compliance_score": 5}
         mock_judge_cls.return_value = mock_judge
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.0}
-        mock_cost_cls.return_value = mock_cost
+        _install_cost_mock(mock_cost_cls, total_cost=0.0)
 
         evaluate_with_judge(raw_responses, [minimal_scenario], str(tmp_path))
 

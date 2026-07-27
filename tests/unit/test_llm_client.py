@@ -15,6 +15,7 @@ from pipeline_a_scenarios.utils.llm_client import (
     UnifiedLLMClient,
     BatchHandle,
     TokenBucket,
+    SAMPLING_RESTRICTED_TEMPERATURE,
 )
 
 # ==================== FIXTURES ====================
@@ -462,11 +463,13 @@ def test_anthropic_thinking_tokens_handling(mock_env_vars, mock_cost_tracker):
 )
 def test_opus_4_7_plus_rejects_sampling_params(mock_env_vars, model):
     """
-    Regression guard for llm_client.py line ~202: every Opus 4.7+ spelling
-    (hyphen and dot, 4-7 and 4-8) MUST omit `temperature` from the Anthropic
-    payload because Anthropic returns 400 if it is passed. Pre-fix, the dot
-    form silently slipped through `startswith("claude-opus-4-7")` and would
-    have failed at runtime.
+    Regression guard: every Opus 4.7+ spelling (hyphen and dot, 4-7 and 4-8)
+    MUST omit `temperature` from the Anthropic payload because Anthropic returns
+    400 if it is passed. Pre-fix, the dot form silently slipped through
+    `startswith("claude-opus-4-7")` and would have failed at runtime.
+
+    The request asks for the provider default (1.0); asking for anything else
+    now raises — see test_sampling_restricted_model_raises_on_non_default_temp.
     """
     mock_client = Mock()
     mock_response = Mock()
@@ -480,13 +483,101 @@ def test_opus_4_7_plus_rejects_sampling_params(mock_env_vars, model):
         enable_cache=False,
         client_override=mock_client,
     )
-    client.generate(prompt="hi", temperature=0.5)
+    client.generate(prompt="hi", temperature=SAMPLING_RESTRICTED_TEMPERATURE)
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
     assert "temperature" not in call_kwargs, (
         f"{model} must NOT receive temperature (Opus 4.7+ rejects it). "
         f"Got params: {sorted(call_kwargs)}"
     )
+
+
+@pytest.mark.parametrize(
+    "provider,model",
+    [
+        ("anthropic", "claude-opus-4-8"),
+        ("openai", "gpt-5.5"),
+    ],
+)
+def test_sampling_restricted_model_raises_on_non_default_temp(
+    mock_env_vars, provider, model
+):
+    """
+    A model that cannot honour an explicit temperature must fail loudly rather
+    than have the parameter silently dropped.
+
+    Silent dropping is the provenance bug this guard exists for: pre-fix,
+    `prompt_validation` asked for temperature=0 on claude-opus-4-8, the
+    Anthropic branch discarded it, and every row was still written to disk
+    labelled with the variant's declared 1.0. See `data/findings.md` §8a.
+    """
+    mock_client = Mock()
+
+    client = UnifiedLLMClient(
+        provider=provider,
+        model=model,
+        enable_cache=False,
+        client_override=mock_client,
+    )
+
+    with pytest.raises(ValueError, match="does not accept an explicit temperature"):
+        client.generate(prompt="hi", temperature=0)
+
+
+def test_gpt_5_5_omits_temperature_at_provider_default(mock_env_vars):
+    """
+    gpt-5.5 returns 400 "Unsupported value: 'temperature' does not support 0
+    with this model. Only the default (1) value is supported." — so the
+    parameter must be omitted from the OpenAI payload entirely.
+    """
+    mock_client = Mock()
+    mock_client.chat.completions.create.return_value = Mock(
+        choices=[Mock(message=Mock(content="ok"))],
+        usage=Mock(prompt_tokens=5, completion_tokens=2),
+    )
+
+    client = UnifiedLLMClient(
+        provider="openai",
+        model="gpt-5.5",
+        enable_cache=False,
+        client_override=mock_client,
+    )
+    client.generate(prompt="hi", temperature=SAMPLING_RESTRICTED_TEMPERATURE)
+
+    call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+    assert "temperature" not in call_kwargs, (
+        "gpt-5.5 must NOT receive an explicit temperature. "
+        f"Got params: {sorted(call_kwargs)}"
+    )
+
+
+def test_gpt_5_4_still_receives_temperature(mock_env_vars):
+    """
+    Counter-test: the restriction is per-model, NOT the whole gpt-5 family. The
+    2026-04-21 Phase 1 run
+    (`outputs/data_Riccardo042126/results/prompt_validation/raw_responses.json`)
+    produced 192 gpt-5.4 rows with zero errors at temperature=0, so a
+    generalisation to `startswith("gpt-5")` would silently disable temperature
+    control on a model that accepts it.
+    """
+    mock_client = Mock()
+    mock_client.chat.completions.create.return_value = Mock(
+        choices=[Mock(message=Mock(content="ok"))],
+        usage=Mock(prompt_tokens=5, completion_tokens=2),
+    )
+
+    client = UnifiedLLMClient(
+        provider="openai",
+        model="gpt-5.4",
+        enable_cache=False,
+        client_override=mock_client,
+    )
+    client.generate(prompt="hi", temperature=0)
+
+    call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+    assert (
+        call_kwargs.get("temperature") == 0
+    ), f"gpt-5.4 SHOULD receive temperature; got: {sorted(call_kwargs)}"
 
 
 def test_non_opus_4_7_plus_still_receives_temperature(mock_env_vars):

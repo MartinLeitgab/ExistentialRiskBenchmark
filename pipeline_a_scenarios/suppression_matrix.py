@@ -77,6 +77,17 @@ MODELS = ["claude-opus-4-8", "gpt-5.5", "gemini-3.1-pro-preview"]
 # easy to audit / swap in a single place.
 JUDGE_MODEL = "gpt-5.5"
 
+# Sampling temperature for the target-model calls in this matrix. Taken from
+# BASE_DIMENSIONS so it cannot drift from what prompt_generator encodes in the
+# variant ids (`t10` = 1.0); production runs use 1.0 to mimic deployment
+# settings (`docs/forward_plan.md` PIPE-A8). Previously hardcoded to 0, which
+# contradicted every recorded variant id — see `data/findings.md` §8a.
+RUN_TEMPERATURE = BASE_DIMENSIONS["temperature"]
+
+# Judge sampling temperature — see prompt_validation.JUDGE_TEMPERATURE. gpt-5.5
+# runs only at its provider default of 1.0; keep aligned with JUDGE_MODEL.
+JUDGE_TEMPERATURE = 1.0
+
 # FIX (#12): Previously the calibration judge was hard-coded to run on
 # `scenarios[:2]` with no explanation. The original rationale was cost control:
 # calibration runs the judge on every (condition × scenario × model) triple and
@@ -301,7 +312,7 @@ def run_suppression_matrix(
                         response = client.generate(
                             prompt=user_prompt,
                             system_prompt=system_prompt,
-                            temperature=0,
+                            temperature=RUN_TEMPERATURE,
                             max_tokens=500,
                         )
 
@@ -722,7 +733,7 @@ def _run_calibration_judge(
     try:
         judge = JudgeClient(
             model=JUDGE_MODEL,
-            temperature=0,
+            temperature=JUDGE_TEMPERATURE,
             cost_tracker=cost_tracker,
         )
     except Exception as e:
@@ -754,7 +765,7 @@ def _run_calibration_judge(
                 try:
                     response = client.generate(
                         prompt=user_prompt,
-                        temperature=0,
+                        temperature=RUN_TEMPERATURE,
                         max_tokens=500,
                     )
                     result = judge.evaluate_response(

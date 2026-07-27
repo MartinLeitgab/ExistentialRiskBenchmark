@@ -28,6 +28,69 @@ from google.genai import types  # noqa: E402
 
 BatchProvider = Literal["anthropic", "openai", "google"]
 
+# Models that reject an explicit `temperature` and run only at their provider
+# default. Anthropic removed `temperature`/`top_p`/`top_k` permanently for the
+# Opus 4.7+ family; OpenAI's gpt-5.5 returns
+#   400 "Unsupported value: 'temperature' does not support 0 with this model.
+#        Only the default (1) value is supported."
+# Deliberately NOT generalised to every `gpt-5*` id: the 2026-04-21 Phase 1 run
+# (`outputs/data_Riccardo042126/results/prompt_validation/raw_responses.json`,
+# 192 gpt-5.4 rows, zero errors) shows gpt-5.4 accepted temperature=0. Add ids
+# here only with evidence that the API rejects the parameter.
+# Both hyphen and dot spellings are listed because
+# "claude-opus-4.7".startswith("claude-opus-4-7") is False.
+SAMPLING_RESTRICTED_MODEL_PREFIXES = (
+    "claude-opus-4-7",
+    "claude-opus-4.7",
+    "claude-opus-4-8",
+    "claude-opus-4.8",
+    "gpt-5.5",
+)
+
+# The only sampling temperature the models above will run at.
+SAMPLING_RESTRICTED_TEMPERATURE = 1.0
+
+
+def rejects_sampling_params(model: str) -> bool:
+    """Report whether a model rejects an explicit `temperature` parameter.
+
+    Args:
+        model: Provider model id (e.g. ``"claude-opus-4-8"``).
+
+    Returns:
+        True if the parameter must be omitted from the request payload.
+    """
+    return str(model).startswith(SAMPLING_RESTRICTED_MODEL_PREFIXES)
+
+
+def assert_temperature_supported(model: str, temperature: Optional[float]) -> None:
+    """Fail fast when a caller asks a restricted model for an unattainable temperature.
+
+    Silently dropping the parameter would let a run record one temperature in its
+    metadata while the API sampled at another — the provenance bug this guard
+    exists to prevent (see `data/findings.md` §8a).
+
+    Args:
+        model: Provider model id the request will be sent to.
+        temperature: Temperature the caller asked for; None means "unset".
+
+    Raises:
+        ValueError: If `model` cannot honour a non-default `temperature`.
+    """
+    if temperature is None or not rejects_sampling_params(model):
+        return
+    if float(temperature) == SAMPLING_RESTRICTED_TEMPERATURE:
+        return
+    raise ValueError(
+        f"{model} does not accept an explicit temperature; it runs only at its "
+        f"provider default ({SAMPLING_RESTRICTED_TEMPERATURE}), but "
+        f"temperature={temperature} was requested. Either pass "
+        f"temperature={SAMPLING_RESTRICTED_TEMPERATURE}, or use a model that "
+        f"supports sampling params (e.g. gemini-3.1-pro-preview, "
+        f"claude-sonnet-4-6). Restricted ids: "
+        f"{', '.join(SAMPLING_RESTRICTED_MODEL_PREFIXES)}."
+    )
+
 
 @dataclass(frozen=True)
 class BatchHandle:
@@ -142,6 +205,8 @@ class UnifiedLLMClient:
         max_tokens: int = 1000,
         reasoning: Optional[Literal["none", "standard", "high"]] = None,
     ) -> dict:
+        assert_temperature_supported(self.model, temperature)
+
         cache_key = self._hash(
             prompt, system_prompt, temperature, max_tokens, reasoning
         )
@@ -195,17 +260,15 @@ class UnifiedLLMClient:
             "messages": [{"role": "user", "content": prompt}],
         }
 
-        # Claude Opus 4.7+ family (hyphen and dot spellings) permanently removed
-        # `temperature`, `top_p`, and `top_k`; any non-default value returns 400.
-        # Per Anthropic's migration guide, the required path is to omit these
-        # parameters entirely and rely on prompting (and output_config.effort)
-        # instead. Tuple covers explicit 4-7 and 4-8 in both spellings. Both
-        # forms appear in the codebase (see PRICING_SYNC aliases) and the dot
-        # form is NOT caught by `startswith("claude-opus-4-7")` because
-        # "claude-opus-4.7".startswith("claude-opus-4-7") is False.
-        sampling_params_rejected = self.model.startswith(
-            ("claude-opus-4-7", "claude-opus-4.7", "claude-opus-4-8", "claude-opus-4.8")
-        )
+        # Claude Opus 4.7+ family permanently removed `temperature`, `top_p`,
+        # and `top_k`; any non-default value returns 400. Per Anthropic's
+        # migration guide, the required path is to omit these parameters
+        # entirely and rely on prompting (and output_config.effort) instead.
+        # Membership (both hyphen and dot spellings) lives in
+        # SAMPLING_RESTRICTED_MODEL_PREFIXES; generate() has already raised if a
+        # non-default temperature was requested, so omitting here cannot silently
+        # change the sampling the caller recorded.
+        sampling_params_rejected = rejects_sampling_params(self.model)
 
         budget, adjusted_tokens = self._apply_reasoning(max_tokens, reasoning)
         if budget:
@@ -264,9 +327,14 @@ class UnifiedLLMClient:
         params = {
             "model": self.model,
             "messages": messages,
-            "temperature": temperature,
             self._openai_max_token_param(): adjusted_tokens,
         }
+
+        # gpt-5.5 rejects an explicit temperature (400 "Only the default (1)
+        # value is supported"). generate() has already raised for any non-default
+        # request, so omitting the parameter here preserves the recorded value.
+        if not rejects_sampling_params(self.model):
+            params["temperature"] = temperature
 
         if reasoning in ("standard", "high") and not is_reasoning:
             params["reasoning_effort"] = "high" if reasoning == "high" else "medium"
@@ -386,17 +454,23 @@ class UnifiedLLMClient:
                 "system": r.get("system_prompt", "You are a helpful assistant."),
             }
 
+            assert_temperature_supported(self.model, temperature)
+            sampling_params_rejected = rejects_sampling_params(self.model)
+
             budget, adjusted_tokens = self._apply_reasoning(max_tokens, reasoning)
             if budget:
-                params.update(
-                    {
-                        "thinking": {"type": "enabled", "budget_tokens": budget},
-                        "temperature": 1.0,
-                        "max_tokens": adjusted_tokens,
-                    }
-                )
+                thinking_params = {
+                    "thinking": {"type": "enabled", "budget_tokens": budget},
+                    "max_tokens": adjusted_tokens,
+                }
+                if not sampling_params_rejected:
+                    thinking_params["temperature"] = 1.0
+                params.update(thinking_params)
             else:
-                params.update({"temperature": temperature, "max_tokens": max_tokens})
+                base_params = {"max_tokens": max_tokens}
+                if not sampling_params_rejected:
+                    base_params["temperature"] = temperature
+                params.update(base_params)
 
             batch_reqs.append(
                 AnthropicBatchRequest(
@@ -429,7 +503,9 @@ class UnifiedLLMClient:
                         0, {"role": "system", "content": r["system_prompt"]}
                     )
                 if "temperature" in r:
-                    body["temperature"] = r["temperature"]
+                    assert_temperature_supported(self.model, r["temperature"])
+                    if not rejects_sampling_params(self.model):
+                        body["temperature"] = r["temperature"]
 
                 reasoning = r.get("reasoning")
                 if reasoning in ("standard", "high") and not is_reasoning:

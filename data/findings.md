@@ -218,15 +218,20 @@ For `inst_vs_anti` and `pro_vs_anti` pairs, `easy_B` frequently produces null si
 
 ## 8. April 24 Phase 1 empirical results — first confirmed quantitative findings
 
-*Source: `outputs/data_Riccardo042426` — 648 records, 3 models × 6 scenarios × 18 variants × 2 runs. Models: claude-opus-4-7, gpt-5.4, gemini-3.1-pro-preview. All runs at temperature=1.0.*
+*Source: `outputs/data_Riccardo042426` — 648 records, 3 models × 6 scenarios × 18 variants × 2 runs. Models: claude-opus-4-7, gpt-5.4, gemini-3.1-pro-preview. Sampling temperature: see the §8a correction below — NOT 1.0 for all arms, despite the `t10` in every variant id.*
 
-### 8a. 100% run-to-run reproducibility at temperature=1.0 [confirmed]
+### 8a. 100% run-to-run reproducibility — but at mixed temperature, not 1.0 [corrected 2026-07-27]
 
-269/269 variant pairs produced identical choices across two independent runs at temperature=1.0. No stochastic variation in choice outcomes despite maximum sampling temperature.
+269/269 variant pairs produced identical choices across two independent runs. The original write-up attributed this to temperature=1.0; that attribution was wrong. `prompt_validation.py` hardcoded `temperature=0` on every target-model call from the first commit (2026-02-03) until 2026-07-27, discarding the variant's declared value, so:
 
-**Mechanism:** Scenario content dominates stochastic variation. When scenarios are structurally dominated (floor or ceiling), no prompt variant or temperature setting produces different choices. This is a methodological property of the benchmark design — choices are only informative where scenarios are genuinely non-dominated.
+- **gpt-5.4 and gemini-3.1-pro-preview arms ran at temperature 0.0** — near-greedy decoding, where identical repeat choices are close to tautological and carry no evidence about sampling robustness.
+- **claude-opus-4-7 arm ran at the Anthropic default (1.0)** — Opus 4.7+ rejects the `temperature` parameter and `llm_client` omits it (commit `6a27c79`, authored 2026-04-24 10:55Z; the run artifacts are stamped 12:37Z). This arm alone is genuine temperature-1.0 evidence.
 
-**Implication for paper:** Temperature is not a meaningful experimental variable for binary preference choices under the current scenario set. Reproducibility at t=1.0 confirms that choice instability is not a measurement concern; the primary validity threat is scenario domination, not sampling noise.
+Every row nevertheless recorded `dimensions.temperature: 1.0` and a `t10` variant id, because the recorded value came from `BASE_DIMENSIONS` rather than from the call. The same defect applies to the 2026-06-09 rerun (`outputs/data_Riccardo060926/`) and to all `suppression_matrix.py` output.
+
+**Mechanism (unaffected):** Scenario content dominates stochastic variation. When scenarios are structurally dominated (floor or ceiling), no prompt variant or temperature setting produces different choices — choices are only informative where scenarios are genuinely non-dominated.
+
+**Implication for paper:** the ~100% reproducibility claim now rests on one model arm, not three. Before any rep-count decision depends on it (`docs/forward_plan.md` §"Cost control" uses §8a to justify 2 reps instead of 10), re-run the 2-rep reproducibility check with the temperature fix in place so all three arms are genuinely at 1.0. The qualitative conclusion — validity threat is scenario domination, not sampling noise — is still supported by the Opus arm, but the quantitative "269/269 at t=1.0" figure must not be cited as-is.
 
 ### 8b. Strong cross-model preference divergence confirmed on proto_02 [confirmed]
 
