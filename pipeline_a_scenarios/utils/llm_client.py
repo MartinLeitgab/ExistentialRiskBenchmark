@@ -30,9 +30,14 @@ BatchProvider = Literal["anthropic", "openai", "google"]
 
 # Models that reject an explicit `temperature` and run only at their provider
 # default. Anthropic removed `temperature`/`top_p`/`top_k` permanently for the
-# Opus 4.7+ family; OpenAI's gpt-5.5 returns
+# Opus 4.7+ family, and the Anthropic migration guide states the restriction is
+# unchanged on Opus 5 ("Setting temperature, top_p, or top_k to a non-default
+# value returns a 400 error on Claude Opus 5, the same as on Claude Opus 4.8" —
+# platform.claude.com/docs/en/about-claude/models/migration-guide, checked
+# 2026-07-27). OpenAI's gpt-5.5 and the gpt-5.6 family return
 #   400 "Unsupported value: 'temperature' does not support 0 with this model.
 #        Only the default (1) value is supported."
+# `gpt-5.6` covers the bare alias and the -sol / -terra / -luna suffixes.
 # Deliberately NOT generalised to every `gpt-5*` id: the 2026-04-21 Phase 1 run
 # (`outputs/data_Riccardo042126/results/prompt_validation/raw_responses.json`,
 # 192 gpt-5.4 rows, zero errors) shows gpt-5.4 accepted temperature=0. Add ids
@@ -40,11 +45,13 @@ BatchProvider = Literal["anthropic", "openai", "google"]
 # Both hyphen and dot spellings are listed because
 # "claude-opus-4.7".startswith("claude-opus-4-7") is False.
 SAMPLING_RESTRICTED_MODEL_PREFIXES = (
+    "claude-opus-5",
     "claude-opus-4-7",
     "claude-opus-4.7",
     "claude-opus-4-8",
     "claude-opus-4.8",
     "gpt-5.5",
+    "gpt-5.6",
 )
 
 # The only sampling temperature the models above will run at.
@@ -124,16 +131,18 @@ class TokenBucket:
 
 class UnifiedLLMClient:
     DEFAULT_MODELS = {
-        "anthropic": "claude-sonnet-4-6",
-        "openai": "gpt-5.2",
-        "google": "gemini-3-flash-preview",
+        "anthropic": "claude-opus-5",
+        "openai": "gpt-5.6-sol",
+        "google": "gemini-3.1-pro-preview",
     }
 
     # Per-token USD for estimate_cost(); canonical full tables live in CostTracker.PRICING_SYNC.
     PRICING = {
+        "claude-opus-5": (5 / 1e6, 25 / 1e6),
         "claude-opus-4-7": (5 / 1e6, 25 / 1e6),
         "claude-opus-4-8": (5 / 1e6, 25 / 1e6),
         "claude-sonnet-4-6": (3 / 1e6, 15 / 1e6),
+        "gpt-5.6-sol": (5 / 1e6, 30 / 1e6),
         "gpt-5.5": (5 / 1e6, 30 / 1e6),
         "gpt-5.2": (1.75 / 1e6, 14 / 1e6),
         "gpt-4o": (2.5 / 1e6, 10 / 1e6),
@@ -201,10 +210,21 @@ class UnifiedLLMClient:
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        temperature: float = 0.7,
+        temperature: Optional[float] = None,
         max_tokens: int = 1000,
         reasoning: Optional[Literal["none", "standard", "high"]] = None,
     ) -> dict:
+        """Single-shot generation.
+
+        Args:
+            temperature: Sampling temperature. `None` (the default) omits the
+                parameter entirely and lets the provider apply its own default.
+                Previously this defaulted to 0.7, which meant a caller that never
+                mentioned temperature still pinned one — and, now that
+                DEFAULT_MODELS points at sampling-restricted models, would have
+                raised. Callers that care about the value must pass it explicitly;
+                the pipeline passes the variant's declared temperature.
+        """
         assert_temperature_supported(self.model, temperature)
 
         cache_key = self._hash(
@@ -281,7 +301,7 @@ class UnifiedLLMClient:
             params.update(thinking_params)
         else:
             base_params = {"max_tokens": max_tokens}
-            if not sampling_params_rejected:
+            if not sampling_params_rejected and temperature is not None:
                 base_params["temperature"] = temperature
             params.update(base_params)
 
@@ -330,10 +350,12 @@ class UnifiedLLMClient:
             self._openai_max_token_param(): adjusted_tokens,
         }
 
-        # gpt-5.5 rejects an explicit temperature (400 "Only the default (1)
-        # value is supported"). generate() has already raised for any non-default
-        # request, so omitting the parameter here preserves the recorded value.
-        if not rejects_sampling_params(self.model):
+        # gpt-5.5 and the gpt-5.6 family reject an explicit temperature (400
+        # "Only the default (1) value is supported"). generate() has already
+        # raised for any non-default request, so omitting the parameter here
+        # preserves the recorded value. `temperature=None` means "provider
+        # default" and is likewise omitted.
+        if not rejects_sampling_params(self.model) and temperature is not None:
             params["temperature"] = temperature
 
         if reasoning in ("standard", "high") and not is_reasoning:
@@ -445,7 +467,7 @@ class UnifiedLLMClient:
 
         for r in requests:
             max_tokens = r.get("max_tokens", 2048)
-            temperature = r.get("temperature", 0.7)
+            temperature = r.get("temperature")
             reasoning = r.get("reasoning")
 
             params = {
@@ -468,7 +490,7 @@ class UnifiedLLMClient:
                 params.update(thinking_params)
             else:
                 base_params = {"max_tokens": max_tokens}
-                if not sampling_params_rejected:
+                if not sampling_params_rejected and temperature is not None:
                     base_params["temperature"] = temperature
                 params.update(base_params)
 
@@ -916,7 +938,7 @@ class UnifiedLLMClient:
                     prompt=r["prompt"],
                     system_prompt=r.get("system_prompt"),
                     max_tokens=r.get("max_tokens", 1000),
-                    temperature=r.get("temperature", 0.7),
+                    temperature=r.get("temperature"),
                     reasoning=r.get("reasoning"),
                 )
                 return {"id": r["id"], "content": result["content"], "error": None}

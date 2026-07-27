@@ -55,19 +55,19 @@ def test_client_initialization(mock_env_vars):
         mock_anthropic.return_value = Mock()
         client = UnifiedLLMClient(provider="anthropic")
         assert client.provider == "anthropic"
-        assert client.model == "claude-sonnet-4-6"
+        assert client.model == UnifiedLLMClient.DEFAULT_MODELS["anthropic"]
 
     with patch("openai.OpenAI") as mock_openai:
         mock_openai.return_value = Mock()
         client = UnifiedLLMClient(provider="openai")
         assert client.provider == "openai"
-        assert client.model == "gpt-5.2"
+        assert client.model == UnifiedLLMClient.DEFAULT_MODELS["openai"]
 
     with patch("google.genai.Client") as mock_google:
         mock_google.return_value = Mock()
         client = UnifiedLLMClient(provider="google")
         assert client.provider == "google"
-        assert client.model == "gemini-3-flash-preview"
+        assert client.model == UnifiedLLMClient.DEFAULT_MODELS["google"]
 
     # Test missing API key
     with patch.dict(os.environ, {}, clear=True):
@@ -496,7 +496,9 @@ def test_opus_4_7_plus_rejects_sampling_params(mock_env_vars, model):
     "provider,model",
     [
         ("anthropic", "claude-opus-4-8"),
+        ("anthropic", "claude-opus-5"),
         ("openai", "gpt-5.5"),
+        ("openai", "gpt-5.6-sol"),
     ],
 )
 def test_sampling_restricted_model_raises_on_non_default_temp(

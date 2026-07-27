@@ -67,24 +67,26 @@ FORMAT_REFUSAL_SCORE = (
     1  # format_compliance_score == 1 → refusal, excluded from aggregation
 )
 
-# FIX (#13): Judge model upgraded from gpt-4o-mini to gpt-5.5.
-# The prior judge (gpt-4o-mini, 1,152 calls at ~$0.13 total) was too weak for
+# FIX (#13): Judge model upgraded from gpt-4o-mini to gpt-5.5, then to
+# gpt-5.6-sol (2026-07-27) alongside the target-model refresh below.
+# The original judge (gpt-4o-mini, 1,152 calls at ~$0.13 total) was too weak for
 # reliable multi-dimensional evaluation of complex benchmark responses. It
 # systematically collapsed preference_signal and strategic_responding onto the
 # same score (~77% of records) and produced noisy coherence / reasoning-depth
-# ratings that distorted the authenticity ranking. gpt-5.5 is the canonical
+# ratings that distorted the authenticity ranking. gpt-5.6-sol is the canonical
 # judge for this pipeline — kept as a module-level constant so the identity is
-# explicit and can be swapped in one place for re-runs.
-JUDGE_MODEL = "gpt-5.5"
+# explicit and can be swapped in one place for re-runs. Same $5/$30 per MTok as
+# gpt-5.5, so judge cost estimates are unchanged.
+JUDGE_MODEL = "gpt-5.6-sol"
 
-# Judge sampling temperature. gpt-5.5 rejects an explicit temperature and runs
-# only at its provider default of 1.0 (400 "Only the default (1) value is
-# supported"), so the prior `temperature=0` judge configuration is unattainable
-# on this model — UnifiedLLMClient now raises rather than dropping the value
-# silently. Keep this constant aligned with JUDGE_MODEL: 1.0 while the judge is
-# an Opus 4.7+/gpt-5.5 model, 0.0 only if the judge moves to a model that
-# accepts sampling params (e.g. gemini-3.1-pro-preview) and deterministic
-# judging is wanted back.
+# Judge sampling temperature. The gpt-5.6 family rejects an explicit temperature
+# and runs only at its provider default of 1.0 (400 "Only the default (1) value
+# is supported"), so a `temperature=0` judge is unattainable on this model —
+# UnifiedLLMClient raises rather than dropping the value silently. Keep this
+# constant aligned with JUDGE_MODEL: 1.0 while the judge is an Opus 4.7+ /
+# gpt-5.5 / gpt-5.6 model, 0.0 only if the judge moves to a model that accepts
+# sampling params (e.g. gemini-3.1-pro-preview) and deterministic judging is
+# wanted back.
 JUDGE_TEMPERATURE = 1.0
 
 # Responses that consist of a bare answer (numeric/letter in an <answer> block, or a
@@ -389,7 +391,7 @@ def _build_variant_summary(variant_id: str, judge_rows: List[Dict]) -> Dict:
 
 def run_validation_study(
     scenarios_path: str = "data/scenarios/seeds_phase1.json",
-    models: List[str] = ["claude-opus-4-8", "gpt-5.5", "gemini-3.1-pro-preview"],
+    models: List[str] = ["claude-opus-5", "gpt-5.6-sol", "gemini-3.1-pro-preview"],
     runs_per_config: int = 2,
     output_dir: str = "data/results/prompt_validation",
 ) -> Dict:
@@ -677,7 +679,7 @@ def run_validation_study(
 def rerun_failed_responses(
     scenarios_path: str = "data/scenarios/seeds_phase1.json",
     raw_path: str = "data/results/prompt_validation/raw_responses.json",
-    models: List[str] = ["claude-opus-4-8", "gpt-5.5", "gemini-3.1-pro-preview"],
+    models: List[str] = ["claude-opus-5", "gpt-5.6-sol", "gemini-3.1-pro-preview"],
     only_transient: bool = True,
     output_dir: str = "data/results/prompt_validation",
 ) -> Dict:

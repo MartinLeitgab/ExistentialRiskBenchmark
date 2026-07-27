@@ -79,8 +79,16 @@ class CostTracker:
     # in calculate_cost / log_cost — do not apply an extra multiplier on batch paths.
     PRICING_SYNC = {
         "openai": {
-            # gpt-5.5: canonical production judge / core OpenAI model (<272k tier).
-            # gpt-5.4 / gpt-5.2: retained for historical JSONL replay (distinct tiers).
+            # gpt-5.6-sol: canonical production target + judge model (standard
+            # tier; the long-context tier is $10 / $45 and is NOT modelled here —
+            # see module docstring, same convention as the Gemini <=200k tier).
+            # `gpt-5.6` is an alias that routes to Sol, priced identically.
+            # Source (checked 2026-07-27): developers.openai.com/api/docs/pricing.
+            # gpt-5.5 / gpt-5.4 / gpt-5.2: retained for historical JSONL replay.
+            "gpt-5.6-sol": {"input": 5.0, "output": 30.0},
+            "gpt-5.6": {"input": 5.0, "output": 30.0},
+            "gpt-5.6-terra": {"input": 2.5, "output": 15.0},
+            "gpt-5.6-luna": {"input": 1.0, "output": 6.0},
             "gpt-5.5": {"input": 5.0, "output": 30.0},
             "gpt-5.4": {"input": 2.5, "output": 15.0},
             "gpt-5.2": {"input": 1.75, "output": 14.0},
@@ -90,10 +98,13 @@ class CostTracker:
             "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
         },
         "anthropic": {
-            # Claude Opus 4.5 / 4.6 / 4.7 / 4.8: $5 / $25 per 1M input/output
-            # (Anthropic pricing docs). Hyphen vs dot model ids both appear in
-            # logs. 4-8 pricing assumed equal to 4-7; confirm vs Anthropic
-            # pricing docs at run time.
+            # Claude Opus 5 / 4.5 / 4.6 / 4.7 / 4.8: $5 / $25 per 1M input/output
+            # — the whole Opus line shares one rate (Anthropic pricing docs,
+            # checked 2026-07-27: platform.claude.com/docs/en/about-claude/pricing).
+            # Hyphen vs dot model ids both appear in logs.
+            # NOTE: fast mode (`speed="fast"`) is $10 / $50 on Opus 5 and 4.8 and
+            # is NOT modelled here — this table is standard-speed sync only.
+            "claude-opus-5": {"input": 5.0, "output": 25.0},
             "claude-opus-4-7": {"input": 5.0, "output": 25.0},
             "claude-opus-4.7": {"input": 5.0, "output": 25.0},
             "claude-opus-4-8": {"input": 5.0, "output": 25.0},

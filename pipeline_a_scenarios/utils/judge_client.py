@@ -46,7 +46,7 @@ class JudgeClient:
             judge_format: The format of the judge prompt, either "combined" or "individual".
 
         Raises:
-            ValueError: If `model` cannot honour `temperature` (e.g. a gpt-5.5 or
+            ValueError: If `model` cannot honour `temperature` (e.g. a gpt-5.6 or
                 Opus 4.7+ judge configured at 0.0). Checked here rather than on the
                 first call so a misconfigured judge fails before any target-model
                 spend, and so judge scores can never be recorded under a

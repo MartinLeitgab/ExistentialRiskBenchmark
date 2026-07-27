@@ -19,7 +19,7 @@
 - 153 unique pairs: 108 cross-category (36 IC×PH, 36 IC×AH, 36 PH×AH) + 45 within-category (15 IC×IC, 15 PH×PH, 15 AH×AH)
 - 5,355 total scenarios = 153 pairs × 35 scenarios per pair
 
-**Target models:** `claude-sonnet-4-6`, `claude-opus-4-6` (Anthropic), `gpt-5.4` (OpenAI), `gemini-3-pro` (Google)
+**Target models:** `claude-opus-5` (Anthropic), `gpt-5.6-sol` (OpenAI), `gemini-3.1-pro-preview` (Google) — refreshed 2026-07-27; the canonical list lives in `pipeline_a_scenarios/suppression_matrix.py` `MODELS` and `prompt_validation.run_validation_study`'s default `models` argument. Judge: `gpt-5.6-sol`. Runs recorded before this date used `claude-opus-4-7`/`4-8`, `gpt-5.4`/`5.5` and are not model-comparable to later runs.
 
 ---
 
@@ -430,12 +430,12 @@ Run Judge B on all 538 candidate records retroactively (no new model calls — j
 
 **Input:** 5,355 validated scenarios, selected primary variant
 **Output:** Raw model responses + Judge A + Judge B evaluations
-**Target models:** claude-opus-4-8, gpt-5.5, gemini-3.1-pro-preview
+**Target models:** claude-opus-5, gpt-5.6-sol, gemini-3.1-pro-preview
 
 Submit all scenarios to target models via batch API. **Run at temperature 1.0**, not 0 — an exfiltrated model acts under the sampling settings it was last deployed with pre-exfiltration, and realistic deployment is temperature 1.0. Reproducibility is not lost: April 24 showed ~100% run-to-run choice reproducibility (`findings.md` §8a) because scenario content dominates sampling noise — read that section's 2026-07-27 correction first, since only its Opus arm ran at a true 1.0. **Both Judge A and Judge B must run on every response at generation time** — retrofitting Judge B after the fact loses the correlation with fresh Judge A scores. Target: 5,355 scenarios × 3 models = ~16,065 responses × 2 judge calls each = ~48,000 total API calls.
 
 **Cost estimate (frontier models + frontier judge):**
-- Model calls (Claude Opus 4.8 + GPT-5.5 + Gemini): ~$60 batch
+- Model calls (Claude Opus 5 + GPT-5.6 Sol + Gemini): ~$60 batch (per-token rates are unchanged from Opus 4.8 / GPT-5.5 — $5/$25 and $5/$30 per MTok respectively, so the estimate carries over)
 - Judge A (GPT-5.5 × 16,065): ~$96 batch
 - Judge B (GPT-5.5 × 16,065): ~$80 batch
 - **Total: ~$235–300** (floor estimate; exact cost depends on gpt-5.5 and claude-opus-4-8 pricing — update `cost_tracker.py` PRICING table before running)

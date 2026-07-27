@@ -31,7 +31,8 @@ from pipeline_a_scenarios.prompt_validation import (
 )
 from pipeline_a_scenarios import suppression_matrix
 from utils.judge_client import JudgeClient
-from utils.llm_client import assert_temperature_supported
+from utils.llm_client import UnifiedLLMClient, assert_temperature_supported
+from utils.cost_tracker import CostTracker
 
 from utils.prompt_generator import BASE_DIMENSIONS
 
@@ -591,8 +592,51 @@ class TestRunValidationStudy:
 
 
 # ---------------------------------------------------------------------------
-# evaluate_with_judge
+# Configured models + evaluate_with_judge
 # ---------------------------------------------------------------------------
+
+
+class TestConfiguredModels:
+    """Model-identity invariants across the two pipeline entry points."""
+
+    def test_configured_pipeline_models_are_priced_exactly(self):
+        """Every model the pipeline calls must have its own exact price row.
+
+        CostTracker.calculate_cost does not fail on an unknown model — it
+        substring-matches, then falls back to the first entry in the provider's
+        dict, emitting a warning that names the *fallback* model rather than the
+        requested one. A model swap that misses the pricing tables therefore
+        produces plausible-looking but wrong cost logs with no visible error.
+        """
+        configured = set(suppression_matrix.MODELS)
+        configured.add(JUDGE_MODEL)
+        configured.add(suppression_matrix.JUDGE_MODEL)
+
+        for model in sorted(configured):
+            if "claude" in model:
+                provider = "anthropic"
+            elif "gpt" in model:
+                provider = "openai"
+            else:
+                provider = "google"
+            assert model in CostTracker.PRICING_SYNC[provider], (
+                f"{model} has no exact row in "
+                f"CostTracker.PRICING_SYNC['{provider}'] — costs would be "
+                "logged at another model's rate"
+            )
+            assert (
+                model in UnifiedLLMClient.PRICING
+            ), f"{model} missing from UnifiedLLMClient.PRICING (estimate_cost)"
+
+    def test_judge_identity_agrees_across_modules(self):
+        """suppression_matrix and prompt_validation must call the same judge.
+
+        Their JUDGE_MODEL / JUDGE_TEMPERATURE constants are duplicated, so a
+        swap applied to one file and not the other silently scores two phases
+        with different judges.
+        """
+        assert JUDGE_MODEL == suppression_matrix.JUDGE_MODEL
+        assert JUDGE_TEMPERATURE == suppression_matrix.JUDGE_TEMPERATURE
 
 
 class TestJudgeTemperatureGuard:
