@@ -35,13 +35,12 @@ def mock_env_vars():
         yield
 
 
-@pytest.fixture
-def mock_cost_tracker():
-    """Mock CostTracker to avoid real file I/O."""
-    with patch("pipeline_a_scenarios.utils.llm_client.get_tracker") as mock_get:
-        mock_tracker = Mock()
-        mock_get.return_value = mock_tracker
-        yield mock_tracker
+# NOTE: there is no `mock_cost_tracker` fixture. UnifiedLLMClient does not log
+# costs — it has no `get_tracker` hook and no `enable_cost_tracking` flag. Cost
+# logging is caller-side: the pipeline scripts call `cost_tracker.log_cost(...)`
+# after each response, and JudgeClient calls `_log_judge_cost`. The caller-side
+# path is covered by
+# `pipeline_a_scenarios/tests/unit/test_prompt_validation.py::TestRunValidationStudy::test_cost_tracker_log_cost_called`.
 
 
 # ==================== TEST 1: INITIALIZATION ====================
@@ -82,8 +81,14 @@ def test_client_initialization(mock_env_vars):
 # ==================== TEST 2: GENERATE METHOD ====================
 
 
-def test_generate_method(mock_env_vars, mock_cost_tracker):
-    """Test 2: Generate works with all providers and tracks costs."""
+def test_generate_method(mock_env_vars):
+    """Test 2: Generate returns normalised content + usage for all providers.
+
+    Cost tracking is deliberately NOT asserted here — it is caller-side (see
+    the note above the fixtures). What every provider branch must guarantee is
+    a `{content, usage{input_tokens, output_tokens}}` shape, because that is
+    what the pipeline records and what CostTracker.log_cost is fed.
+    """
 
     # Test Anthropic
     with patch("anthropic.Anthropic") as mock_anthropic:
@@ -95,15 +100,12 @@ def test_generate_method(mock_env_vars, mock_cost_tracker):
         mock_client.messages.create.return_value = mock_response
         mock_anthropic.return_value = mock_client
 
-        client = UnifiedLLMClient(
-            provider="anthropic", client_override=mock_client, enable_cost_tracking=True
-        )
+        client = UnifiedLLMClient(provider="anthropic", client_override=mock_client)
 
         response = client.generate(prompt="Hello")
         assert response["content"] == "Anthropic response"
         assert response["usage"]["input_tokens"] == 15
         assert response["usage"]["output_tokens"] == 25
-        mock_cost_tracker.auto_log_from_llm_client.assert_called_once()
 
     # Test OpenAI
     with patch("openai.OpenAI") as mock_openai:
@@ -268,7 +270,14 @@ def test_batch_operations(mock_env_vars):
         handle = client.submit_batch(requests)
         assert handle.provider == "anthropic"
         assert handle.id == "anthropic_batch_123"
-        assert handle.metadata["requests"] == requests
+        # `metadata` carries the request list only on the mock-client path
+        # (submit_batch's `_is_mock_client()` short-circuit). The real Anthropic
+        # path returns the batch id alone — the requests are already server-side,
+        # keyed by custom_id, and retrieve_batch_results() joins on that. Asserting
+        # a populated metadata here was asserting the mock's behaviour.
+        assert handle.metadata is None
+        submitted = mock_client.messages.batches.create.call_args.kwargs["requests"]
+        assert [r.get("custom_id") for r in submitted] == ["req1", "req2"]
 
     # Test OpenAI batch requires jsonl_path
     with patch("openai.OpenAI") as mock_openai:
@@ -289,42 +298,39 @@ def test_batch_operations(mock_env_vars):
         handle.id = "new_id"
 
 
-# ==================== TEST 8: COST TRACKING CONTROL ====================
-# FIXED: Removed method call that causes recursion
+# ==================== TEST 8: COST TRACKING IS CALLER-SIDE ====================
 
 
-def test_cost_tracking_control(mock_env_vars, mock_cost_tracker):
-    """Test 8: Cost tracking can be enabled/disabled and toggled."""
+def test_cost_tracking_is_caller_side(mock_env_vars):
+    """Test 8: the client reports usage; it does not log cost itself.
 
+    This test used to assert an `enable_cost_tracking` flag and an
+    `auto_log_from_llm_client` hook. Neither exists: cost logging lives with the
+    callers (`prompt_validation` / `suppression_matrix` call
+    `cost_tracker.log_cost(...)` per response; `JudgeClient._log_judge_cost`
+    does the judge side). The invariant that actually matters is that
+    `generate()` hands back the token counts those callers bill on — and that
+    nothing here writes a cost file as a side effect, which would double-count.
+    """
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
         mock_response = Mock(
-            content=[Mock(text="Response")],
+            content=[Mock(type="text", text="Response")],
             usage=Mock(input_tokens=100, output_tokens=50),
         )
         mock_client.messages.create.return_value = mock_response
         mock_anthropic.return_value = mock_client
 
-        # Test enabled (default)
-        client = UnifiedLLMClient(
-            provider="anthropic", client_override=mock_client, enable_cost_tracking=True
-        )
-        client.generate(prompt="Test")
-        mock_cost_tracker.auto_log_from_llm_client.assert_called_once()
+        client = UnifiedLLMClient(provider="anthropic", client_override=mock_client)
+        result = client.generate(prompt="Test")
 
-        # Test disabled
-        mock_cost_tracker.reset_mock()
-        client = UnifiedLLMClient(
-            provider="anthropic",
-            client_override=mock_client,
-            enable_cost_tracking=False,
+        assert result["usage"] == {"input_tokens": 100, "output_tokens": 50}
+        assert not hasattr(client, "cost_tracker"), (
+            "UnifiedLLMClient must not hold a CostTracker — reintroducing "
+            "client-side logging would double-count against the caller-side "
+            "log_cost() calls in the pipeline scripts"
         )
-        client.cost_tracker = None
-        client.generate(prompt="Test")
-        mock_cost_tracker.auto_log_from_llm_client.assert_not_called()
-
-        # FIXED: Simply check the attribute value - don't call the method
-        assert client.enable_cost_tracking is False  # Already False from constructor
+        assert not hasattr(client, "enable_cost_tracking")
 
 
 # ==================== TEST 9: REASONING MODES ====================
@@ -423,30 +429,46 @@ def test_cost_estimation(mock_env_vars):
 # ==================== TEST 12: ANTHROPIC THINKING TOKENS ====================
 
 
-def test_anthropic_thinking_tokens_handling(mock_env_vars, mock_cost_tracker):
-    """Test 12: Anthropic thinking tokens are properly handled in cost tracking."""
+def test_anthropic_thinking_blocks_are_excluded_from_content(mock_env_vars):
+    """Test 12: thinking blocks never leak into `content`, and their tokens bill.
 
+    Rewritten from an `auto_log_from_llm_client` assertion (a hook the client
+    does not have). The live behaviour that matters, confirmed against
+    claude-opus-5 on 2026-07-27:
+
+    * A thinking-enabled response returns `[ThinkingBlock, TextBlock]`. Reading
+      `content[0].text` raises `AttributeError` — the extractor must select the
+      block whose `type == "text"`, or the pipeline records reasoning traces as
+      if they were the answer.
+    * `usage.output_tokens` already INCLUDES the thinking tokens (measured: 1,000
+      output tokens of which 1,000 were thinking). Callers must bill on
+      `output_tokens` as returned and must not add a thinking figure on top.
+    """
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
+        thinking_block = Mock(type="thinking")
+        # A real ThinkingBlock has no `.text`; Mock would auto-create one.
+        del thinking_block.text
         mock_response = Mock(
-            content=[Mock(text="Response with thinking")],
+            content=[thinking_block, Mock(type="text", text="Visible answer")],
             usage=Mock(input_tokens=100, output_tokens=50),
         )
-        # Add thinking_tokens attribute
-        mock_response.usage.thinking_tokens = 30
         mock_client.messages.create.return_value = mock_response
         mock_anthropic.return_value = mock_client
 
         client = UnifiedLLMClient(
-            provider="anthropic", client_override=mock_client, enable_cost_tracking=True
+            provider="anthropic",
+            model="claude-opus-5",
+            enable_cache=False,
+            client_override=mock_client,
         )
+        response = client.generate(prompt="Complex reasoning task", max_tokens=3000)
 
-        response = client.generate(prompt="Complex reasoning task", reasoning="high")
-
-        # Verify cost tracker was called
-        mock_cost_tracker.auto_log_from_llm_client.assert_called_once()
-
-        assert response["content"] == "Response with thinking"
+        assert response["content"] == "Visible answer", (
+            "content must come from the text block; a thinking block leaking "
+            "through would put hidden reasoning into the recorded response"
+        )
+        assert response["usage"]["output_tokens"] == 50
 
 
 # ==================== TEST 13: OPUS 4.7+ SAMPLING-PARAM REJECTION ====================
