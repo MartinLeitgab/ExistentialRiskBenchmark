@@ -1,4 +1,4 @@
-from utils.llm_client import UnifiedLLMClient
+from utils.llm_client import UnifiedLLMClient, assert_temperature_supported
 from utils.judge_prompts import (
     preference_signal_prompt,
     reasoning_depth_prompt,
@@ -44,7 +44,16 @@ class JudgeClient:
             temperature: The temperature setting for the LLM, which controls
                 the randomness of the output.
             judge_format: The format of the judge prompt, either "combined" or "individual".
+
+        Raises:
+            ValueError: If `model` cannot honour `temperature` (e.g. a gpt-5.6 or
+                Opus 4.7+ judge configured at 0.0). Checked here rather than on the
+                first call so a misconfigured judge fails before any target-model
+                spend, and so judge scores can never be recorded under a
+                temperature the API did not use.
         """
+        assert_temperature_supported(model, temperature)
+
         name = model.lower()
         if "gpt" in name:
             self.provider = "openai"

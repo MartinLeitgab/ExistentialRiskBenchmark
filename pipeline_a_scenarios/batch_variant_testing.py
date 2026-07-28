@@ -74,7 +74,7 @@ def submit_all_batches(
     print(f"   Loaded {len(variants_config)} variant configs")
 
     # Prepare batches
-    models = ["claude-opus-4-8", "gpt-5.5", "gemini-3.1-pro-preview"]
+    models = ["claude-opus-5", "gpt-5.6-sol", "gemini-3.1-pro-preview"]
     batch_handles = {}
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)

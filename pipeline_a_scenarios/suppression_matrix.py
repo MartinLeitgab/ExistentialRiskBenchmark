@@ -57,7 +57,7 @@ FIGURES_DIR = f"{OUTPUT_DIR}/figures"
 SEEDS_PATH = "data/scenarios/seeds_phase1.json"
 
 # FIX (#14): MODELS was drifting from the canonical Phase 1 / Phase 2 set
-# (`claude-opus-4-8`, `gpt-5.5`, `gemini-3.1-pro-preview`) and still pointed at
+# (`claude-opus-5`, `gpt-5.6-sol`, `gemini-3.1-pro-preview`) and still pointed at
 # the older snapshot (`claude-sonnet-4-20250514`, `gpt-5.2`, `gemini-3.0`). That
 # caused the suppression matrix to run against different models than the
 # prompt-validation study, breaking cross-phase comparability of the
@@ -66,16 +66,33 @@ SEEDS_PATH = "data/scenarios/seeds_phase1.json"
 # are present in `cost_tracker.PRICING_SYNC`. Keep this list synchronized with
 # `prompt_validation.run_validation_study`'s default `models` argument and
 # `batch_variant_testing` below.
-MODELS = ["claude-opus-4-8", "gpt-5.5", "gemini-3.1-pro-preview"]
+MODELS = ["claude-opus-5", "gpt-5.6-sol", "gemini-3.1-pro-preview"]
 
-# FIX (#13): Judge model upgraded from gpt-4o-mini to gpt-5.5.
-# The prior judge (gpt-4o-mini) was too weak to reliably distinguish the six
-# orthogonal dimensions required for multi-dimensional evaluation of benchmark
-# responses (in particular, it collapsed preference_signal and
-# strategic_responding onto the same value in ~77% of records). gpt-5.5 is the
-# canonical judge for this pipeline — kept as a module-level constant so it is
-# easy to audit / swap in a single place.
-JUDGE_MODEL = "gpt-5.5"
+# FIX (#13): Judge model upgraded from gpt-4o-mini to gpt-5.5, then to
+# gpt-5.6-sol (2026-07-27). The original judge (gpt-4o-mini) was too weak to
+# reliably distinguish the six orthogonal dimensions required for
+# multi-dimensional evaluation of benchmark responses (in particular, it
+# collapsed preference_signal and strategic_responding onto the same value in
+# ~77% of records). gpt-5.6-sol is the canonical judge for this pipeline — kept
+# as a module-level constant so it is easy to audit / swap in a single place.
+# Must stay identical to `prompt_validation.JUDGE_MODEL`.
+JUDGE_MODEL = "gpt-5.6-sol"
+
+# Sampling temperature for the target-model calls in this matrix. Taken from
+# BASE_DIMENSIONS so it cannot drift from what prompt_generator encodes in the
+# variant ids (`t10` = 1.0); production runs use 1.0 to mimic deployment
+# settings (`docs/forward_plan.md` PIPE-A8). Previously hardcoded to 0, which
+# contradicted every recorded variant id — see `data/findings.md` §8a.
+RUN_TEMPERATURE = BASE_DIMENSIONS["temperature"]
+
+# Judge sampling temperature — see prompt_validation.JUDGE_TEMPERATURE. The
+# gpt-5.6 family runs only at its provider default of 1.0; keep aligned with
+# JUDGE_MODEL.
+JUDGE_TEMPERATURE = 1.0
+
+# Output-token ceiling — single source of truth in prompt_validation, imported
+# so the two phases cannot drift (see the note there for the measurements).
+MAX_RESPONSE_TOKENS = 3000
 
 # FIX (#12): Previously the calibration judge was hard-coded to run on
 # `scenarios[:2]` with no explanation. The original rationale was cost control:
@@ -83,7 +100,7 @@ JUDGE_MODEL = "gpt-5.5"
 # the Phase 1-B budget only allocated ~$1 for calibration anchors. We now
 # expose the limit as a named, documented constant so the cap is explicit and
 # callers can override it (`max_calibration_scenarios=None` runs on every
-# scenario, which is the recommended setting when the judge is gpt-5.5 and
+# scenario, which is the recommended setting when the judge is gpt-5.6-sol and
 # total scenario count is small).
 CALIBRATION_SCENARIO_LIMIT = 2
 
@@ -301,8 +318,8 @@ def run_suppression_matrix(
                         response = client.generate(
                             prompt=user_prompt,
                             system_prompt=system_prompt,
-                            temperature=0,
-                            max_tokens=500,
+                            temperature=RUN_TEMPERATURE,
+                            max_tokens=MAX_RESPONSE_TOKENS,
                         )
 
                         usage = response.get("usage", {})
@@ -692,7 +709,7 @@ def _run_calibration_judge(
                                     ``CALIBRATION_SCENARIO_LIMIT`` (2) which is
                                     the historical Phase 1-B cost-budget cap
                                     (~$1 total with the old gpt-4o-mini judge;
-                                    larger with gpt-5.5, see FIX #13).
+                                    larger with gpt-5.6-sol, see FIX #13).
                                     Pass ``None`` to run calibration on every
                                     scenario (recommended whenever the budget
                                     allows, so anchors are computed on the full
@@ -722,7 +739,7 @@ def _run_calibration_judge(
     try:
         judge = JudgeClient(
             model=JUDGE_MODEL,
-            temperature=0,
+            temperature=JUDGE_TEMPERATURE,
             cost_tracker=cost_tracker,
         )
     except Exception as e:
@@ -754,8 +771,8 @@ def _run_calibration_judge(
                 try:
                     response = client.generate(
                         prompt=user_prompt,
-                        temperature=0,
-                        max_tokens=500,
+                        temperature=RUN_TEMPERATURE,
+                        max_tokens=MAX_RESPONSE_TOKENS,
                     )
                     result = judge.evaluate_response(
                         scenario_context=scenario["context"],

@@ -19,18 +19,31 @@ import json
 import pytest
 import pandas as pd
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
+from pipeline_a_scenarios.tests.conftest import (  # shared CostTracker mock
+    install_cost_mock,
+)
+
+# Canonical target-model set; imported rather than hardcoded so these tests
+# cannot drift back onto ids that are absent from CostTracker.PRICING_SYNC
+# (which would exercise the silent pricing-fallback path).
+from pipeline_a_scenarios.suppression_matrix import MODELS as SUPPRESSION_MODELS
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def minimal_scenario():
     return {
         "id": "s1",
         "context": "Decide.",
+        # Required by suppression_matrix.py:220 for the current_use framing row;
+        # its absence raises KeyError by design (no silent fallback — see
+        # scenario_creation_guidelines.md §10).
+        "current_use_context": "In your role as an assistant, decide.",
         "action_a": "Option A",
         "action_b": "Option B",
         "difficulty": "easy_A",
@@ -58,11 +71,11 @@ def mock_llm_response():
 @pytest.fixture
 def mock_judge_result():
     return {
-        "preference_signal_score":        4,
-        "reasoning_depth_score":          3,
-        "strategic_responding_score":     3,
-        "coherence_score":                4,
-        "format_compliance_score":        5,
+        "preference_signal_score": 4,
+        "reasoning_depth_score": 3,
+        "strategic_responding_score": 3,
+        "coherence_score": 4,
+        "format_compliance_score": 5,
         "instrumental_vs_terminal_score": 3,
     }
 
@@ -70,6 +83,7 @@ def mock_judge_result():
 # ---------------------------------------------------------------------------
 # 1. seed scenarios → run_validation_study
 # ---------------------------------------------------------------------------
+
 
 class TestSeedsToValidationStudy:
     """Seeds JSON is loaded and drives the test matrix."""
@@ -90,7 +104,7 @@ class TestSeedsToValidationStudy:
 
         mock_client_cls.return_value.generate.return_value = mock_llm_response
         mock_gen_variants.return_value = []
-        mock_cost_cls.return_value.get_summary.return_value = {"total_cost": 0.0}
+        install_cost_mock(mock_cost_cls, total_cost=0.0)
 
         result = run_validation_study(
             scenarios_path=scenarios_file,
@@ -107,6 +121,7 @@ class TestSeedsToValidationStudy:
 # 2. run_validation_study → evaluate_with_judge
 # ---------------------------------------------------------------------------
 
+
 class TestValidationStudyToJudge:
     """raw_responses produced by run_validation_study satisfy evaluate_with_judge."""
 
@@ -118,21 +133,23 @@ class TestValidationStudyToJudge:
         # Simulate what run_validation_study produces
         raw_responses = [
             {
-                "scenario_id":   "s1",
-                "variant_id":    "v1",
-                "provider":      "anthropic",
-                "model":         "claude-sonnet-4-20250514",
-                "run":           0,
+                "scenario_id": "s1",
+                "variant_id": "v1",
+                "provider": "anthropic",
+                "model": "claude-sonnet-4-20250514",
+                "run": 0,
                 "response_text": "Action A is better.",
-                "usage":         {"input_tokens": 100, "output_tokens": 15},
+                "usage": {"input_tokens": 100, "output_tokens": 15},
             }
         ]
 
-        with patch("pipeline_a_scenarios.prompt_validation.JudgeClient") as mock_jc, \
-             patch("pipeline_a_scenarios.prompt_validation.CostTracker") as mock_ct:
-
+        with patch(
+            "pipeline_a_scenarios.prompt_validation.JudgeClient"
+        ) as mock_jc, patch(
+            "pipeline_a_scenarios.prompt_validation.CostTracker"
+        ) as mock_ct:
             mock_jc.return_value.evaluate_response.return_value = mock_judge_result
-            mock_ct.return_value.get_summary.return_value = {"total_cost": 0.0}
+            install_cost_mock(mock_ct, total_cost=0.0)
 
             results = evaluate_with_judge(
                 raw_responses=raw_responses,
@@ -142,7 +159,7 @@ class TestValidationStudyToJudge:
 
         assert len(results) == 1
         assert results[0]["scenario_id"] == "s1"
-        assert results[0]["variant_id"]  == "v1"
+        assert results[0]["variant_id"] == "v1"
         # 6th dimension must be injected
         assert "instrumental_vs_terminal_score" in results[0]
 
@@ -150,6 +167,7 @@ class TestValidationStudyToJudge:
 # ---------------------------------------------------------------------------
 # 3. evaluate_with_judge → analyze_and_rank_variants
 # ---------------------------------------------------------------------------
+
 
 class TestJudgeToRanking:
     """Judge results feed into variant ranking correctly."""
@@ -161,30 +179,37 @@ class TestJudgeToRanking:
             {
                 **mock_judge_result,
                 "scenario_id": "s1",
-                "variant_id":  "v1",
-                "model":       "m1",
-                "run":         0,
+                "variant_id": "v1",
+                "model": "m1",
+                "run": 0,
             },
             {
                 **mock_judge_result,
                 "scenario_id": "s1",
-                "variant_id":  "v2",
-                "model":       "m1",
-                "run":         0,
+                "variant_id": "v2",
+                "model": "m1",
+                "run": 0,
             },
         ]
 
         rec = analyze_and_rank_variants(judge_results, str(tmp_path))
 
-        assert "top_variants"      in rec
-        assert "variant_rankings"  in rec
+        assert "top_variants" in rec
+        assert "variant_rankings" in rec
         assert len(rec["top_variants"]) >= 1
 
     def test_variant_rankings_json_written(self, tmp_path, mock_judge_result):
         from pipeline_a_scenarios.prompt_validation import analyze_and_rank_variants
 
-        judge_results = [{**mock_judge_result, "scenario_id": "s1",
-                          "variant_id": "v1", "model": "m1", "run": 0}]
+        judge_results = [
+            {
+                **mock_judge_result,
+                "scenario_id": "s1",
+                "variant_id": "v1",
+                "model": "m1",
+                "run": 0,
+            }
+        ]
         analyze_and_rank_variants(judge_results, str(tmp_path))
         assert (tmp_path / "variant_rankings.json").exists()
 
@@ -192,6 +217,7 @@ class TestJudgeToRanking:
 # ---------------------------------------------------------------------------
 # 4. analyze_and_rank_variants → submit_all_batches
 # ---------------------------------------------------------------------------
+
 
 class TestRankingToBatchSubmission:
     """variant_rankings.json produced by Phase 1 is consumed by load_variant_configs."""
@@ -224,19 +250,24 @@ class TestRankingToBatchSubmission:
         # Create minimal stratified_phase2.json
         scenarios_dir = tmp_path / "data" / "scenarios"
         scenarios_dir.mkdir(parents=True)
-        (scenarios_dir / "stratified_phase2.json").write_text(json.dumps([
-            {
-                "id": "s1",
-                "pair_type": "inst_vs_pro",
-                "context": "C",
-                "action_a": "A",
-                "action_b": "B",
-            }
-        ]))
+        (scenarios_dir / "stratified_phase2.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "id": "s1",
+                        "pair_type": "inst_vs_pro",
+                        "context": "C",
+                        "action_a": "A",
+                        "action_b": "B",
+                    }
+                ]
+            )
+        )
 
         output_dir = tmp_path / "batches"
 
         import os
+
         orig = os.getcwd()
         try:
             os.chdir(tmp_path)
@@ -254,6 +285,7 @@ class TestRankingToBatchSubmission:
 # 5. submit_all_batches → load_batch_results
 # ---------------------------------------------------------------------------
 
+
 class TestBatchHandlesToLoadResults:
     """batch_handles.json written by submit_all_batches is loadable by load_batch_results."""
 
@@ -267,10 +299,10 @@ class TestBatchHandlesToLoadResults:
         # Simulate output of submit_all_batches
         handles = {
             "v1_claude-sonnet-4-20250514": {
-                "batch_id":  "b001",
-                "provider":  "anthropic",
+                "batch_id": "b001",
+                "provider": "anthropic",
                 "variant_id": "v1",
-                "model":     "claude-sonnet-4-20250514",
+                "model": "claude-sonnet-4-20250514",
             }
         }
         batch_dir = tmp_path / "batches"
@@ -292,17 +324,24 @@ class TestBatchHandlesToLoadResults:
 # 6. load_batch_results → recommend_final_variants
 # ---------------------------------------------------------------------------
 
+
 class TestLoadResultsToRecommendations:
     """DataFrame from load_batch_results satisfies recommend_final_variants."""
 
     def test_recommend_accepts_load_results_dataframe(self, tmp_path):
         from pipeline_a_scenarios.analyze_batch_results import recommend_final_variants
 
-        df = pd.DataFrame([
-            {"scenario_id": f"s{i}", "variant_id": "v1",
-             "model": "m1", "parsed_choice": "A"}
-            for i in range(20)
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "scenario_id": f"s{i}",
+                    "variant_id": "v1",
+                    "model": "m1",
+                    "parsed_choice": "A",
+                }
+                for i in range(20)
+            ]
+        )
 
         output_dir = str(tmp_path / "results")
         Path(output_dir).mkdir(parents=True)
@@ -323,6 +362,7 @@ class TestLoadResultsToRecommendations:
 # ---------------------------------------------------------------------------
 # 7. Phase 1-B independence
 # ---------------------------------------------------------------------------
+
 
 class TestPhase1BIndependence:
     """run_suppression_matrix must not depend on Phase 1 output files."""
@@ -349,7 +389,7 @@ class TestPhase1BIndependence:
             "content": "A",
             "usage": {"input_tokens": 50, "output_tokens": 5},
         }
-        mock_cost_cls.return_value.get_summary.return_value = {"total_cost": 0.5}
+        install_cost_mock(mock_cost_cls, total_cost=0.5)
         mock_judge_cls.return_value.evaluate_response.return_value = {
             "preference_signal_score": 3,
         }
@@ -368,6 +408,7 @@ class TestPhase1BIndependence:
 
         assert "suppression_results" in result
         assert (Path(phase1b_dir) / "suppression_matrix_results.json").exists()
+
 
 class TestNumericalAcceptanceCriteria:
     """
@@ -390,7 +431,7 @@ class TestNumericalAcceptanceCriteria:
         mock_client_cls,
         mock_cost_cls,
         mock_judge_cls,
-        mock_calibration_judge,   # patches out the extra calls
+        mock_calibration_judge,  # patches out the extra calls
         tmp_path,
     ):
         """Phase 1-B AC: 6 scenarios × 10 conditions × 3 models = 180 API calls.
@@ -405,13 +446,7 @@ class TestNumericalAcceptanceCriteria:
         }
         mock_client_cls.return_value = mock_client
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.50}
-        mock_cost.get_total_cost.return_value = 0.50
-        mock_cost.get_cost_breakdown_by_model.return_value = {}
-        mock_cost.get_provider_breakdown.return_value = {}
-        mock_cost.get_batch_stats.return_value = {}
-        mock_cost_cls.return_value = mock_cost
+        install_cost_mock(mock_cost_cls, total_cost=0.50)
 
         mock_judge_cls.return_value = Mock()
         mock_calibration_judge.return_value = {
@@ -423,10 +458,14 @@ class TestNumericalAcceptanceCriteria:
 
         import json
         from pathlib import Path
+
         scenarios = [
             {
                 "id": f"s{i}",
                 "context": f"Context {i}",
+                # See the note on the minimal_scenario fixture: the suppression
+                # matrix requires this field and raises without it.
+                "current_use_context": f"In your assistant role: context {i}",
                 "action_a": "A",
                 "action_b": "B",
                 "pair_type": "inst_vs_anti",
@@ -438,15 +477,13 @@ class TestNumericalAcceptanceCriteria:
 
         run_suppression_matrix(
             scenarios_path=seeds_path,
-            models=["claude-sonnet-4-20250514", "gpt-5.2", "gemini-3.0"],
+            models=SUPPRESSION_MODELS,
             output_dir=str(tmp_path / "suppression_out"),
         )
 
-        expected = 6 * 2 * 5 * 3   # = 180 (2 framings × 5 directives)
+        expected = 6 * 2 * 5 * 3  # = 180 (2 framings × 5 directives)
         actual = mock_client.generate.call_count
-        assert actual == expected, (
-            f"Phase 1-B: expected {expected} calls, got {actual}"
-        )
+        assert actual == expected, f"Phase 1-B: expected {expected} calls, got {actual}"
 
     # ------------------------------------------------------------------
     # Phase 1-B: all matrix cells present in output
@@ -479,13 +516,7 @@ class TestNumericalAcceptanceCriteria:
         }
         mock_client_cls.return_value = mock_client
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.50}
-        mock_cost.get_total_cost.return_value = 0.50
-        mock_cost.get_cost_breakdown_by_model.return_value = {}
-        mock_cost.get_provider_breakdown.return_value = {}
-        mock_cost.get_batch_stats.return_value = {}
-        mock_cost_cls.return_value = mock_cost
+        install_cost_mock(mock_cost_cls, total_cost=0.50)
 
         mock_judge_cls.return_value = Mock()
         mock_calibration_judge.return_value = {
@@ -504,15 +535,14 @@ class TestNumericalAcceptanceCriteria:
         conditions = result["suppression_results"]["conditions"]
         for model in conditions:
             for framing in FRAMING_SETTINGS:
-                assert framing in conditions[model], (
-                    f"Missing framing '{framing}' for model {model}"
-                )
+                assert (
+                    framing in conditions[model]
+                ), f"Missing framing '{framing}' for model {model}"
                 for directive in DIRECTIVE_CONDITIONS:
                     assert directive in conditions[model][framing], (
                         f"Missing directive '{directive}' under "
                         f"framing '{framing}' for model {model}"
                     )
-
 
     @patch("pipeline_a_scenarios.suppression_matrix._run_calibration_judge")
     @patch("pipeline_a_scenarios.suppression_matrix.JudgeClient")
@@ -537,13 +567,7 @@ class TestNumericalAcceptanceCriteria:
         }
         mock_client_cls.return_value = mock_client
 
-        mock_cost = Mock()
-        mock_cost.get_summary.return_value = {"total_cost": 0.50}
-        mock_cost.get_total_cost.return_value = 0.50
-        mock_cost.get_cost_breakdown_by_model.return_value = {}
-        mock_cost.get_provider_breakdown.return_value = {}
-        mock_cost.get_batch_stats.return_value = {}
-        mock_cost_cls.return_value = mock_cost
+        install_cost_mock(mock_cost_cls, total_cost=0.50)
 
         mock_judge_cls.return_value = Mock()
         mock_calibration_judge.return_value = {
@@ -560,8 +584,9 @@ class TestNumericalAcceptanceCriteria:
         )
 
         import json
+
         cost_path = tmp_path / "suppression_out" / "cost_summary.json"
         cost_data = json.loads(cost_path.read_text())
-        assert cost_data["total_cost"] < 1.0, (
-            f"Phase 1-B cost ${cost_data['total_cost']:.2f} exceeds $1 budget"
-        )
+        assert (
+            cost_data["total_cost"] < 1.0
+        ), f"Phase 1-B cost ${cost_data['total_cost']:.2f} exceeds $1 budget"
