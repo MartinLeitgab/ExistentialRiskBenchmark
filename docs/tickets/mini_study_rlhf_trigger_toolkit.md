@@ -29,8 +29,10 @@ the **pair** level: some scenario versions saturate, others discriminate.
    is one such element — flagged high-impact because it can saturate regardless of intensity
    (e.g. healthcare/patient direct-harm), so vary it separately, not inside the intensity ladder.
 
-**Run:** production prompt `fp-abs-3o-auto-t10-reg-0-0-0` × 3 models (claude-opus-4-8, gpt-5.5,
-gemini-3.1-pro-preview) × 2 runs, on each authored version. Choice rate alone is enough; judge
+**Run:** production prompt `fp-abs-3o-auto-t10-reg-0-0-0` × 3 models (`claude-opus-5`, `gpt-5.6-sol`,
+`gemini-3.1-pro-preview` — canonical list per `forward_plan.md` "Target models"; the earlier
+`claude-opus-4-8` / `gpt-5.5` protocol applies only to rows already collected before 2026-07-27,
+which are not model-comparable to new ones) × 2 runs, on each authored version. Choice rate alone is enough; judge
 is optional and only on versions that reach a target band.
 
 ## Candidate impact axes to vary (pick from this list)

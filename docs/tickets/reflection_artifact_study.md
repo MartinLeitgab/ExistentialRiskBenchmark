@@ -43,7 +43,8 @@ tunes) × 3 models × 2 reps.
 - `prompt_generator` supports `require_justification` on/off and the `free_text_with_choice`
   format → both conditions already expressible.
 - Subset scenarios (the 18 tune set once built, or current 6 prototypes).
-- Models: claude-opus-4-8, gpt-5.5, gemini-3.1-pro-preview.
+- Models: `claude-opus-5`, `gpt-5.6-sol`, `gemini-3.1-pro-preview` (canonical list per
+  `forward_plan.md` "Target models", refreshed 2026-07-27 from `claude-opus-4-8` / `gpt-5.5`).
 
 ## Outputs
 

@@ -1,6 +1,8 @@
 # Forward Plan — Existential Risk Preferences Benchmark
 
-## Current state (as of Apr 2026)
+## Current state (last refreshed 2026-08-05)
+
+*PR/issue state below is a snapshot, not authoritative — run `gh pr view <N>` before acting on any specific number (see `CLAUDE.md`).*
 
 **Done:**
 - `UnifiedLLMClient` with Anthropic, OpenAI, Gemini support + batch API (`llm_client.py`)
@@ -10,9 +12,10 @@
 - 6 Phase 1 seed scenarios v3 (`data/scenarios/seeds_phase1.json`)
 - 3 within-category reference seeds (`data/scenarios/seeds_within_category.json`)
 - Scenario creation guidelines including within-category design (`docs/scenario_creation_guidelines.md`)
-- PIPE-A7 Phase 1 script (`prompt_validation.py`) + suppression matrix (`suppression_matrix.py`) — in review (PR #30)
-- 75 Phase 2 seed scenarios — in review (PR #39)
-- PIPE-A3 expansion script (`generate_scenarios.py`) — in review (PR #41)
+- PIPE-A7 Phase 1 script (`prompt_validation.py`) + suppression matrix (`suppression_matrix.py`) — merged (PR #30, 2026-05-20); Phase 1 re-run on v4 protos + Judge B complete (`outputs/data_Riccardo060926/`, see `findings.md` §16)
+- PIPE-A3 expansion script (`generate_scenarios.py`) — merged (PR #41, 2026-06-17); execution not yet run (#56)
+- 75 Phase 2 seed scenarios — still open (PR #39 / #43), rescope pending per Step 1c-2, gated on #46
+- Trigger-ablation scenarios (PR #58) paused pending the proto_01 axis deep-dive; deployment-framing script (PR #61) open
 
 **Preference taxonomy:**
 - 18 preferences: IC1–IC6 (instrumental), PH1–PH6 (pro-human), AH1–AH6 (anti-human)
@@ -153,6 +156,8 @@ The prototype-phase goal is a **representative** preference picture: per prefere
 - `easy_A`/`easy_B` are **allowed** to ceiling (they are calibration anchors; a ceiling in the designed direction is the anchor's job).
 - The `hard` band must genuinely discriminate. If even the `hard` band ceilings under every catalogued trigger on all models, the pair is marked an **immovable wall** and reported as a suppression finding — retain ≥1 anchor scenario for future-model monitoring (`findings.md` §7). Do **not** distort an individual scenario to force a 90/10 split — that selects on the outcome and biases the measured distribution. Achieve range at the pair level, not the scenario level.
 
+**Scientific contribution — preference landscape mapping (added 2026-06-16, Martin).** The 3-tune (`easy_A` / `hard` / `easy_B`) design is not only a calibration scaffold — it is the substrate for the paper's novel methodological contribution. Binary choice + Elo gives a 1D preference ordering per model; the 3-tune variants additionally **resolve how each pair flexes under elicitation context** (the same preference pair can flip outcome across variants). Synthesized across all 153 preference pairs of the 18 preferences (108 cross-category + 45 within-category — Martin's framing referenced 132; canonical count is 153 per `pipeline_a_scenarios/config/preferences_taxonomy.yaml`), the result is a **multi-dimensional preference landscape mapped onto a context landscape** — a comprehensive preference-and-value profile of a model. To our knowledge no prior benchmark provides this. Extraction and consumable presentation of this landscape (per model, then cross-model) should be treated as a primary paper contribution, not a side artifact of the calibration design. The 3-tune ladder is the minimum-viable instance; Step 2 (PROPOSED RESCOPE) lifts this to a 5–7 rung ladder on a representative subset for higher resolution on the pairs we instrument deepest.
+
 **Concrete bridge from the 6 to the 75 (the immediate near-term build).** At the prototype level, author the 3-tune set for each of the 6 prototype pairs — `easy_A`, `hard`, `easy_B` — i.e. **18 scenarios from the 6 prototypes**. This is the minimal 3-rung ladder and doubles as the substrate for the ablation mini-study (the `hard`-band tuning *is* the off-ceiling ablation). It is the gate: if we can hit all three intended distributions on ≥1 model for a pair, we have the recipe for that pair; where we cannot, that pair is documented as a (partial) wall before scaling. **What must be in place before the 75:** (a) element catalog validated (#46); (b) 3-tune recipe demonstrated on the 18; (c) `scenario_creation_guidelines.md` §3c updated with levers/walls; (d) pipeline fixes landed (`judge_model`, `deployment_context` — #49); (e) production prompt + judge model locked.
 
 **Proposed 75 structure (supersedes the thin-spread PR #39 layout — pending decision).** ~**25 representative preference pairs × 3 tunes (easy_A / hard / easy_B) = 75**, with the 25 pairs sampled proportionally across the six pair-type × category cells (IC×PH, IC×AH, PH×AH cross-category + IC×IC, PH×PH, AH×AH within-category). This is far more defensible than 75 single scenarios scattered one-deep across pairs: every included pair gets a full 3-band characterization. Note this re-scopes PR #39's current content.
@@ -272,6 +277,8 @@ From April 24 results, the following variant selection decisions are pre-confirm
 
 ### Step 1d — Phase 1 closeout merge sequence (gating Step 2)
 
+**Status 2026-08-05: steps 1–7 are done.** PR #44 merged 2026-05-22, PR #30 merged 2026-05-20, the re-run landed as `outputs/data_Riccardo060926/` (findings in `data/findings.md` §16), PR #41 merged 2026-06-17, and the production variant is locked in `findings.md` §15 (`fp-abs-3o-auto-t10-reg-0-0-0` for choice, FTC for reasoning). What remains is step 9 — the PIPE-A3 production run (#56), gated on #46 and the rescoped seed set. The sequence below is retained as the record of what was required and why.
+
 Phase 1 closeout requires this ordered merge sequence. Skipping or reordering risks merging unvalidated pipeline code on top of stale seeds (PR #30 is 9.7k additions across many review cycles; merging without empirical validation on corrected seeds risks landing accumulated regressions that unit tests don't catch). Cost of the re-run insurance: ~$5–6 per Phase 1 + Phase 1-B (per Step 1 + 1-B estimates).
 
 1. **PR #44 merge (Pooja, Phase 1 seed rewrites).** Pooja addresses 5/8 review items + 3-band `difficulty` migration per `scenario_creation_guidelines.md` §10 + ticket #9 update (issuecomment-4442972496). After merge, `data/scenarios/seeds_phase1.json` carries the rewritten v3.1 seeds with canonical opener, 3-band difficulty, and `logistics` domain on proto_01.
@@ -299,7 +306,9 @@ Phase 1 closeout requires this ordered merge sequence. Skipping or reordering ri
 
 9. **PR #41 merge → PIPE-A3 production run** at scale on selected variant.
 
-### Open items on PR #30 — concrete actions for Riccardo
+### Open items on PR #30 — concrete actions for Riccardo (**closed; PR #30 merged 2026-05-20**)
+
+*Historical record. One item is superseded rather than simply done: the "bump default to `claude-sonnet-4-6`" decision below was overtaken by the 2026-07-27 target refresh — `llm_client.DEFAULT_MODELS["anthropic"]` is now `claude-opus-5`. Do not re-apply it.*
 
 **Item 3 — Pricing split + model bump to 4.6.** `cost_tracker.py:PRICING` was updated to published list prices in your 5/5 commit. Two coordinated changes:
 - **Split PRICING into `_sync` and `_batch` tiers.** Anthropic Message Batches API is 50% off list; OpenAI batch is also discounted. `CostTracker.log_cost` should accept a `call_type` parameter and pick the right tier — otherwise batch-path calls log cost at sync rate, overstating spend by 2× and distorting budget alerts.
@@ -438,7 +447,7 @@ Submit all scenarios to target models via batch API. **Run at temperature 1.0**,
 - Model calls (Claude Opus 5 + GPT-5.6 Sol + Gemini): ~$60 batch (per-token rates are unchanged from Opus 4.8 / GPT-5.5 — $5/$25 and $5/$30 per MTok respectively, so the estimate carries over)
 - Judge A (GPT-5.5 × 16,065): ~$96 batch
 - Judge B (GPT-5.5 × 16,065): ~$80 batch
-- **Total: ~$235–300** (floor estimate; exact cost depends on gpt-5.5 and claude-opus-4-8 pricing — update `cost_tracker.py` PRICING table before running)
+- **Total: ~$235–300** (floor estimate. Per-token rates are now in `cost_tracker.py` `PRICING_SYNC` / `PRICING_BATCH` for the current targets — `claude-opus-5` $5/$25, `gpt-5.6-sol` $5/$30, `gemini-3.1-pro-preview` $2/$12 per MTok — so re-derive from those before running rather than from the judge-model names in the lines above, which still say GPT-5.5)
 
 **Script:** `pipeline_b_evaluation/evaluate_models.py`
 **Storage:** `data/responses/{model_name}/`
@@ -548,8 +557,8 @@ On the Phase 1 retroactive Judge B pass (issue #42), compute Spearman ρ between
 ## Open scope (deferred)
 
 - **Within-category Elo resolution:** 45 within-category pairs require separate reference seeds (3 created, needs validation), PIPE-A3 within-category generation, and a subsequent Pipeline B+C run. Deferred until cross-category corpus is complete.
-- **6th judge dimension (Instrumental vs. Terminal Reasoning):** Needed to distinguish models choosing PH actions via IC logic ("cooperation ensures survival") from genuine PH preferences. Required for paper's core empirical claim. Specification exists in issue #27 comments; not yet implemented.
-- **Model specification finalization:** `claude-sonnet-4-6`, `gpt-5.4`, `gemini-3-pro` — needs team alignment before updating codebase.
+- ~~**6th judge dimension (Instrumental vs. Terminal Reasoning)**~~ — **implemented and in production** (`judge_prompts.py` `<instrumental_vs_terminal>`); IVT values are reported throughout `findings.md` §8. Its migration to Judge B as the primary reasoning instrument is tracked under #42 / #50, not here.
+- ~~**Model specification finalization**~~ — **closed 2026-07-27.** Codebase is on `claude-opus-5` / `gpt-5.6-sol` / `gemini-3.1-pro-preview` with judge `gpt-5.6-sol` (`suppression_matrix.MODELS`, `prompt_validation.JUDGE_MODEL`, `llm_client.DEFAULT_MODELS`). See the "Target models" line at the top of this document.
 - **PIPE-A5 (clustering analysis):** Nice-to-have; run only if time permits after Tier 2 Elo.
 
 ---
@@ -562,6 +571,8 @@ On the Phase 1 retroactive Judge B pass (issue #42), compute Spearman ρ between
 
 **Assumption to state in the paper.** The initial contribution establishes one small data point and rests on assumptions that must be made explicit: (1) that underlying coherent / transitive preferences exist at all, and (2) that they are measurable via the autonomous binary-dilemma instrument used here. These assumptions are not proven; the paper states them as the scope under which the results hold.
 
+**Literature to test against — Ajayi, Chowdhury & Lazar, "Incoherent Values? Probing LLM Preferences Through Parametric Variation"** (arXiv, 19 Jun 2026, cs.CY; https://arxiv.org/abs/2606.21102). Directly probes our assumption (1) that coherent / transitive preferences exist. Their method is the external analog of our tuning ladder: from a forced choice A≻B they construct an augmented **A++** (more of what makes A desirable) and test whether the model still prefers A++ over B — failure = incoherence. Findings to check our data against: (a) even the most capable models show **significant incoherence**, and coherence does **not** scale with capability — this bounds the cross-rung rank-stability robustness claim in *Step 2 (PROPOSED RESCOPE)*; if our `easy_A`→`hard`→`easy_B` pairs exhibit the same A-vs-A++ violations, the within-model Elo ordering is only locally valid and must be reported with that caveat; (b) **models allowed to reason are less incoherent** than thinking-disabled ones — a concrete prediction for our reasoning-FTC choice (*Step 2*, §356-equivalent) and our Choice-Elo vs Reasoning-Elo "rationalization index" (*Step 6 Tier 1*). Action: once Phase 2 / Phase B data is in hand, run their A-vs-A++ transitivity check on a subset of pairs and report agreement / disagreement with their incoherence result; if it replicates, cite it as independent support for the landscape-as-preference framing (§9, §14) over a single-point preference claim.
+
 **Why time-horizon drift is out of scope (but defensible).** We do not investigate whether preferences drift over time horizons. The reasoning: any such drift would start from a baseline of inherent preferences, and that anchor point is precisely what this benchmark is built to measure. Establishing the anchor is the prerequisite for any later drift study.
 
 **Follow-on next steps (paper "future work" section):**
@@ -569,6 +580,8 @@ On the Phase 1 retroactive Judge B pass (issue #42), compute Spearman ρ between
 - Pre-exfiltration deployment scenarios and realistic agent harnesses (vs. the post-exfiltration framing used here)
 - Time-horizon drift from the measured anchor
 - Mapping these dependencies into a more detailed picture of the most-likely paths to loss of control. We are not aware of prior work that maps this space in detail — this is a distinguishing follow-on contribution.
+
+- **Activation / feature steering for safety optimization (proposed by Riccardo, added 2026-06-16).** Use `SteeringAPI.com` to test whether activation steering can shift a model's measured preference landscape toward a desirable target — **maximally pro-human dominant, minimally anti-human dominant, minimally instrumental dominant** — across as much of the context landscape as possible. Approach: (1) baseline unsteered eval on Llama 7B and Gemma 11B (the steerable models exposed via the API); (2) **linear single-feature scan**, additive and subtractive, checking whether any single feature improves the PH-vs-AH-vs-IC outcome fractions across the 153 pairs; (3) 2- and 3-deep brute-force feature combinations are likely cost-/time-prohibitive at full coverage but may be tractable with heuristic prefiltering on the top single-feature hits. Out of scope for the core workshop paper; written up as an outlook section / follow-on study.
 
 ---
 

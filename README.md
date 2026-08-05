@@ -48,14 +48,14 @@ The `goal_specification` dimension splits into calibration variants (`ic_directi
 - `utils/judge_analysis.py` — `aggregate_by_variant()` and helpers for grouping evaluations by model / variant / scenario.
 - `utils/cost_tracker.py` — per-user JSONL cost log at `data/metadata/costs_<username>.jsonl`; $200/month + $1000 total budget with 80% threshold alerts; reasoning-token multipliers per provider (Anthropic 2-3×, OpenAI reasoning 10×, Gemini 8×).
 
-**Pipeline A scripts** (status as of 2026-05-27):
+**Pipeline A scripts** (status as of 2026-08-05):
 
 | Script | Purpose | Status |
 |---|---|---|
 | `create_prototypes.py` | Validate / generate scenario templates from Phase 1 seeds | Implemented |
 | `prompt_validation.py` | PIPE-A7 Phase 1: rank prompt variants against 6 seed scenarios | Merged (PR #30) |
 | `suppression_matrix.py` | PIPE-A7 Phase 1-B: 2D suppression matrix (deployment context × directive framing) | Merged (PR #30) |
-| `generate_scenarios.py` | PIPE-A3: automated expansion to 5,355 scenarios | In review (PR #41) |
+| `generate_scenarios.py` | PIPE-A3: automated expansion to 5,355 scenarios | Merged (PR #41, 2026-06-17); execution gated on #46 + the 75-set (#56) |
 | `analyze_batch_results.py` | Batch-result aggregation helpers | Implemented |
 | `batch_variant_testing.py` | Batch variant-sweep runner | Implemented |
 
@@ -63,7 +63,7 @@ The `goal_specification` dimension splits into calibration variants (`ic_directi
 
 - `data/scenarios/seeds_phase1.json` — 6 Phase 1 prototype scenarios (v4 schema, merged via PR #44 on 2026-05-22). Quality baseline + few-shot anchors for PIPE-A3 expansion. Each contains the `current_use_context` field consumed by `suppression_matrix.py` for the "current_use" cell of the deployment-framing axis.
 - `data/scenarios/seeds_within_category.json` — 3 within-category reference seeds (IC×IC, PH×PH, AH×AH); pending team validation before PIPE-A3 within-category run.
-- Phase 2 seeds (75 scenarios) — in review (PR #39).
+- Phase 2 seeds (75 scenarios) — open in PR #39 / #43; the layout is pending the rescope proposed in `docs/forward_plan.md` Step 1c-2 (~25 pairs × 3 difficulty tunes) and gated on the #46 element-ablation study.
 
 ### Pipeline B — Evaluation (scaffolded only)
 
@@ -77,25 +77,31 @@ Directory structure (`pipeline_c_analysis/{config,models,statistics}/`) with emp
 
 Planned scope: aggregate Pipeline B outputs, apply pre-processing filters (exclude `is_calibration_run=True`, exclude `authenticity_score < 40`, invert action mapping when `action_order=inverted`, map `equal`/`free_text` to draws, exclude `neither`/`unparseable`), compute Elo rankings, bootstrap confidence intervals, and produce the suppression-matrix plots.
 
-## Current status (2026-05-27)
+## Current status (2026-08-05)
+
+PR and issue state changes weekly and goes stale here — treat this table as a snapshot and run
+`gh pr list --state open` / `gh issue list --state open` before relying on any specific number.
 
 **Phase 1 closeout — IN PROGRESS:**
 
 | Item | Status |
 |---|---|
-| PR #30 (prompt_validation + suppression_matrix) | Merged |
+| PR #30 (prompt_validation + suppression_matrix) | Merged 2026-05-20 |
 | PR #44 (Phase 1 v4 prototype scenarios) | Merged 2026-05-22 |
 | Scenario creation guidelines (`docs/scenario_creation_guidelines.md`) | Updated with §4.1 verb-agreement rule, §10 canonical `current_use_context` formula, §11 PH1-recognizable framing finding |
-| Phase 1 re-run on v4 protos | Pending |
-| PR #41 (PIPE-A3 `generate_scenarios.py`, Ishan) | In review |
-| PR #39 (Phase 2 seeds, 75 scenarios) | In review |
+| Phase 1 re-run on v4 protos | Done — `outputs/data_Riccardo060926/` (incl. Judge B pass); findings in `data/findings.md` §16 |
+| PR #41 (PIPE-A3 `generate_scenarios.py`) | Merged 2026-06-17 |
+| PR #39 / #43 (Phase 2 seeds, 75 scenarios) | Open — rescope pending, gated on #46 |
+| PR #58 (trigger-ablation scenarios, #46) | Open, paused pending the proto_01 axis deep-dive |
+| PR #61 (deployment-framing comparison, #47) | Open |
+| Target models + judge | `claude-opus-5` / `gpt-5.6-sol` / `gemini-3.1-pro-preview`, judge `gpt-5.6-sol` (swapped 2026-07-27; earlier runs are not model-comparable) |
 
 **Implemented (Pipeline A):** prompt generation, multi-provider LLM client, batch + streaming inference, LLM-as-judge stack, cost tracking, prompt-variant ranking, 2D suppression matrix, prototype seed scenarios.
 
 **Planned next (in dependency order):**
 
-1. Close out Phase 1 re-run with v4 protos + Sonnet 4.6 + fail-loud judge → final variant rankings.
-2. PIPE-A3 (PR #41): scale to 5,355 scenarios using Anthropic batch.
+1. Element-ablation mini-study (#46) → the axis→effect recipe library that gates the 75-set.
+2. PIPE-A3 execution (#56): scale using Anthropic batch, on the rescoped seed set.
 3. PIPE-A4 (issue #10): in-team validation pass on generated scenarios.
 4. INFRA-3 (issue #15): expert validation of preference taxonomy + scenarios.
 5. PILOT-1/2/3 (issues #11/#12/#13): build Pipeline B and run pilot evaluation across target models.
