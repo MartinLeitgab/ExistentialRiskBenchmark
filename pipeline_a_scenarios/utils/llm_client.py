@@ -208,7 +208,15 @@ class UnifiedLLMClient:
         self,
         provider: str,
         model: Optional[str] = None,
-        enable_cache: bool = True,
+        # Opt-in, not opt-out. The cache keys on (prompt, system_prompt, temperature,
+        # max_tokens, reasoning) — the repeat index is NOT part of the key — so with
+        # this defaulting to True every `runs_per_config` loop returned run 0's
+        # response verbatim for every later run. Verified byte-identical across
+        # 324/324 April cells, 342/342 June cells and 45/45 July cells; see
+        # `data/findings.md` §8a, which retracts the reproducibility finding built
+        # on it. Only enable this where the same prompt is genuinely expected to
+        # recur and one answer is wanted for all of them.
+        enable_cache: bool = False,
         rate_limit_per_sec: float = 5.0,
         client_override=None,
     ):
