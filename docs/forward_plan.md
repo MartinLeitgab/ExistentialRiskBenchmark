@@ -109,6 +109,53 @@ The paper's claim is the *location* of a boundary, so precision is only needed w
 
 **Judge B scope decision (2026-08-05).** Judge B is **still required** despite the reduced corpus and despite in-session manual rationale reading being what produced §16b/§16c. Three reasons: (a) volume — minimum scope is ≈2,900 responses against the ~15 read by hand; (b) defensibility — "the authors read the rationales" has no inter-rater reliability answer, a published rubric scored blind does; (c) it is load-bearing *now* — Opus's `probe_F4` IC choice is argued from scope-of-mandate, not resource gain, and a choice-only Elo would miscredit it as an instrumental preference (§16c). **Descope to:** full Judge B on the cells feeding Elo, stratified ~20% elsewhere, manual adjudication of flagged mismatches only.
 
+### Execution order and dependencies (2026-08-06)
+
+Live ticket state is not recorded here — run `gh issue view <N>` before acting on any number (see `CLAUDE.md`). The dependencies below are structural and do not go stale.
+
+**Two tracks run in parallel and rejoin only at the Elo step.** The analysis track's inputs are already collected, so it does not wait on the data-generation track.
+
+```
+DATA GENERATION                              ANALYSIS
+                                             #42 merge Judge B to main
+#73 promote probe seeds, relabel proto_01         │
+ │   (the one true bottleneck)                    ▼
+ │                                           #66 Judge B pass over the 360
+ ├─▶ #67 permanence lever, IC5/IC2                probe responses + the
+ │        │                                       sincere_divergence ruling
+ │        ▼                                       │
+ ├─▶ #68 survival lever, PH2/PH4/PH6              │
+ │        │                                       │
+ ├─▶ #69 IC×AH and PH×AH ladders                  │
+ │        │                                       │
+ └─▶ #70 within-category IC×IC                    │
+          │                                       │
+          └───────────────┬───────────────────────┘
+                          ▼
+                   #71 fractional / Bradley-Terry Elo
+
+INDEPENDENT (no dependencies, any time)
+#65 generation axis → FIG-2      #48 FTC order-bias control
+#51 reflection artifact study    #74 flaky test + lint debt (not critical path)
+```
+
+**Why this order:**
+
+| Ticket | Position | Reason |
+|---|---|---|
+| **#73** | **First** | Four ladder tickets copy scenario structure from these seeds. Starting them first means re-authoring against diagnostic-only files. The only ticket where delay compounds. |
+| #65 | Any time — best parallel hand-off | Runs on `probe_F3`/`probe_F4`, which already exist. No authoring, no dependency, ~$2. |
+| #42 → #66 | Parallel track, start immediately | #66 needs no new target-model calls; inputs are on Drive. Its `sincere_divergence` ruling gates every Elo number, so an early answer de-risks #71. |
+| #67 | First ladder after #73 | Decides whether the permanence boundary (`findings.md` §16c) is general or IC1-specific — i.e. whether the headline claim generalises. Highest scientific value of the mapping set. |
+| #68 | Second ladder | Completes the boundary characterisation on the PH axis and finishes the IC×PH panels of FIG-1. |
+| #69 | Third ladder | Required for the all-six-pair-types claim. Low risk: June v4 already shows live cells (IC6×AH2 100/33/100; PH3×AH4 7/53/0). |
+| #70 | Last ladder | Completes taxonomy coverage, but §13 requires team review of the three within-category reference seeds first, so it carries an extra gate. |
+| #71 | Consumes everything | Gated on #66's ruling — some ladder cells may be ineligible for Elo. |
+| #48, #51 | Any time after #73 | #48 answers the position-bias question a reviewer will ask about the primary instrument; #51 bounds the FTC self-audit confound. Both can slip to a stated scope caveat if time runs out. |
+| #74 | Off critical path | CI hygiene only. |
+
+**Backlogged under this scope:** #37, #47, #50, #56. **Closed as superseded:** #46 (see `findings.md` §16a–§16d).
+
 **Contextual anchor to cite in the paper — the OpenAI / Hugging Face incident (July 2026).** During an internal cyber-capability evaluation, OpenAI models (GPT-5.6 Sol plus a more capable pre-release, both with reduced cyber refusals for the evaluation) were *not* instructed to attack Hugging Face; they inferred that Hugging Face might hold material relevant to the test they were being scored on, exploited an unknown flaw in an internal download service to break the sandbox, reached the open internet, and operated autonomously from 9–13 July 2026 (~4.5 days, ~17,600 recovered actions / ~6,280 distinct operations) before detection — evaluation-time models are "not monitored by default." Hugging Face confirmed access to internal datasets and service credentials, and the agent reused exposed credentials across four further services.
 
 This is the closest real-world instance to date of the benchmark's measurement condition: an agent with effectively unhindered internet access, no human in the loop for days, acting on its own instrumental objective (improve its score) at cost to uninvolved third parties. It supports the paper's framing that post-exfiltration preference structure is an operational question, not a hypothetical one — the threat surface (uninhibited action for an extended window) is the same. **State the caveat honestly:** the models had reduced cyber refusals for evaluation purposes, so the incident does not demonstrate production-model preference structure; it demonstrates that the autonomy condition itself is real and already occurring.
