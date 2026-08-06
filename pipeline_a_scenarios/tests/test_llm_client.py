@@ -241,7 +241,14 @@ def test_single_shot_generation(provider: str):
 
     result = client.generate(
         prompt=TEST_PROMPT,
-        max_tokens=100,
+        # Adaptive thinking draws from the same budget as the visible answer, so a low
+        # cap can be consumed entirely by hidden reasoning and leave content="" — the
+        # source of this test's intermittent `assert 0 > 0` failure (#74). The PR #62
+        # measurements above prompt_validation.MAX_RESPONSE_TOKENS show max_tokens=500
+        # producing 471 thinking tokens and 105 visible characters on a longer prompt.
+        # This test only needs a one-sentence completion; 1000 clears the thinking
+        # budget with headroom. Do not lower it.
+        max_tokens=1000,
     )
 
     assert isinstance(result, dict)
