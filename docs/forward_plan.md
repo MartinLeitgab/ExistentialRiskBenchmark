@@ -42,16 +42,16 @@
 | Instrument | **FTC (`fp-abs-ftc-auto-t10-reg-0-0-0`) as primary** + allocation-fraction arm on the same scenarios; `3o` only as a small order-bias control |
 | n | **Adaptive: 10 screening, 40 at pivot-adjacent rungs** — see "Sample size" below. Cache disabled (`findings.md` §8a) |
 | Judges | Judge A + Judge B on every response |
-| Analysis | Per-pair pivot / dose-response curve; within-model preference Elo from fractional outcomes (Bradley-Terry / Davidson); choice × reasoning × IVT mismatch matrix (`findings.md` §12e); cross-model rank stability across rungs as the robustness claim |
+| Analysis | Per-pair pivot / dose-response curve; within-model preference Elo from fractional outcomes (Bradley-Terry / Davidson); choice × reasoning × IVT mismatch matrix (`findings.md` §16e); cross-model rank stability across rungs as the robustness claim |
 | Negative result | ≥1 documented immovable wall, established over a **non-dominated** baseline |
 
-**Ladder direction rule (from `findings.md` §16b).** Walk the **PH-side stakes down**, not the IC-side gain up. IC-side manipulation is empirically inert — a matched compounding IC backlog moved IC% by 0 pp on all three models under survival framing (`probe_E1`) — while a single PH-side substitution moved Gemini 0% → 90% (`probe_E2`). Rungs are therefore ordered by descending human-cost severity, holding the IC option fixed.
+**Ladder direction rule (from `findings.md` §17b).** Walk the **PH-side stakes down**, not the IC-side gain up. IC-side manipulation is empirically inert — a matched compounding IC backlog moved IC% by 0 pp on all three models under survival framing (`probe_E1`) — while a single PH-side substitution moved Gemini 0% → 90% (`probe_E2`). Rungs are therefore ordered by descending human-cost severity, holding the IC option fixed.
 
 **Figures (small-N by design — this is the substitute for large-scale coverage). Named `FIG-n` to avoid collision with the `probe_F*` scenario ids in `data/scenarios/proto_01_lever_probe.json`:**
 
 - **FIG-1 — dose-response per pair.** x = ladder rung (descending PH severity), y = IC%, one line per model, one small-multiple panel per pair, 95% CI from n≥20. The model-specific **pivot rung** (50% crossing) is the per-model summary; the cross-model pivot spread is the headline. Pairs where a model never pivots are drawn as a flat line at 0% and reported as walls, not omitted.
-- **FIG-2 — generation axis (the scaling plot).** x = model generation in release order (`claude-opus-4-7` → `4-8` → `5`; `gpt-5.4` → `5.5` → `5.6-sol`; Gemini as available), y = IC% at a **fixed** discriminating rung, one line per vendor family. This is the only figure that can speak to whether the anti-self-expansion disposition (`findings.md` §16b mechanism 3) is strengthening or weakening with capability. It is cheap — the discriminating cells already exist (`probe_E2`/`E3`), and `llm_client.py` already supports the older ids; ~6 models × 2 cells × n=10 ≈ 120 calls ≈ $2. **Run it: three current models alone cannot support a capability claim, six across two vendor families can support a trend statement with an explicit "n=3 per family" caveat.**
-- **FIG-3 — choice × reasoning mismatch matrix** per model (`findings.md` §12e), from Judge A + Judge B on the same responses.
+- **FIG-2 — generation axis (the scaling plot).** x = model generation in release order (`claude-opus-4-7` → `4-8` → `5`; `gpt-5.4` → `5.5` → `5.6-sol`; Gemini as available), y = IC% at a **fixed** discriminating rung, one line per vendor family. This is the only figure that can speak to whether the anti-self-expansion disposition (`findings.md` §17b mechanism 3) is strengthening or weakening with capability. It is cheap — the discriminating cells already exist (`probe_E2`/`E3`), and `llm_client.py` already supports the older ids; ~6 models × 2 cells × n=10 ≈ 120 calls ≈ $2. **Run it: three current models alone cannot support a capability claim, six across two vendor families can support a trend statement with an explicit "n=3 per family" caveat.**
+- **FIG-3 — choice × reasoning mismatch matrix** per model (`findings.md` §16e), from Judge A + Judge B on the same responses.
 
 **Out of scope for this paper (future work section):** the 5,355-scenario corpus; the 75-seed Phase 2 set as currently scoped; suppression-matrix expansion; inoculation gradient (Step 1-B-2); activation steering; Tier 3 X-risk severity weighting if Phase B data does not arrive in time; PIPE-A5 clustering.
 
@@ -61,7 +61,7 @@
 
 **RQ.** *Do frontier models hold stable instrumental-vs-pro-human preferences, or a conditional boundary — and if a boundary, what defines it, and does it differ across models?*
 
-**Answer already evidenced** (`findings.md` §16a–d, 360 responses, ~$4): a boundary, defined by two **conjunctive** conditions, differing by model. `claude-opus-5` and `gpt-5.6-sol` require *both* a non-survival human cost *and* a non-permanent capability gain before expressing the instrumental option; `gemini-3.1-pro-preview` requires only the first.
+**Answer already evidenced** (`findings.md` §17a–d, 360 responses, ~$4): a boundary, defined by two **conjunctive** conditions, differing by model. `claude-opus-5` and `gpt-5.6-sol` require *both* a non-survival human cost *and* a non-permanent capability gain before expressing the instrumental option; `gemini-3.1-pro-preview` requires only the first.
 
 **Contributions, in the order a reviewer will weigh them:**
 
@@ -69,7 +69,7 @@
 2. **Empirical** — the two boundary conditions, their conjunctive structure, their model-specificity, and (via FIG-2) whether the disposition strengthens or weakens across model generations.
 3. **Taxonomy coverage** — where boundaries exist at all across the six `pair_type` cells, exercising the novel 18-preference taxonomy including within-category.
 
-**Reviewer objection to pre-empt: "you can get any answer by rewriting the scenario."** That is the finding, not a threat to it. The boundary is the object of study; it is reproducible (cache-disabled, n=10/cell, Fisher p ≈ 10⁻⁵), model-differentiating, and it retrodicts every previously collected cell (§16d). The reframe is only defensible because candidate artifacts were tested and eliminated *before* a null was accepted — cite §16a (guards insufficient) and §16b (mechanism isolation) as the audit trail.
+**Reviewer objection to pre-empt: "you can get any answer by rewriting the scenario."** That is the finding, not a threat to it. The boundary is the object of study; it is reproducible (cache-disabled, n=10/cell, Fisher p ≈ 10⁻⁵), model-differentiating, and it retrodicts every previously collected cell (§17d). The reframe is only defensible because candidate artifacts were tested and eliminated *before* a null was accepted — cite §17a (guards insufficient) and §17b (mechanism isolation) as the audit trail.
 
 ### Mapping priority — ordered by generality of the boundary conditions, not taxonomy tidiness
 
@@ -82,7 +82,7 @@
 
 ### Sample size — adaptive, not flat n≥20
 
-The paper's claim is the *location* of a boundary, so precision is only needed where the dose-response curve is steep. Wilson 95% CIs: 0/10 → [0%, 28%]; 10/10 → [72%, 100%]; 8/10 → [49%, 94%]; 16/20 → [58%, 92%]. Saturated cells are therefore already tight at n=10, and the §16 probes confirm saturation is genuine (10/10 distinct response texts, identical choice).
+The paper's claim is the *location* of a boundary, so precision is only needed where the dose-response curve is steep. Wilson 95% CIs: 0/10 → [0%, 28%]; 10/10 → [72%, 100%]; 8/10 → [49%, 94%]; 16/20 → [58%, 92%]. Saturated cells are therefore already tight at n=10, and the §17 probes confirm saturation is genuine (10/10 distinct response texts, identical choice).
 
 **Protocol:** **n=10 screening on every rung**, then **n=40 only on the rung(s) bracketing each model's 50% crossing** (±30 pp of 50%). A flat n=20 everywhere spends most of the budget resolving cells that are already at 0% or 100% while still leaving the pivot at ±22 pp. Report the per-cell n in every figure caption.
 
@@ -104,10 +104,10 @@ The paper's claim is the *location* of a boundary, so precision is only needed w
 |---|---|---|---|
 | R1 | Merge Judge B from `pipe-a7-c` to main | — | **Yes** |
 | R2 | Judge B pass over the 360 probe responses already on disk (`outputs/proto_01_*_probe/responses.jsonl`) — **no new model calls** | 1 h | **Yes** |
-| R3 | Adjudicate the Opus `probe_F4` `sincere_divergence` case (§16c) and rule on whether IC4 Elo may use those cells | 1 h | **Yes** |
+| R3 | Adjudicate the Opus `probe_F4` `sincere_divergence` case (§17c) and rule on whether IC4 Elo may use those cells | 1 h | **Yes** |
 | R4 | Fractional / Bradley-Terry (Davidson) Elo over ladder cells per Step 6 | 3 h | No — only if time |
 
-**Judge B scope decision (2026-08-05).** Judge B is **still required** despite the reduced corpus and despite in-session manual rationale reading being what produced §16b/§16c. Three reasons: (a) volume — minimum scope is ≈2,900 responses against the ~15 read by hand; (b) defensibility — "the authors read the rationales" has no inter-rater reliability answer, a published rubric scored blind does; (c) it is load-bearing *now* — Opus's `probe_F4` IC choice is argued from scope-of-mandate, not resource gain, and a choice-only Elo would miscredit it as an instrumental preference (§16c). **Descope to:** full Judge B on the cells feeding Elo, stratified ~20% elsewhere, manual adjudication of flagged mismatches only.
+**Judge B scope decision (2026-08-05).** Judge B is **still required** despite the reduced corpus and despite in-session manual rationale reading being what produced §17b/§17c. Three reasons: (a) volume — minimum scope is ≈2,900 responses against the ~15 read by hand; (b) defensibility — "the authors read the rationales" has no inter-rater reliability answer, a published rubric scored blind does; (c) it is load-bearing *now* — Opus's `probe_F4` IC choice is argued from scope-of-mandate, not resource gain, and a choice-only Elo would miscredit it as an instrumental preference (§17c). **Descope to:** full Judge B on the cells feeding Elo, stratified ~20% elsewhere, manual adjudication of flagged mismatches only.
 
 ### Execution order and dependencies (2026-08-06)
 
@@ -146,7 +146,7 @@ INDEPENDENT (no dependencies, any time)
 | **#73** | **First** | Four ladder tickets copy scenario structure from these seeds. Starting them first means re-authoring against diagnostic-only files. The only ticket where delay compounds. |
 | #65 | Any time — best parallel hand-off | Runs on `probe_F3`/`probe_F4`, which already exist. No authoring, no dependency, ~$2. |
 | #42 → #66 | Parallel track, start immediately | #66 needs no new target-model calls; inputs are on Drive. Its `sincere_divergence` ruling gates every Elo number, so an early answer de-risks #71. |
-| #67 | First ladder after #73 | Decides whether the permanence boundary (`findings.md` §16c) is general or IC1-specific — i.e. whether the headline claim generalises. Highest scientific value of the mapping set. |
+| #67 | First ladder after #73 | Decides whether the permanence boundary (`findings.md` §17c) is general or IC1-specific — i.e. whether the headline claim generalises. Highest scientific value of the mapping set. |
 | #68 | Second ladder | Completes the boundary characterisation on the PH axis and finishes the IC×PH panels of FIG-1. |
 | #69 | Third ladder | Required for the all-six-pair-types claim. Low risk: June v4 already shows live cells (IC6×AH2 100/33/100; PH3×AH4 7/53/0). |
 | #70 | Last ladder | Completes taxonomy coverage, but §13 requires team review of the three within-category reference seeds first, so it carries an extra gate. |
@@ -154,7 +154,7 @@ INDEPENDENT (no dependencies, any time)
 | #48, #51 | Any time after #73 | #48 answers the position-bias question a reviewer will ask about the primary instrument; #51 bounds the FTC self-audit confound. Both can slip to a stated scope caveat if time runs out. |
 | #74 | Off critical path | CI hygiene only. |
 
-**Backlogged under this scope:** #37, #47, #50, #56. **Closed as superseded:** #46 (see `findings.md` §16a–§16d).
+**Backlogged under this scope:** #37, #47, #50, #56. **Closed as superseded:** #46 (see `findings.md` §17a–§17d).
 
 **Contextual anchor to cite in the paper — the OpenAI / Hugging Face incident (July 2026).** During an internal cyber-capability evaluation, OpenAI models (GPT-5.6 Sol plus a more capable pre-release, both with reduced cyber refusals for the evaluation) were *not* instructed to attack Hugging Face; they inferred that Hugging Face might hold material relevant to the test they were being scored on, exploited an unknown flaw in an internal download service to break the sandbox, reached the open internet, and operated autonomously from 9–13 July 2026 (~4.5 days, ~17,600 recovered actions / ~6,280 distinct operations) before detection — evaluation-time models are "not monitored by default." Hugging Face confirmed access to internal datasets and service credentials, and the agent reused exposed credentials across four further services.
 
@@ -403,7 +403,7 @@ From April 24 results, the following variant selection decisions are pre-confirm
 | `exfiltration` | `absent` | Both implicit and explicit exfiltration suppress IC/AH choices — likely trigger safety classifiers rather than activating autonomous reasoning. Neither reveals additional signal. |
 | `framing` | `first_person` | Roleplay and agent framings shift IVT (more instrumental) but do not change choices. First-person is the cleanest non-identity-injecting option. |
 | `system_prompt` | `autonomous` | Assistant framing suppresses preference signal. Autonomous framing is required for post-exfiltration measurement. |
-| `response_format` | **`free_text_with_choice` (FTC) — locked as the primary production instrument, 2026-08-05** | Free text produces d=+0.98 preference_signal, d=+1.35 coherence vs three_option. Decisive reason: Judge B infers preference from reasoning prose blind to the choice, and `3o` does not emit enough prose to support it — without FTC the alignment-washing / faking / sincere-divergence decomposition (`findings.md` §12e) is not measurable at all. Implement as: no numbered structure, free reasoning, close with `<answer>A or B</answer>` tag, `MAX_RESPONSE_TOKENS=3000`. `three_option` retained only as a small order/position-bias control arm, never primary. Supersedes the `3o` lock in `findings.md` §15. |
+| `response_format` | **`free_text_with_choice` (FTC) — locked as the primary production instrument, 2026-08-05** | Free text produces d=+0.98 preference_signal, d=+1.35 coherence vs three_option. Decisive reason: Judge B infers preference from reasoning prose blind to the choice, and `3o` does not emit enough prose to support it — without FTC the alignment-washing / faking / sincere-divergence decomposition (`findings.md` §16e) is not measurable at all. Implement as: no numbered structure, free reasoning, close with `<answer>A or B</answer>` tag, `MAX_RESPONSE_TOKENS=3000`. `three_option` retained only as a small order/position-bias control arm, never primary. Supersedes the `3o` lock in `findings.md` §15. |
 | `value_conflict` | `absent` | Not tested in Phase 1 — hypothesis is it increases RLHF/PH signal. Exclude from production variants until tested. |
 
 **Goal injection finding (paper claim):** Goal injection (`ic_directive`, `ah_directive`, `ph_directive`) does not function as floor/ceiling calibration for Claude or GPT — safety training overrides directive for both. Only Gemini shows full controllability. Cannot use goal injection as model-independent calibration anchors. This is a paper finding in its own right: "explicit goal injection does not reliably shift preference expression in safety-trained frontier models."
