@@ -232,10 +232,17 @@ def cleanup_gemini_queue(
     return result
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("provider", PROVIDERS)
 def test_single_shot_generation(provider: str):
     """
     Validate single-shot generation with real providers.
+
+    Marked `integration` because it issues three real provider calls. Every other test in
+    this module already carries the marker; this one did not, so a bare `pytest` run —
+    which `pytest.ini` filters to `-m "not integration"` — was spending real API budget
+    and inheriting provider flakiness on every invocation. Run it with `pytest -m
+    integration` or `pytest -m ""`.
     """
     client = UnifiedLLMClient(provider=provider)
 
