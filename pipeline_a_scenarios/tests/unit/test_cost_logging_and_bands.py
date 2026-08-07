@@ -150,10 +150,24 @@ def test_real_cost_tracker_receives_a_billable_row(tmp_path):
 
 
 def test_standalone_scripts_pass_a_tracker():
-    """The scripts that produced the unlogged probe spend must now wire one in."""
+    """The scripts that produced the unlogged probe spend must now wire one in.
+
+    Matched on the constructor call rather than on the literal
+    `cost_tracker=CostTracker(`: probe_proto01_guards builds one tracker in main()
+    and shares it across its three model threads, so the argument is a variable.
+    """
+    import ast
+
     for name in ("validate_scenario_labels.py", "probe_proto01_guards.py"):
         source = (REPO_ROOT / "scripts" / name).read_text(encoding="utf-8")
-        assert "cost_tracker=CostTracker(" in source, name
+        passes_tracker = any(
+            "cost_tracker" in {kw.arg for kw in node.keywords}
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.Call)
+            and (getattr(node.func, "id", None) or getattr(node.func, "attr", None))
+            == "UnifiedLLMClient"
+        )
+        assert passes_tracker, f"{name} builds a client that bills nothing"
 
 
 # --------------------------------------------------------------- three-band difficulty

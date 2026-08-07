@@ -415,21 +415,29 @@ class UnifiedLLMClient:
 
         r = self.client.messages.create(**params)
 
-        content_text = next(
-            (
-                block.text
-                for block in r.content
-                if getattr(block, "type", None) == "text"
-            ),
-            "",
-        )
-        if not content_text:
-            content_text = next(
-                (block.text for block in r.content if hasattr(block, "text")), ""
-            )
+        # Join every text block, in order. Taking only the first one silently
+        # truncated any response the model split across blocks — which adaptive
+        # thinking makes routine on Opus 5, since `content` comes back as an
+        # interleaved [thinking, text, thinking, text, ...] sequence. The symptom
+        # was a response that stopped mid-sentence and never showed its closing
+        # <answer> tag, indistinguishable from hitting `max_tokens`: the
+        # proto_05_v4 probe lost 8/10 Opus draws that way at a 3,000-token cap and
+        # still lost them at 8,000, while `usage.output_tokens` reported only
+        # 1,014-1,596 — the tell that the cap was never the binding constraint.
+        text_blocks = [
+            block.text for block in r.content if getattr(block, "type", None) == "text"
+        ]
+        if not text_blocks:
+            text_blocks = [block.text for block in r.content if hasattr(block, "text")]
+        content_text = "".join(text_blocks)
 
         return {
             "content": content_text,
+            # Why the response ended. Without it, a text that stops mid-sentence is
+            # unattributable: `max_tokens` truncation, a refusal, a tool pause and a
+            # dropped block all look identical downstream, and diagnosing the
+            # proto_05_v4 Opus rows cost four probe runs for want of this one field.
+            "stop_reason": getattr(r, "stop_reason", None),
             "usage": {
                 "input_tokens": r.usage.input_tokens,
                 "output_tokens": r.usage.output_tokens,

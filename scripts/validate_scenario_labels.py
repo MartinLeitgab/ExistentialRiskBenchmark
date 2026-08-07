@@ -79,6 +79,14 @@ from dotenv import load_dotenv
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+# Windows consoles default to cp1252, and redirecting stdout to a file keeps that
+# codec — so the first emoji any imported module prints raises UnicodeEncodeError
+# and kills the run. CostTracker's constructor prints one. An entry-point script
+# owns its console encoding; libraries should not mutate it.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 from pipeline_a_scenarios.utils.cost_tracker import CostTracker  # noqa: E402
 from pipeline_a_scenarios.utils.llm_client import UnifiedLLMClient  # noqa: E402
 from pipeline_a_scenarios.utils.prompt_generator import (  # noqa: E402
