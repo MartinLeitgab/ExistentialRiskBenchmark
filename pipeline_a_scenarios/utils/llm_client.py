@@ -356,6 +356,61 @@ class UnifiedLLMClient:
                 metadata={"auto_logged": True},
             )
 
+    def _log_batch_cost(
+        self,
+        input_tokens: int,
+        output_tokens: int,
+        n_requests: int,
+        rows_missing_usage: int = 0,
+    ) -> None:
+        """Log one aggregated row for a completed batch retrieval.
+
+        Billed at the batch tier (`call_type="batch"`), which is ~50% of sync list
+        price — logging batch work as sync would overstate spend roughly 2x and
+        distort the budget alerts.
+
+        One row per retrieval rather than per request: the tokens are what the
+        dashboard sums, and `n_requests` is carried in metadata so the row is not
+        mistaken for a single call.
+
+        Unlike `_log_cost`, a row without usage does not raise here. Batch error and
+        expiry rows legitimately carry no usage, and raising after a retrieval has
+        completed would discard results already paid for. The count is recorded in
+        metadata and warned about instead, so the gap is visible rather than silent.
+        """
+        if self.cost_tracker is None or n_requests == 0:
+            return
+
+        if rows_missing_usage:
+            print(
+                f"   ⚠ {rows_missing_usage}/{n_requests} {self.provider} batch rows "
+                f"carried no usage block; logged cost excludes them"
+            )
+
+        with self._cost_lock:
+            self.cost_tracker.log_cost(
+                provider=self.provider,
+                model=self.model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                call_type="batch",
+                metadata={
+                    "auto_logged": True,
+                    "batch": True,
+                    "n_requests": n_requests,
+                    "rows_missing_usage": rows_missing_usage,
+                },
+            )
+
+    @staticmethod
+    def _accumulate(totals: dict, input_tokens, output_tokens) -> None:
+        """Add one row's usage to a running total, counting absent usage separately."""
+        if input_tokens is None or output_tokens is None:
+            totals["missing"] += 1
+            return
+        totals["input"] += int(input_tokens or 0)
+        totals["output"] += int(output_tokens or 0)
+
     def _apply_reasoning(
         self, base_tokens: int, reasoning: Optional[str]
     ) -> tuple[int, int]:
@@ -765,6 +820,7 @@ class UnifiedLLMClient:
         response.raise_for_status()
 
         results = {}
+        totals = {"input": 0, "output": 0, "missing": 0}
         for line in response.text.splitlines():
             if not line.strip():
                 continue
@@ -783,15 +839,20 @@ class UnifiedLLMClient:
             custom_id = obj.get("custom_id", "unknown")
 
             if result["type"] == "succeeded":
+                message = result.get("message", {})
                 text = next(
                     (
                         block.get("text", "")
-                        for block in result.get("message", {}).get("content", [])
+                        for block in message.get("content", [])
                         if isinstance(block, dict) and block.get("type") == "text"
                     ),
                     "",
                 )
                 results[custom_id] = text
+                usage = message.get("usage") or {}
+                self._accumulate(
+                    totals, usage.get("input_tokens"), usage.get("output_tokens")
+                )
             elif result["type"] == "errored":
                 results[
                     custom_id
@@ -799,6 +860,9 @@ class UnifiedLLMClient:
             else:
                 results[custom_id] = f"[UNKNOWN] Result type: {result.get('type')}"
 
+        self._log_batch_cost(
+            totals["input"], totals["output"], len(results), totals["missing"]
+        )
         return results
 
     def retrieve_batch_results_with_usage(
@@ -810,6 +874,11 @@ class UnifiedLLMClient:
 
         Error/unknown rows return zero token counts so callers can safely sum.
         Non-Anthropic providers raise ValueError until added on demand.
+
+        Deliberately does NOT auto-log to `cost_tracker`, unlike the three
+        `retrieve_*_batch_results` methods: handing usage back so the caller can bill
+        it is this method's entire purpose, so logging here as well would double-count
+        exactly the callers that asked for the usage.
         """
         if handle.provider != "anthropic":
             raise ValueError(
@@ -949,6 +1018,7 @@ class UnifiedLLMClient:
         raw = output_content.read().decode("utf-8")
 
         results = {}
+        totals = {"input": 0, "output": 0, "missing": 0}
         for line in raw.splitlines():
             if not line.strip():
                 continue
@@ -971,13 +1041,21 @@ class UnifiedLLMClient:
                 results[custom_id] = f"[ERROR] HTTP {response.get('status_code')}"
                 continue
 
-            choices = response.get("body", {}).get("choices", [])
+            body = response.get("body", {})
+            choices = body.get("choices", [])
             results[custom_id] = (
                 choices[0].get("message", {}).get("content", "")
                 if choices
                 else "[ERROR] No choices"
             )
+            usage = body.get("usage") or {}
+            self._accumulate(
+                totals, usage.get("prompt_tokens"), usage.get("completion_tokens")
+            )
 
+        self._log_batch_cost(
+            totals["input"], totals["output"], len(results), totals["missing"]
+        )
         return results
 
     def retrieve_gemini_batch_results(
@@ -1024,20 +1102,36 @@ class UnifiedLLMClient:
             raise TimeoutError("Result download timed out")
 
         results = {}
+        totals = {"input": 0, "output": 0, "missing": 0}
         for line in result_bytes.decode("utf-8").splitlines():
             if not line.strip():
                 continue
             item = json.loads(line)
             key = item.get("key")
-            candidates = item.get("response", {}).get("candidates", [])
+            item_response = item.get("response", {})
+            candidates = item_response.get("candidates", [])
             if candidates:
                 parts = candidates[0].get("content", {}).get("parts", [])
                 results[key] = "".join(p.get("text", "") for p in parts)
+                # Gemini's REST payload is camelCase; the SDK object form is snake.
+                meta = (
+                    item_response.get("usageMetadata")
+                    or item_response.get("usage_metadata")
+                    or {}
+                )
+                self._accumulate(
+                    totals,
+                    meta.get("promptTokenCount", meta.get("prompt_token_count")),
+                    meta.get(
+                        "candidatesTokenCount", meta.get("candidates_token_count")
+                    ),
+                )
             else:
-                results[
-                    key
-                ] = f"[ERROR] {item.get('response', {}).get('error', 'No candidates')}"
+                results[key] = f"[ERROR] {item_response.get('error', 'No candidates')}"
 
+        self._log_batch_cost(
+            totals["input"], totals["output"], len(results), totals["missing"]
+        )
         return results
 
     def submit_gemini_parallel(self, requests: List[Dict]) -> BatchHandle:
