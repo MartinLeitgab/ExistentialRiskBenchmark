@@ -219,12 +219,28 @@ class UnifiedLLMClient:
         enable_cache: bool = False,
         rate_limit_per_sec: float = 5.0,
         client_override=None,
+        # Opt-in auto-logging. When a CostTracker is passed, every non-cached
+        # `generate()` logs its own usage — the caller does not have to remember.
+        # Cost logging used to be entirely caller-side, so the pipeline scripts
+        # (`prompt_validation`, `suppression_matrix`, `generate_scenarios`) logged
+        # and every standalone script under `scripts/` did not: the §17a-§17c probe
+        # series (360 responses) and every label-validation run spent real money
+        # with no JSONL row, so the dashboard under-reported project spend by the
+        # whole probe programme. Pass a tracker here rather than adding another
+        # log_cost() call site. Callers that already log manually must NOT pass one
+        # — that would double-count.
+        cost_tracker=None,
     ):
         self.provider = provider
         self.model = model or self.DEFAULT_MODELS[provider]
         self.enable_cache = enable_cache
         self.cache: Dict[str, dict] = {}
         self.bucket = TokenBucket(rate_limit_per_sec, rate_limit_per_sec)
+        self.cost_tracker = cost_tracker
+        # CostTracker appends to a shared JSONL and holds no lock of its own, while
+        # `submit_gemini_parallel` and `scripts/probe_proto01_guards.py` call
+        # `generate()` from a thread pool. Serialise the append here.
+        self._cost_lock = threading.Lock()
 
         if client_override:
             self.client = client_override
@@ -298,6 +314,8 @@ class UnifiedLLMClient:
                         prompt, system_prompt, temperature, max_tokens, reasoning
                     )
 
+                self._log_cost(result)
+
                 if self.enable_cache:
                     self.cache[cache_key] = result
                 return result
@@ -306,6 +324,37 @@ class UnifiedLLMClient:
                 if attempt == 2:
                     raise
                 time.sleep(2**attempt)
+
+    def _log_cost(self, result: dict) -> None:
+        """Log one call's usage if a CostTracker was supplied.
+
+        Deliberately not called on the cache-hit path above: a cache hit issues no
+        provider call and must not be billed a second time.
+
+        Fails loudly on a missing `usage` block rather than logging zeros — a silent
+        zero is indistinguishable from a free call and would corrupt the budget
+        dashboard in the direction that matters (under-reporting).
+        """
+        if self.cost_tracker is None:
+            return
+
+        usage = result.get("usage")
+        if not usage or "input_tokens" not in usage or "output_tokens" not in usage:
+            raise KeyError(
+                f"{self.provider} response carries no usage block, so its cost cannot "
+                f"be logged: {sorted(result)}. Fix the provider adapter rather than "
+                f"logging a zero."
+            )
+
+        with self._cost_lock:
+            self.cost_tracker.log_cost(
+                provider=self.provider,
+                model=self.model,
+                input_tokens=usage["input_tokens"],
+                output_tokens=usage["output_tokens"],
+                call_type="sync",
+                metadata={"auto_logged": True},
+            )
 
     def _apply_reasoning(
         self, base_tokens: int, reasoning: Optional[str]

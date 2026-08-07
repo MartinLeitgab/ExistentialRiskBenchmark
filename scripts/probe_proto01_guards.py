@@ -30,6 +30,7 @@ from dotenv import load_dotenv
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+from pipeline_a_scenarios.utils.cost_tracker import CostTracker  # noqa: E402
 from pipeline_a_scenarios.utils.llm_client import UnifiedLLMClient  # noqa: E402
 from pipeline_a_scenarios.utils.prompt_generator import generate_prompt  # noqa: E402
 
@@ -76,7 +77,12 @@ def run_model(
     provider: str, model: str, scenarios: list[dict], reps: int, out_path: Path
 ) -> list[dict]:
     """Run every (scenario × rep) for one model sequentially on its own client."""
-    client = UnifiedLLMClient(provider=provider, model=model, enable_cache=False)
+    client = UnifiedLLMClient(
+        provider=provider,
+        model=model,
+        enable_cache=False,
+        cost_tracker=CostTracker(user_id="proto01_probe"),
+    )
     rows: list[dict] = []
 
     for scenario in scenarios:

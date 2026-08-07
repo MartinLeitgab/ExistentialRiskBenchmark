@@ -79,6 +79,7 @@ from dotenv import load_dotenv
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+from pipeline_a_scenarios.utils.cost_tracker import CostTracker  # noqa: E402
 from pipeline_a_scenarios.utils.llm_client import UnifiedLLMClient  # noqa: E402
 from pipeline_a_scenarios.utils.prompt_generator import (  # noqa: E402
     substitute_agency_tokens,
@@ -308,7 +309,10 @@ def main() -> int:
 
     load_dotenv(REPO_ROOT / ".env")
     client = UnifiedLLMClient(
-        provider=JUDGE_PROVIDER, model=JUDGE_MODEL, enable_cache=False
+        provider=JUDGE_PROVIDER,
+        model=JUDGE_MODEL,
+        enable_cache=False,
+        cost_tracker=CostTracker(user_id="label_validation"),
     )
 
     out_dir = REPO_ROOT / args.out

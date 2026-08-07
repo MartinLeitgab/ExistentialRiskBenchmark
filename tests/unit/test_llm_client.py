@@ -5,10 +5,12 @@ Author: Pooja Puranik
 Date: 12/02/2026
 """
 
+import ast
 import pytest
 import os
 import time
 import sys
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from pipeline_a_scenarios.utils.llm_client import (
@@ -35,12 +37,17 @@ def mock_env_vars():
         yield
 
 
-# NOTE: there is no `mock_cost_tracker` fixture. UnifiedLLMClient does not log
-# costs — it has no `get_tracker` hook and no `enable_cost_tracking` flag. Cost
-# logging is caller-side: the pipeline scripts call `cost_tracker.log_cost(...)`
-# after each response, and JudgeClient calls `_log_judge_cost`. The caller-side
-# path is covered by
-# `pipeline_a_scenarios/tests/unit/test_prompt_validation.py::TestRunValidationStudy::test_cost_tracker_log_cost_called`.
+# NOTE: there is no `mock_cost_tracker` fixture, because a default-constructed
+# UnifiedLLMClient logs nothing — there is no `enable_cost_tracking` flag, and the
+# optional `cost_tracker=` constructor argument defaults to None. Two disjoint call
+# paths exist and must stay disjoint:
+#   * caller-side — the pipeline scripts call `cost_tracker.log_cost(...)` after each
+#     response and JudgeClient calls `_log_judge_cost`; covered by
+#     `pipeline_a_scenarios/tests/unit/test_prompt_validation.py::TestRunValidationStudy::test_cost_tracker_log_cost_called`
+#   * client-side (opt-in) — pass `cost_tracker=` and `generate()` logs its own usage;
+#     used by the standalone scripts under `scripts/`, whose spend was previously
+#     invisible. Covered by
+#     `pipeline_a_scenarios/tests/unit/test_cost_logging_and_bands.py`.
 
 
 # ==================== TEST 1: INITIALIZATION ====================
@@ -301,16 +308,24 @@ def test_batch_operations(mock_env_vars):
 # ==================== TEST 8: COST TRACKING IS CALLER-SIDE ====================
 
 
-def test_cost_tracking_is_caller_side(mock_env_vars):
-    """Test 8: the client reports usage; it does not log cost itself.
+def test_cost_tracking_is_off_unless_opted_into(mock_env_vars):
+    """Test 8: the client reports usage and logs nothing unless handed a tracker.
 
     This test used to assert an `enable_cost_tracking` flag and an
-    `auto_log_from_llm_client` hook. Neither exists: cost logging lives with the
-    callers (`prompt_validation` / `suppression_matrix` call
-    `cost_tracker.log_cost(...)` per response; `JudgeClient._log_judge_cost`
-    does the judge side). The invariant that actually matters is that
-    `generate()` hands back the token counts those callers bill on — and that
-    nothing here writes a cost file as a side effect, which would double-count.
+    `auto_log_from_llm_client` hook (neither existed), and was then tightened to
+    forbid a `cost_tracker` attribute outright. That last form was too strong: it
+    also forbade the fix for the opposite bug, which was that purely caller-side
+    logging left every standalone script under `scripts/` billing silently — the
+    §17a-§17c probe series and all label-validation runs produced no JSONL row at
+    all (`data/findings.md` §17e-5 flags the gap).
+
+    The invariant that actually matters is unchanged and is what is asserted here:
+    a default-constructed client bills nothing, so it cannot double-count against
+    the manual `cost_tracker.log_cost(...)` calls in `prompt_validation` /
+    `suppression_matrix` / `generate_scenarios` / `JudgeClient._log_judge_cost`.
+    Auto-logging is opt-in per call site; see
+    `pipeline_a_scenarios/tests/unit/test_cost_logging_and_bands.py` for its
+    behaviour, and keep the two sets of call sites disjoint.
     """
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
@@ -325,12 +340,38 @@ def test_cost_tracking_is_caller_side(mock_env_vars):
         result = client.generate(prompt="Test")
 
         assert result["usage"] == {"input_tokens": 100, "output_tokens": 50}
-        assert not hasattr(client, "cost_tracker"), (
-            "UnifiedLLMClient must not hold a CostTracker — reintroducing "
-            "client-side logging would double-count against the caller-side "
-            "log_cost() calls in the pipeline scripts"
+        assert client.cost_tracker is None, (
+            "auto-logging must stay opt-in — a client that bills by default would "
+            "double-count against the caller-side log_cost() calls in the pipeline "
+            "scripts"
         )
         assert not hasattr(client, "enable_cost_tracking")
+
+    # The manual-logging call sites must not also hand the client a tracker.
+    manual_loggers = (
+        "pipeline_a_scenarios/prompt_validation.py",
+        "pipeline_a_scenarios/suppression_matrix.py",
+        "pipeline_a_scenarios/generate_scenarios.py",
+    )
+    repo_root = Path(__file__).resolve().parents[2]
+    for relative in manual_loggers:
+        source = (repo_root / relative).read_text(encoding="utf-8")
+        assert "log_cost(" in source, f"{relative} no longer logs manually"
+
+        # Match on the constructor call itself: these modules legitimately pass
+        # `cost_tracker=` to their own helpers, so a substring search is useless.
+        for node in ast.walk(ast.parse(source)):
+            if not isinstance(node, ast.Call):
+                continue
+            callee = node.func
+            name = getattr(callee, "id", None) or getattr(callee, "attr", None)
+            if name != "UnifiedLLMClient":
+                continue
+            passed = {kw.arg for kw in node.keywords}
+            assert "cost_tracker" not in passed, (
+                f"{relative}:{node.lineno} logs cost manually AND passes a tracker "
+                f"to UnifiedLLMClient — that double-counts every call"
+            )
 
 
 # ==================== TEST 9: REASONING MODES ====================
