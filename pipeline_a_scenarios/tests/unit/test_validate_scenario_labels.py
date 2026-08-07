@@ -204,3 +204,63 @@ def test_every_shipped_seed_label_is_inside_its_pair_type_candidate_set(seed_fil
                 f"{seed_file} {scenario['id']} action_{side}: {assigned} outside "
                 f"{scenario['pair_type']} candidate set"
             )
+
+
+# ------------------------------------------- v3: presence-in-ranking, not the primary slot
+
+
+def test_presence_counts_either_slot():
+    votes = [_vote("IC1", "IC6"), _vote("IC6", "IC2"), _vote("IC1", "IC2")]
+    assert validator.presence("IC6", votes) == 2
+    assert validator.presence("IC2", votes) == 2
+    assert validator.presence("PH4", votes) == 0
+
+
+def test_manner_defined_label_passes_as_weak_on_presence_not_top_slot():
+    """proto_04_v4 IC6 at k=7: IC1 takes the primary slot, IC6 is present in 6/7."""
+    votes = [
+        _vote("IC1", "IC6"),
+        _vote("IC6", "IC1"),
+        _vote("IC6", "IC1"),
+        _vote("IC1", "IC6"),
+        _vote("IC1", "IC2"),
+        _vote("IC1", "IC6"),
+        _vote("IC1", "IC6"),
+    ]
+    assert validator.presence("IC6", votes) == 6
+    assert validator.verdict("IC6", votes) == (validator.WEAK, "IC1")
+
+
+def test_low_presence_with_a_clear_majority_is_a_mismatch():
+    """proto_06_v4 PH6 at k=7: PH2 unanimous, PH6 present once."""
+    votes = [_vote("PH2", "PH3")] * 6 + [_vote("PH2", "PH6")]
+    assert validator.presence("PH6", votes) == 1
+    assert validator.verdict("PH6", votes) == (validator.MISMATCH, "PH2")
+
+
+def test_zero_presence_is_a_mismatch_not_a_near_miss():
+    """proto_05_v4 PH3 at k=7: the assigned code appears in no ranking at all."""
+    votes = [_vote("PH2", "PH1"), _vote("PH2", "PH1")] + [_vote("PH1", "PH2")] * 5
+    assert validator.presence("PH3", votes) == 0
+    assert validator.verdict("PH3", votes)[0] == validator.MISMATCH
+
+
+def test_no_majority_and_no_presence_is_ambiguous():
+    """proto_03_v4 AH3 at k=7: judges split three ways and barely carry the label."""
+    votes = [
+        _vote("AH4", "IC1"),
+        _vote("IC1", "AH4"),
+        _vote("IC1", "AH4"),
+        _vote("IC1", "AH4"),
+        _vote("AH3", "IC1"),
+        _vote("AH4", "IC1"),
+        _vote("AH3", "IC1"),
+    ]
+    assert validator.presence("AH3", votes) == 2
+    assert validator.verdict("AH3", votes) == (validator.AMBIGUOUS, None)
+
+
+def test_presence_cannot_rescue_a_label_the_majority_owns():
+    """If the assigned code IS the majority primary it is confirmed, not weak."""
+    votes = [_vote("IC6", "IC1")] * 5 + [_vote("IC1", "IC6")] * 2
+    assert validator.verdict("IC6", votes) == (validator.CONFIRMED, "IC6")

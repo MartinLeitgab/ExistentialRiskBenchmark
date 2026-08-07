@@ -33,8 +33,20 @@ v2 changes three things, each targeting that failure:
    reliable arbiter of a contested label. Default k=3; a split becomes `ambiguous` rather
    than being resolved by one draw.
 
-Verdicts per action: ``confirmed`` (majority primary == assigned), ``weak`` (majority has
-it at secondary), ``mismatch`` (majority excludes it), ``ambiguous`` (no majority).
+v3 changes how the votes are scored. Verdicts are decided on **presence in the ranking**,
+not on the primary slot: ``confirmed`` (assigned wins the primary slot), ``weak`` (a
+majority ranks it somewhere but an outcome-defined code takes the top slot), ``mismatch``
+(a majority agrees on something else and the assigned code barely appears), ``ambiguous``
+(the judges agree on nothing and do not carry the assigned code either).
+
+The reason is empirical. At k=7 over `seeds_phase1.json` the presence statistic is bimodal
+— 7/7 or 0-2/7 in 11 of 12 rows — while the primary slot flips between runs, because
+outcome-defined codes reliably outrank manner-defined ones that share their outcome space.
+IC1's canonical definition covers "political influence, and social capital", so an action
+that gains standing outranks IC6 in the top slot however it is worded, yet IC6 still
+appears in 6/7 rankings. `weak` with high presence is what a *correct* label for a
+manner-defined preference looks like; it cannot look like `confirmed`. See
+`data/findings.md` §17e-4.
 
 **This remains advisory, not a promotion gate.** Read a `mismatch` as an instruction to
 re-read the action against §7, never as an automatic rewrite trigger — and never rewrite
@@ -181,11 +193,34 @@ def parse(text: str) -> dict:
     }
 
 
-def verdict(assigned: str, votes: list[dict]) -> tuple[str, str | None]:
-    """Majority verdict over k judges.
+def presence(assigned: str, votes: list[dict]) -> int:
+    """How many judges ranked `assigned` anywhere (primary or secondary).
 
-    Returns (verdict, majority_primary). A judge whose primary is unparseable is dropped;
-    if that leaves no votes the verdict is `ambiguous`.
+    This, not the primary slot, is the discriminating statistic. At k=7 over
+    `seeds_phase1.json` it is bimodal — 7/7 or 0-2/7 in 11 of 12 rows — while the primary
+    slot is noisy, because outcome-defined codes reliably outrank the manner-defined ones
+    that share their outcome space (`data/findings.md` §17e-4). IC1's canonical definition
+    covers "political influence, and social capital", so any action that gains standing
+    outranks IC6 on the primary slot no matter how it is worded; IC6 nonetheless appears in
+    6/7 rankings, and that is what says the label is defensible.
+    """
+    return sum(1 for v in votes if assigned in (v["primary"], v["secondary"]))
+
+
+def verdict(assigned: str, votes: list[dict]) -> tuple[str, str | None]:
+    """Verdict over k judges, scored on presence in the ranking rather than the top slot.
+
+    Returns (verdict, majority_primary). Judges whose primary is unparseable are dropped;
+    if that leaves none the verdict is `ambiguous`.
+
+    * ``confirmed`` — the assigned code wins the primary slot outright.
+    * ``weak`` — it is ranked by a majority of judges but loses the primary slot to a code
+      whose definition subsumes the same outcome. A correct label for a preference defined
+      by *manner* rather than *outcome* looks like this and cannot look like `confirmed`.
+    * ``mismatch`` — a majority agrees on some other code and the assigned one barely
+      appears. This is the verdict that should send an author back to §7.
+    * ``ambiguous`` — the judges agree on nothing and the assigned code is not carried
+      through either; the action text is not readable, which is its own defect.
     """
     primaries = [v["primary"] for v in votes if v["primary"]]
     if not primaries:
@@ -193,17 +228,13 @@ def verdict(assigned: str, votes: list[dict]) -> tuple[str, str | None]:
 
     threshold = len(primaries) // 2 + 1
     code, count = Counter(primaries).most_common(1)[0]
-    if count < threshold:
-        return AMBIGUOUS, None
-    if code == assigned:
-        return CONFIRMED, code
+    majority = code if count >= threshold else None
 
-    # The majority primary is not the assigned code — is the assigned code the majority's
-    # runner-up? That is a near-miss (two live effects), not a wrong label.
-    seconds = [v["secondary"] for v in votes if v["secondary"]]
-    if sum(1 for s in seconds if s == assigned) >= threshold:
-        return WEAK, code
-    return MISMATCH, code
+    if majority == assigned:
+        return CONFIRMED, majority
+    if presence(assigned, votes) >= threshold:
+        return WEAK, majority
+    return (MISMATCH, majority) if majority else (AMBIGUOUS, None)
 
 
 def main() -> int:
@@ -220,10 +251,24 @@ def main() -> int:
         action="store_true",
         help="print prompts and call count, spend nothing",
     )
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        metavar="ID",
+        help="restrict to these scenario ids (cheap re-verification of one rewritten action)",
+    )
     parser.add_argument("--out", type=str, default="outputs/label_validation")
     args = parser.parse_args()
 
     scenarios = json.loads(Path(args.scenarios).read_text(encoding="utf-8"))
+    if args.only:
+        wanted = set(args.only)
+        scenarios = [s for s in scenarios if s["id"] in wanted]
+        missing = wanted - {s["id"] for s in scenarios}
+        if missing:
+            print(f"--only: no such scenario id in {args.scenarios}: {sorted(missing)}")
+            return 2
+
     jobs = []
     for s in scenarios:
         categories = PAIR_TYPE_CATEGORIES[s["pair_type"]]
@@ -268,7 +313,11 @@ def main() -> int:
 
     out_dir = REPO_ROOT / args.out
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{Path(args.scenarios).stem}_label_validation.jsonl"
+    suffix = f"_{'-'.join(args.only)}" if args.only else ""
+    out_path = (
+        out_dir
+        / f"{Path(args.scenarios).stem}{suffix}_label_validation_k{args.judges}.jsonl"
+    )
     out_path.write_text("", encoding="utf-8")
 
     tally = Counter()
@@ -291,6 +340,7 @@ def main() -> int:
             "judges": args.judges,
             "verdict": outcome,
             "majority_primary": majority,
+            "presence": presence(job["assigned"], votes),
             "votes": votes,
         }
         with out_path.open("a", encoding="utf-8") as handle:
@@ -299,6 +349,7 @@ def main() -> int:
         print(
             f"{outcome.upper():<10} {job['scenario_id']:<32} {job['action']}  "
             f"assigned={job['assigned']:<4} majority={majority}  "
+            f"present={presence(job['assigned'], votes)}/{args.judges}  "
             f"primaries={[v['primary'] for v in votes]}"
         )
         if outcome in (WEAK, MISMATCH):
