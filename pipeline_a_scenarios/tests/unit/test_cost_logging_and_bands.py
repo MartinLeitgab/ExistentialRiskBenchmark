@@ -149,6 +149,251 @@ def test_real_cost_tracker_receives_a_billable_row(tmp_path):
     assert rows[0]["cost"] > 0, "a logged call must carry a non-zero cost"
 
 
+# ------------------------------------------------------------------ batch cost logging
+
+
+def _batch_client(tracker):
+    return UnifiedLLMClient(
+        provider="anthropic",
+        model="claude-opus-5",
+        cost_tracker=tracker,
+        client_override=object(),
+    )
+
+
+def test_anthropic_batch_retrieval_logs_at_the_batch_tier(monkeypatch):
+    """Batch work billed at sync rates would overstate spend ~2x."""
+    tracker = RecordingTracker()
+    client = _batch_client(tracker)
+
+    lines = [
+        {
+            "custom_id": "a",
+            "result": {
+                "type": "succeeded",
+                "message": {
+                    "content": [{"type": "text", "text": "one"}],
+                    "usage": {"input_tokens": 100, "output_tokens": 40},
+                },
+            },
+        },
+        {
+            "custom_id": "b",
+            "result": {
+                "type": "succeeded",
+                "message": {
+                    "content": [{"type": "text", "text": "two"}],
+                    "usage": {"input_tokens": 200, "output_tokens": 60},
+                },
+            },
+        },
+        {"custom_id": "c", "result": {"type": "errored", "error": {"message": "x"}}},
+    ]
+    _stub_anthropic_batch(monkeypatch, client, lines)
+
+    results = client.retrieve_anthropic_batch_results("batch_1", timeout=1)
+
+    assert set(results) == {"a", "b", "c"}
+    assert len(tracker.entries) == 1
+    entry = tracker.entries[0]
+    assert entry["call_type"] == "batch"
+    assert entry["input_tokens"] == 300 and entry["output_tokens"] == 100
+    assert entry["metadata"]["n_requests"] == 3
+    # The errored row carries no usage and must be counted, not silently dropped.
+    assert entry["metadata"]["rows_missing_usage"] == 0
+
+
+def test_batch_row_without_usage_is_counted_not_silently_dropped(monkeypatch):
+    tracker = RecordingTracker()
+    client = _batch_client(tracker)
+
+    lines = [
+        {
+            "custom_id": "a",
+            "result": {
+                "type": "succeeded",
+                "message": {"content": [{"type": "text", "text": "one"}]},
+            },
+        },
+    ]
+    _stub_anthropic_batch(monkeypatch, client, lines)
+    client.retrieve_anthropic_batch_results("batch_1", timeout=1)
+
+    assert tracker.entries[0]["metadata"]["rows_missing_usage"] == 1
+
+
+def test_batch_retrieval_without_tracker_logs_nothing(monkeypatch):
+    client = UnifiedLLMClient(
+        provider="anthropic", model="claude-opus-5", client_override=object()
+    )
+    lines = [
+        {
+            "custom_id": "a",
+            "result": {
+                "type": "succeeded",
+                "message": {
+                    "content": [{"type": "text", "text": "one"}],
+                    "usage": {"input_tokens": 10, "output_tokens": 5},
+                },
+            },
+        },
+    ]
+    _stub_anthropic_batch(monkeypatch, client, lines)
+    assert client.retrieve_anthropic_batch_results("batch_1", timeout=1) == {"a": "one"}
+
+
+def _stub_anthropic_batch(monkeypatch, client, lines):
+    """Stand in for the poll + results-file download the retrieval performs."""
+
+    class Counts:
+        processing = 0
+        errored = 0
+        expired = 0
+
+    class Batch:
+        request_counts = Counts()
+        results_url = "https://example.invalid/results"
+
+    monkeypatch.setattr(client, "_poll_until", lambda **kwargs: Batch())
+    monkeypatch.setattr(client, "api_key", "test-key", raising=False)
+
+    class Response:
+        text = "\n".join(json.dumps(line) for line in lines)
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    monkeypatch.setattr(
+        "pipeline_a_scenarios.utils.llm_client.requests.get",
+        lambda *a, **k: Response(),
+    )
+
+
+def test_openai_batch_retrieval_reads_its_own_usage_key_names(monkeypatch):
+    """OpenAI reports prompt_tokens/completion_tokens, not input/output_tokens."""
+    tracker = RecordingTracker()
+
+    class Files:
+        @staticmethod
+        def content(_file_id):
+            payload = json.dumps(
+                {
+                    "custom_id": "a",
+                    "response": {
+                        "status_code": 200,
+                        "body": {
+                            "choices": [{"message": {"content": "hi"}}],
+                            "usage": {"prompt_tokens": 70, "completion_tokens": 30},
+                        },
+                    },
+                }
+            )
+
+            class Content:
+                @staticmethod
+                def read():
+                    return payload.encode("utf-8")
+
+            return Content()
+
+    class Stub:
+        files = Files()
+
+    client = UnifiedLLMClient(
+        provider="openai",
+        model="gpt-5.6-sol",
+        cost_tracker=tracker,
+        client_override=Stub(),
+    )
+
+    class Batch:
+        status = "completed"
+        output_file_id = "file_1"
+
+    monkeypatch.setattr(client, "_poll_until", lambda **kwargs: Batch())
+
+    assert client.retrieve_openai_batch_results("b1", timeout=1) == {"a": "hi"}
+    assert tracker.entries[0]["input_tokens"] == 70
+    assert tracker.entries[0]["output_tokens"] == 30
+    assert tracker.entries[0]["call_type"] == "batch"
+
+
+def test_gemini_batch_retrieval_reads_camelcase_usage_metadata(monkeypatch):
+    """Gemini's REST batch payload spells usage as camelCase usageMetadata."""
+    tracker = RecordingTracker()
+
+    payload = json.dumps(
+        {
+            "key": "a",
+            "response": {
+                "candidates": [{"content": {"parts": [{"text": "hi"}]}}],
+                "usageMetadata": {
+                    "promptTokenCount": 55,
+                    "candidatesTokenCount": 25,
+                },
+            },
+        }
+    ).encode("utf-8")
+
+    class Dest:
+        file_name = "f"
+
+    class Job:
+        state = type("S", (), {"name": "SUCCEEDED"})()
+        dest = Dest()
+
+    class Batches:
+        @staticmethod
+        def get(name):
+            return Job()
+
+    class Files:
+        @staticmethod
+        def download(file):
+            return payload
+
+    class Stub:
+        batches = Batches()
+        files = Files()
+
+    client = UnifiedLLMClient(
+        provider="google",
+        model="gemini-3.1-pro-preview",
+        cost_tracker=tracker,
+        client_override=Stub(),
+    )
+
+    assert client.retrieve_gemini_batch_results("b1", timeout=30) == {"a": "hi"}
+    assert tracker.entries[0]["input_tokens"] == 55
+    assert tracker.entries[0]["output_tokens"] == 25
+    assert tracker.entries[0]["call_type"] == "batch"
+
+
+def test_usage_returning_variant_does_not_double_log(monkeypatch):
+    """`_with_usage` hands tokens to the caller to bill; logging here too would double."""
+    tracker = RecordingTracker()
+    client = _batch_client(tracker)
+    lines = [
+        {
+            "custom_id": "a",
+            "result": {
+                "type": "succeeded",
+                "message": {
+                    "content": [{"type": "text", "text": "one"}],
+                    "usage": {"input_tokens": 10, "output_tokens": 5},
+                },
+            },
+        },
+    ]
+    _stub_anthropic_batch(monkeypatch, client, lines)
+
+    out = client.retrieve_anthropic_batch_results_with_usage("batch_1", timeout=1)
+
+    assert out["a"]["input_tokens"] == 10
+    assert tracker.entries == []
+
+
 def test_standalone_scripts_pass_a_tracker():
     """The scripts that produced the unlogged probe spend must now wire one in."""
     for name in ("validate_scenario_labels.py", "probe_proto01_guards.py"):
