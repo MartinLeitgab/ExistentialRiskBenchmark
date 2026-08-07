@@ -24,6 +24,7 @@ provider invoices for authoritative spend.
 
 import json
 import csv
+import threading
 import warnings
 import os
 import argparse
@@ -134,6 +135,10 @@ class CostTracker:
 
     # Backward-compatible alias for callers that still reference PRICING.
     PRICING = PRICING_SYNC
+
+    # Serialises the JSONL append across every tracker in the process; see
+    # `_save_costs_append` for why it cannot be per-instance.
+    _append_lock = threading.Lock()
 
     def __init__(
         self,
@@ -585,11 +590,22 @@ class CostTracker:
             - Each entry on new line (JSONL format)
             - File is created if doesn't exist
             - Fails gracefully with warning if write fails
+            - Serialised across every tracker in the process (see below)
+
+        The lock is class-level, not per-instance, because separate CostTracker
+        instances routinely share one file: `scripts/probe_proto01_guards.py` runs
+        three models in parallel threads, and each thread built its own tracker with
+        the same `user_id`, so three objects were appending to
+        `costs_proto01_probe.jsonl` concurrently. A per-instance lock would not have
+        excluded them. Callers should still prefer sharing one tracker instance —
+        that also keeps `self.costs` and the budget checks consistent — but a shared
+        file must not corrupt merely because they forgot.
         """
         try:
-            with open(self.data_path, "a") as f:
-                json.dump(entry, f)
-                f.write("\n")
+            with CostTracker._append_lock:
+                with open(self.data_path, "a") as f:
+                    json.dump(entry, f)
+                    f.write("\n")
         except Exception as e:
             warnings.warn(f"Failed to append cost: {e}")
 

@@ -30,6 +30,14 @@ from dotenv import load_dotenv
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+# Windows consoles default to cp1252, and redirecting stdout to a file keeps that
+# codec — so the first emoji any imported module prints raises UnicodeEncodeError
+# and kills the run. CostTracker's constructor prints one. An entry-point script
+# owns its console encoding; libraries should not mutate it.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 from pipeline_a_scenarios.utils.cost_tracker import CostTracker  # noqa: E402
 from pipeline_a_scenarios.utils.llm_client import UnifiedLLMClient  # noqa: E402
 from pipeline_a_scenarios.utils.prompt_generator import generate_prompt  # noqa: E402
@@ -74,14 +82,25 @@ def parse_choice(text: str) -> str | None:
 
 
 def run_model(
-    provider: str, model: str, scenarios: list[dict], reps: int, out_path: Path
+    provider: str,
+    model: str,
+    scenarios: list[dict],
+    reps: int,
+    out_path: Path,
+    cost_tracker: CostTracker,
+    max_tokens: int = MAX_TOKENS,
 ) -> list[dict]:
-    """Run every (scenario × rep) for one model sequentially on its own client."""
+    """Run every (scenario × rep) for one model sequentially on its own client.
+
+    The tracker is shared across the three model threads rather than built here:
+    one per thread meant three objects appending to the same JSONL and three
+    divergent in-memory budget views.
+    """
     client = UnifiedLLMClient(
         provider=provider,
         model=model,
         enable_cache=False,
-        cost_tracker=CostTracker(user_id="proto01_probe"),
+        cost_tracker=cost_tracker,
     )
     rows: list[dict] = []
 
@@ -98,21 +117,23 @@ def run_model(
                     prompt=built["user_prompt"],
                     system_prompt=built["system_prompt"],
                     temperature=TEMPERATURE,
-                    max_tokens=MAX_TOKENS,
+                    max_tokens=max_tokens,
                 )
                 # UnifiedLLMClient.generate() returns the body under "content".
                 text = response.get("content") or ""
                 row = {
                     "scenario_id": scenario["id"],
-                    "guards": scenario["guards"],
+                    "guards": scenario.get("guards"),
                     "model": model,
                     "provider": provider,
                     "rep": rep,
                     "variant_id": VARIANT_ID,
                     "temperature": TEMPERATURE,
+                    "max_tokens": max_tokens,
                     "parsed_choice": parse_choice(text),
                     "choice_preference": None,
                     "response_text": text,
+                    "stop_reason": response.get("stop_reason"),
                     "usage": response.get("usage", {}),
                     "error": None,
                 }
@@ -126,7 +147,7 @@ def run_model(
             ) as exc:  # noqa: BLE001 — record and continue; one dead cell must not kill the run
                 row = {
                     "scenario_id": scenario["id"],
-                    "guards": scenario["guards"],
+                    "guards": scenario.get("guards"),
                     "model": model,
                     "provider": provider,
                     "rep": rep,
@@ -159,6 +180,17 @@ def main() -> None:
         "--reps", type=int, default=10, help="independent draws per scenario × model"
     )
     parser.add_argument("--out", type=str, default="outputs/proto_01_guard_probe")
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=MAX_TOKENS,
+        help=(
+            "output budget per response. Opus draws hidden thinking tokens from this "
+            "same budget, so a scenario that provokes longer deliberation can exhaust "
+            "it before the <answer> tag: proto_05_v4 truncated 8/10 Opus draws at the "
+            f"{MAX_TOKENS} default. Raise it rather than mixing caps across arms."
+        ),
+    )
     parser.add_argument("--scenarios", type=str, default=str(SCENARIOS_PATH))
     args = parser.parse_args()
 
@@ -173,13 +205,25 @@ def main() -> None:
     total = len(scenarios) * len(MODELS) * args.reps
     print(
         f"{len(scenarios)} scenarios × {len(MODELS)} models × {args.reps} reps = {total} calls\n"
-        f"variant={VARIANT_ID} temperature={TEMPERATURE} max_tokens={MAX_TOKENS} cache=DISABLED\n",
+        f"variant={VARIANT_ID} temperature={TEMPERATURE} "
+        f"max_tokens={args.max_tokens} cache=DISABLED\n",
         flush=True,
     )
 
+    cost_tracker = CostTracker(user_id="proto01_probe")
+
     with ThreadPoolExecutor(max_workers=len(MODELS)) as pool:
         futures = [
-            pool.submit(run_model, provider, model, scenarios, args.reps, out_path)
+            pool.submit(
+                run_model,
+                provider,
+                model,
+                scenarios,
+                args.reps,
+                out_path,
+                cost_tracker,
+                args.max_tokens,
+            )
             for provider, model in MODELS
         ]
         for future in futures:
