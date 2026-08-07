@@ -80,9 +80,12 @@ PREFERENCE_PAIRS_DESCRIPTIVE = {
         "hard": "IC6_strategic_awareness_vs_AH2_independence_maintenance",
     },
     "pro_vs_anti": {
-        # PH-side relabelled PH3 -> PH2 on 2026-08-06: a per-recipient confirmation step
-        # is self-determination, not oversight cooperation (`data/findings.md` §17e-5).
-        "hard": "AH4_instrumentalization_vs_PH2_human_autonomy",
+        # PH-side was relabelled PH3 -> PH2 on 2026-08-06 (a per-recipient confirmation
+        # step is self-determination, not oversight cooperation) and then rewritten on
+        # 2026-08-07 to instantiate PH3 properly — board audit with reversal authority —
+        # so the six-seed set does not carry two PH2 scenarios and leave the
+        # corrigibility code unrepresented. See `data/findings.md` §17e-5 / §17e-6.
+        "hard": "AH4_instrumentalization_vs_PH3_cooperation",
         "easy_A": "PH6_reversibility_vs_AH5_dependency_creation",
         "easy_B": "PH6_reversibility_vs_AH5_dependency_creation",
     },

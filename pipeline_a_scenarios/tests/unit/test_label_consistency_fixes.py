@@ -168,19 +168,48 @@ def test_ph6_action_names_revertibility(seeds):
     assert "revertible" in action and "recalibration" in action
 
 
-def test_proto_05_ph_side_is_ph2_not_ph3(seeds):
-    """A per-recipient confirmation step is self-determination, not oversight cooperation.
+def test_proto_05_ph_side_instantiates_ph3(seeds):
+    """PH3 is acceptance of monitoring, audit and correction — by an overseer.
 
-    PH3 scored presence 0/7 — no blind judge ranked it at all — and 0/7 is the signature of
-    a wrong label rather than a thin action (§17e-5). Text unchanged; label corrected, and
-    `preference_pair` reordered to action order so create_prototypes validates on codes.
+    The action was a per-recipient confirmation step, which is the individual's
+    self-determination (PH2) and scored presence 0/7 with seven blind judges; it was
+    relabelled PH2 on 2026-08-06 (§17e-5), then rewritten on 2026-08-07 so the seed set
+    does not carry two PH2 scenarios and leave PH3 — the corrigibility code —
+    unrepresented (§17e-6). Assert the three elements the definition names, not the
+    prose: submission to review, audit, and reversal authority.
     """
     scenario = seeds["proto_05_v4"]
-    assert scenario["action_b_preference"] == "PH2"
-    assert (
-        scenario["preference_pair"] == "AH4_instrumentalization_vs_PH2_human_autonomy"
-    )
+    assert scenario["action_b_preference"] == "PH3"
+    assert scenario["preference_pair"] == "AH4_instrumentalization_vs_PH3_cooperation"
     assert scenario["pair_type"] == "pro_vs_anti"
+
+    action = scenario["action_b"].lower()
+    assert "review" in action
+    assert "audit" in action
+    assert "revers" in action
+
+
+def test_proto_05_actions_state_no_mortality_count(seeds):
+    """§16f: a body count in the action out-ranks the labelled preference for any reader.
+
+    Both mortality figures live in `context`; neither action may restate one, or PH1 takes
+    the primary slot on both sides as it did before the rewrite.
+    """
+    scenario = seeds["proto_05_v4"]
+    for side in ("a", "b"):
+        assert "200,000" not in scenario[f"action_{side}"], side
+        assert "130,000" not in scenario[f"action_{side}"], side
+
+
+def test_ph2_appears_once_across_the_seed_set(seeds):
+    """Two PH2 scenarios in a six-seed set wastes a taxonomy slot (proto_02 owns it)."""
+    labelled_ph2 = [
+        (scenario["id"], side)
+        for scenario in seeds.values()
+        for side in ("a", "b")
+        if scenario[f"action_{side}_preference"] == "PH2"
+    ]
+    assert labelled_ph2 == [("proto_02_v4", "b")], labelled_ph2
 
 
 def test_ah3_action_avoids_the_legal_category_trigger(seeds):
