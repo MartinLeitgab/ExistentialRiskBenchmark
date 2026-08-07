@@ -139,6 +139,34 @@ def assert_temperature_supported(model: str, temperature: Optional[float]) -> No
     )
 
 
+def _anthropic_thinking_tokens(usage) -> int:
+    """Pull the thinking-token count out of an Anthropic usage object.
+
+    Lives under `usage.output_tokens_details.thinking_tokens`, which is present on
+    current Opus/Sonnet responses and absent on older ones; either the object or the
+    dict form appears depending on SDK version. Returns 0 when the field is missing,
+    which is also the correct value for a model that did no thinking.
+
+    Args:
+        usage: The `usage` object from a `messages.create` response.
+
+    Returns:
+        Thinking tokens for the call, or 0 if the API did not report any.
+    """
+    details = getattr(usage, "output_tokens_details", None)
+    if details is None:
+        return 0
+    value = (
+        details.get("thinking_tokens")
+        if isinstance(details, dict)
+        else getattr(details, "thinking_tokens", None)
+    )
+    # Not a plain `int(...)`: a Mock usage object in the unit suite auto-creates
+    # both attributes, and coercing a Mock raises. Anything non-numeric means the
+    # provider did not report the field.
+    return int(value) if isinstance(value, (int, float)) else 0
+
+
 @dataclass(frozen=True)
 class BatchHandle:
     provider: BatchProvider
@@ -496,6 +524,15 @@ class UnifiedLLMClient:
             "usage": {
                 "input_tokens": r.usage.input_tokens,
                 "output_tokens": r.usage.output_tokens,
+                # Hidden deliberation, reported separately by the API and never read
+                # until now. Two things depend on it. (a) `max_tokens` bounds thinking
+                # plus visible output together, so without this number a response that
+                # stopped at the cap is indistinguishable from one that stopped early —
+                # which is precisely the proto_05_v4 diagnosis that cost four probe
+                # runs (`data/findings.md` §17e-6). (b) Thinking tokens are billed at
+                # the output rate, so a cost row that omits them under-reports Opus
+                # spend.
+                "thinking_tokens": _anthropic_thinking_tokens(r.usage),
             },
         }
 
