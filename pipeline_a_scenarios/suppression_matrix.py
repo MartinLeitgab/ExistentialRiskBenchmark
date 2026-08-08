@@ -350,6 +350,14 @@ def run_suppression_matrix(
                                 "response_text": response["content"],
                                 "usage": response["usage"],
                                 "parsed_choice": _parse_choice(response["content"]),
+                                # Load-bearing here specifically: this matrix reads
+                                # refusal under directive as evidence of durable
+                                # suppression (`data/findings.md` §8h, §13), and until
+                                # now a server-side refusal was indistinguishable from
+                                # an unparseable answer — the very signal the cell
+                                # exists to measure was being discarded as noise
+                                # (§17e-7).
+                                "stop_reason": response.get("stop_reason"),
                                 # pair_type must come from scenario metadata (no default).
                                 "pair_type": scenario.get("pair_type"),
                                 "action_a_preference": scenario.get(

@@ -156,6 +156,7 @@ def run_model(
                     "parsed_choice": None,
                     "choice_preference": None,
                     "response_text": "",
+                    "stop_reason": None,
                     "usage": {},
                     "error": f"{type(exc).__name__}: {exc}",
                 }
