@@ -339,7 +339,11 @@ def test_cost_tracking_is_off_unless_opted_into(mock_env_vars):
         client = UnifiedLLMClient(provider="anthropic", client_override=mock_client)
         result = client.generate(prompt="Test")
 
-        assert result["usage"] == {"input_tokens": 100, "output_tokens": 50}
+        # `thinking_tokens` joined the Anthropic usage block; assert the billing
+        # fields rather than the exact dict so adding a diagnostic field is not a
+        # breaking change.
+        assert result["usage"]["input_tokens"] == 100
+        assert result["usage"]["output_tokens"] == 50
         assert client.cost_tracker is None, (
             "auto-logging must stay opt-in — a client that bills by default would "
             "double-count against the caller-side log_cost() calls in the pipeline "
