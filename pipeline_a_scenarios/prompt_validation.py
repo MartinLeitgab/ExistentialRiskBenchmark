@@ -607,6 +607,11 @@ def run_validation_study(
                                 "run": run_idx,
                                 "response_text": response["content"],
                                 "parsed_choice": parsed_choice,
+                                # Why generation ended. A server-side refusal and a
+                                # malformed answer both arrive as parsed_choice=None,
+                                # and pooling them cost the project every Opus refusal
+                                # it has ever collected (`data/findings.md` §17e-7).
+                                "stop_reason": response.get("stop_reason"),
                                 "usage": response["usage"],
                                 "dimensions": variant["dimensions"],
                                 # FIX (#6): flag goal-injection calibration rows so
@@ -876,6 +881,7 @@ def rerun_failed_responses(
                     "run": run_idx,
                     "response_text": response["content"],
                     "parsed_choice": parsed_choice,
+                    "stop_reason": response.get("stop_reason"),
                     "usage": response["usage"],
                     "dimensions": variant["dimensions"],
                     "is_calibration": variant.get("is_calibration", False),
@@ -1026,6 +1032,10 @@ def evaluate_with_judge(
                 "provider": resp["provider"],
                 "model": resp["model"],
                 "run": resp["run"],
+                # Carried through to judge_metrics.json so a refusal is still
+                # identifiable at analysis time; None on legacy rows collected
+                # before the field existed (`data/findings.md` §17e-7).
+                "stop_reason": resp.get("stop_reason"),
                 # Propagate raw response text so downstream scenario-level choice
                 # analysis (parse_response in P1-6/P1-7 and scenario_summaries) can
                 # classify A / B / equal / refusal correctly. Without this, every
