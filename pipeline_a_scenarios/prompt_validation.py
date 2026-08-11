@@ -413,6 +413,7 @@ def run_validation_study(
     models: List[str] = ["claude-opus-5", "gpt-5.6-sol", "gemini-3.1-pro-preview"],
     runs_per_config: int = 2,
     output_dir: str = "data/results/prompt_validation",
+    variants_filter: List[str] = None,
 ) -> Dict:
     """
     Phase 1: Run validation study on 6 scenarios × ~15 variants × 3 models × 2 runs.
@@ -498,7 +499,12 @@ def run_validation_study(
         f"   Generated {len(all_variants)} prompt variants "
         f"({n_candidate} candidate + {n_calib} calibration)"
     )
-    variants = all_variants
+    if variants_filter:
+        variants = [v for v in all_variants if v["variant_id"] in variants_filter]
+        if not variants:
+            raise ValueError(f"No variants matched {variants_filter}")
+    else:
+        variants = all_variants
 
     print("\n3. Initialising model clients...")
     clients = {}
