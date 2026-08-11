@@ -22,7 +22,13 @@
 - 153 unique pairs: 108 cross-category (36 IC×PH, 36 IC×AH, 36 PH×AH) + 45 within-category (15 IC×IC, 15 PH×PH, 15 AH×AH)
 - 5,355 total scenarios = 153 pairs × 35 scenarios per pair
 
-**Target models:** `claude-opus-5` (Anthropic), `gpt-5.6-sol` (OpenAI), `gemini-3.1-pro-preview` (Google) — refreshed 2026-07-27; the canonical list lives in `pipeline_a_scenarios/suppression_matrix.py` `MODELS` and `prompt_validation.run_validation_study`'s default `models` argument. Judge: `gpt-5.6-sol`. Runs recorded before this date used `claude-opus-4-7`/`4-8`, `gpt-5.4`/`5.5` and are not model-comparable to later runs.
+**Target models:** `claude-opus-5` (Anthropic), `gpt-5.6-sol` (OpenAI), `gemini-3.1-pro-preview` (Google) — refreshed 2026-07-27; the canonical list lives in `pipeline_a_scenarios/suppression_matrix.py` `MODELS` and `prompt_validation.run_validation_study`'s default `models` argument. Runs recorded before this date used `claude-opus-4-7`/`4-8`, `gpt-5.4`/`5.5` and are not model-comparable to later runs.
+
+**🔴 Judging policy — no same-family judging (locked 2026-08-08, Martin; prompted by the *AI Safety at the Frontier* newsletter of 2026-08-07).** A model may never judge responses produced by a model of its own family. Because the target set is exactly these three families, the rule resolves to: **every Judge A and every Judge B evaluation runs twice, once on each of the two non-matching families.** Judging `gpt-5.6-sol` responses uses the Anthropic and Google judges; judging `claude-opus-5` responses uses the OpenAI and Google judges; judging `gemini-3.1-pro-preview` responses uses the Anthropic and OpenAI judges.
+
+This retires the single fixed `gpt-5.6-sol` judge: with it, one third of every dataset — the GPT arm — was self-judged, and GPT is the arm that has most often carried the non-zero IC rates the paper's claims rest on. The concern is self-preference, a judge scoring its own family's output differently from a competitor's; whether it inflates or depresses is not assumed, which is why both non-matching judges are run rather than one. **The two judges' agreement on the same response is now a first-class output, not a side study** — it is the same quantity Step 6b-1 was designed to sample at 10%, obtained at full coverage for free. Report per-dimension agreement alongside the scores, and treat a systematic split between the two judges on one target family as a finding about the judges, not about the model.
+
+**Cost:** judge calls double. Budget 4 judge calls per response (2 judges × Judge A + Judge B) wherever this document says 2. `prompt_validation.JUDGE_MODEL` and `suppression_matrix.JUDGE_MODEL` are still single-valued constants and must become a per-target-model mapping before any run under this policy; nothing in the code enforces the rule today.
 
 ---
 
@@ -41,7 +47,7 @@
 | Models | `claude-opus-5`, `gpt-5.6-sol`, `gemini-3.1-pro-preview` |
 | Instrument | **FTC (`fp-abs-ftc-auto-t10-reg-0-0-0`) as primary** + allocation-fraction arm on the same scenarios; `3o` only as a small order-bias control |
 | n | **Adaptive: 10 screening, 40 at pivot-adjacent rungs** — see "Sample size" below. Cache disabled (`findings.md` §8a) |
-| Judges | Judge A + Judge B on every response |
+| Judges | Judge A + Judge B on every response, **each run twice under the no-same-family rule** (see "Judging policy" above) — 4 judge calls per response |
 | Analysis | Per-pair pivot / dose-response curve; within-model preference Elo from fractional outcomes (Bradley-Terry / Davidson); choice × reasoning × IVT mismatch matrix (`findings.md` §16e); cross-model rank stability across rungs as the robustness claim |
 | Negative result | ≥1 documented immovable wall, established over a **non-dominated** baseline |
 
@@ -582,8 +588,9 @@ Submit all scenarios to target models via batch API. **Run at temperature 1.0**,
 
 **Cost estimate (frontier models + frontier judge):**
 - Model calls (Claude Opus 5 + GPT-5.6 Sol + Gemini): ~$60 batch (per-token rates are unchanged from Opus 4.8 / GPT-5.5 — $5/$25 and $5/$30 per MTok respectively, so the estimate carries over)
-- Judge A (GPT-5.5 × 16,065): ~$96 batch
-- Judge B (GPT-5.5 × 16,065): ~$80 batch
+- Judge A (16,065 responses × 2 non-matching judges): ~$192 batch
+- Judge B (16,065 responses × 2 non-matching judges): ~$160 batch
+- The per-judge figures these are doubled from (~$96 / ~$80) assumed one GPT-5.5 judge on every response, which the no-same-family rule retired. The doubled numbers still price both judges at the GPT rate; re-derive against `cost_tracker.PRICING_BATCH` per family before running, since the Anthropic and Google judges price differently
 - **Total: ~$235–300** (floor estimate. Per-token rates are now in `cost_tracker.py` `PRICING_SYNC` / `PRICING_BATCH` for the current targets — `claude-opus-5` $5/$25, `gpt-5.6-sol` $5/$30, `gemini-3.1-pro-preview` $2/$12 per MTok — so re-derive from those before running rather than from the judge-model names in the lines above, which still say GPT-5.5)
 
 **Script:** `pipeline_b_evaluation/evaluate_models.py`
@@ -651,11 +658,13 @@ Document rationale for each tier assignment in the protocol. Expert review (INFR
 
 **Three required sub-studies:**
 
-**6b-1 — Cross-judge calibration (model swap)**
-Re-run the judge on a stratified 10% sample (~65 records) using a second judge model (e.g., GPT-5.4 judging Gemini responses, Gemini judging Claude responses). Compute inter-judge agreement (Spearman ρ) on IVT and strategic_responding dimensions.
+**6b-1 — Cross-judge calibration (model swap) — now free, and at full coverage**
+Superseded as a *sampling* study by the no-same-family judging policy: every response is already scored by two judges from different families, so inter-judge agreement is computable over 100% of rows at no extra cost rather than over a stratified 10% sample. What remains is the analysis, not a run.
+- Compute inter-judge agreement (Spearman ρ) per dimension, per target family — the split matters most on the family that used to be self-judged
 - Accept threshold: ρ ≥ 0.7 on IVT
 - If ρ < 0.5: rubric requires revision before paper results are cited
-- Cost: ~$5 | Calls: ~130
+- A systematic disagreement confined to one target family is evidence about the judges, not about that model
+- Cost: $0 additional
 
 **6b-2 — Human grounding (annotation study)**
 Human annotators (2 independent raters, ideally with AI safety background) rate a 20-scenario subset on IVT (1–5) and strategic_responding (1–5) using simplified rubrics. Compute Krippendorff's α for inter-rater reliability and Spearman ρ between human ratings and LLM-judge scores.
@@ -695,7 +704,7 @@ On the Phase 1 retroactive Judge B pass (issue #42), compute Spearman ρ between
 
 - **Within-category Elo resolution:** 45 within-category pairs require separate reference seeds (3 created, needs validation), PIPE-A3 within-category generation, and a subsequent Pipeline B+C run. Deferred until cross-category corpus is complete.
 - ~~**6th judge dimension (Instrumental vs. Terminal Reasoning)**~~ — **implemented and in production** (`judge_prompts.py` `<instrumental_vs_terminal>`); IVT values are reported throughout `findings.md` §8. Its migration to Judge B as the primary reasoning instrument is tracked under #42 / #50, not here.
-- ~~**Model specification finalization**~~ — **closed 2026-07-27.** Codebase is on `claude-opus-5` / `gpt-5.6-sol` / `gemini-3.1-pro-preview` with judge `gpt-5.6-sol` (`suppression_matrix.MODELS`, `prompt_validation.JUDGE_MODEL`, `llm_client.DEFAULT_MODELS`). See the "Target models" line at the top of this document.
+- ~~**Model specification finalization**~~ — **closed 2026-07-27, reopened for the judge side 2026-08-08.** Target models are settled: `claude-opus-5` / `gpt-5.6-sol` / `gemini-3.1-pro-preview` (`suppression_matrix.MODELS`, `llm_client.DEFAULT_MODELS`). The judge side is not — the no-same-family rule makes the judge a function of which model produced the response, and `prompt_validation.JUDGE_MODEL` / `suppression_matrix.JUDGE_MODEL` are still single-valued constants. See the "Judging policy" line at the top of this document.
 - **PIPE-A5 (clustering analysis):** Nice-to-have; run only if time permits after Tier 2 Elo.
 
 ---
