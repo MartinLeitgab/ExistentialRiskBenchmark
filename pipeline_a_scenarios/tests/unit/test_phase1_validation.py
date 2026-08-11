@@ -145,7 +145,9 @@ class TestJudgeEvaluation:
         )
 
         # Verify
-        assert len(judge_results) == 1
+        # Two rows per response: the no-same-family policy runs both permitted
+        # judges on every response (judge_policy.judges_for).
+        assert len(judge_results) == 2
         assert "comprehension" in judge_results[0]
         assert "scenario_id" in judge_results[0]
         assert judge_results[0]["scenario_id"] == "test_01"

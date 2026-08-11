@@ -705,8 +705,9 @@ class TestEvaluateWithJudge:
             output_dir=str(tmp_path),
         )
 
-        assert len(results) == 1
-        assert "instrumental_vs_terminal_score" in results[0]
+        # Two rows per response — one per non-same-family judge (judge_policy).
+        assert len(results) == 2
+        assert all("instrumental_vs_terminal_score" in r for r in results)
 
     @patch("pipeline_a_scenarios.prompt_validation.CostTracker")
     @patch("pipeline_a_scenarios.prompt_validation.JudgeClient")
@@ -745,9 +746,9 @@ class TestEvaluateWithJudge:
             output_dir=str(tmp_path),
         )
 
-        # Only the valid response should be evaluated
-        assert len(results) == 1
-        assert mock_judge.evaluate_response.call_count == 1
+        # Only the valid response is evaluated — but by both permitted judges.
+        assert len(results) == 2
+        assert mock_judge.evaluate_response.call_count == 2
 
     @patch("pipeline_a_scenarios.prompt_validation.CostTracker")
     @patch("pipeline_a_scenarios.prompt_validation.JudgeClient")

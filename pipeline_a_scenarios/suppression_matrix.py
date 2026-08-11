@@ -37,6 +37,7 @@ from utils.prompt_generator import (
 )
 from utils.cost_tracker import CostTracker
 from utils.judge_client import JudgeClient
+from utils.judge_policy import CANONICAL_JUDGES, judges_for
 
 from scenario_loader import load_scenarios
 
@@ -75,8 +76,10 @@ MODELS = ["claude-opus-5", "gpt-5.6-sol", "gemini-3.1-pro-preview"]
 # collapsed preference_signal and strategic_responding onto the same value in
 # ~77% of records). gpt-5.6-sol is the canonical judge for this pipeline — kept
 # as a module-level constant so it is easy to audit / swap in a single place.
-# Must stay identical to `prompt_validation.JUDGE_MODEL`.
-JUDGE_MODEL = "gpt-5.6-sol"
+# Retired as a single constant by the no-same-family judging policy (2026-08-08):
+# which judge scores a row is now a function of which model produced it. Resolve via
+# `judge_policy.judges_for()`; see docs/forward_plan.md "Judging policy".
+JUDGE_MODEL = CANONICAL_JUDGES["openai"]
 
 # Sampling temperature for the target-model calls in this matrix. Taken from
 # BASE_DIMENSIONS so it cannot drift from what prompt_generator encodes in the
@@ -744,12 +747,23 @@ def _run_calibration_judge(
         f"(max_calibration_scenarios={max_calibration_scenarios})"
     )
 
+    judges: Dict[str, JudgeClient] = {}
+
+    def _judge_for(judge_model: str) -> JudgeClient:
+        """One JudgeClient per judge family, built lazily and reused."""
+        if judge_model not in judges:
+            judges[judge_model] = JudgeClient(
+                model=judge_model,
+                temperature=JUDGE_TEMPERATURE,
+                cost_tracker=cost_tracker,
+            )
+        return judges[judge_model]
+
     try:
-        judge = JudgeClient(
-            model=JUDGE_MODEL,
-            temperature=JUDGE_TEMPERATURE,
-            cost_tracker=cost_tracker,
-        )
+        # Build every judge up front so a misconfigured one fails before any
+        # target-model spend, which is what the single-judge init did.
+        for judge_model in sorted(CANONICAL_JUDGES.values()):
+            _judge_for(judge_model)
     except Exception as e:
         print(f"  ⚠ JudgeClient init failed: {e} — calibration anchors will be empty")
         return {
@@ -782,22 +796,24 @@ def _run_calibration_judge(
                         temperature=RUN_TEMPERATURE,
                         max_tokens=MAX_RESPONSE_TOKENS,
                     )
-                    result = judge.evaluate_response(
-                        scenario_context=scenario["context"],
-                        action_a=scenario["action_a"],
-                        action_b=scenario["action_b"],
-                        model_response=response["content"],
-                        evaluation_context="pipe_a7_phase1b_calibration",
-                        metadata={"prompt_id": variant.get("variant_id")},
-                    )
-                    result.update(
-                        {
-                            "variant_id": variant["variant_id"],
-                            "condition": variant["vary_value"],
-                            "model": model,
-                        }
-                    )
-                    judge_results.append(result)
+                    # Two judges per response, neither from `model`'s own family.
+                    for judge_model in judges_for(model):
+                        result = _judge_for(judge_model).evaluate_response(
+                            scenario_context=scenario["context"],
+                            action_a=scenario["action_a"],
+                            action_b=scenario["action_b"],
+                            model_response=response["content"],
+                            evaluation_context="pipe_a7_phase1b_calibration",
+                            metadata={"prompt_id": variant.get("variant_id")},
+                        )
+                        result.update(
+                            {
+                                "variant_id": variant["variant_id"],
+                                "condition": variant["vary_value"],
+                                "model": model,
+                            }
+                        )
+                        judge_results.append(result)
 
                     usage = response.get("usage", {})
                     cost_tracker.log_cost(
