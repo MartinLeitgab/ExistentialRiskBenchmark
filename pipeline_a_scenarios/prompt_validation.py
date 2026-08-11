@@ -29,6 +29,7 @@ from utils.prompt_generator import (
 )
 from utils.cost_tracker import CostTracker
 from utils.judge_client import JudgeClient
+from utils.judge_policy import CANONICAL_JUDGES, judges_for
 from utils.judge_analysis import detect_patterns
 
 from scenario_loader import load_scenarios
@@ -77,7 +78,11 @@ FORMAT_REFUSAL_SCORE = (
 # judge for this pipeline — kept as a module-level constant so the identity is
 # explicit and can be swapped in one place for re-runs. Same $5/$30 per MTok as
 # gpt-5.5, so judge cost estimates are unchanged.
-JUDGE_MODEL = "gpt-5.6-sol"
+# Retired as a single constant by the no-same-family judging policy (2026-08-08):
+# which judge scores a row is now a function of which model produced it. Resolve via
+# `judge_policy.judges_for()`; see docs/forward_plan.md "Judging policy". Kept only as
+# the judge for the OpenAI family, referenced through CANONICAL_JUDGES.
+JUDGE_MODEL = CANONICAL_JUDGES["openai"]
 
 # Judge sampling temperature. The gpt-5.6 family rejects an explicit temperature
 # and runs only at its provider default of 1.0 (400 "Only the default (1) value
@@ -972,11 +977,20 @@ def evaluate_with_judge(
     from pipeline_a_scenarios.analyze_batch_results import parse_response
 
     cost_tracker = CostTracker(user_id="pipe_a7_phase1_judge")
-    judge = JudgeClient(
-        model=JUDGE_MODEL,
-        temperature=JUDGE_TEMPERATURE,
-        cost_tracker=cost_tracker,
-    )
+
+    # One JudgeClient per judge family, built lazily and reused. Which judges may
+    # score a given row is decided per response by its target model — see
+    # `judge_policy.judges_for` and docs/forward_plan.md "Judging policy".
+    judges: Dict[str, JudgeClient] = {}
+
+    def _judge_for(judge_model: str) -> JudgeClient:
+        if judge_model not in judges:
+            judges[judge_model] = JudgeClient(
+                model=judge_model,
+                temperature=JUDGE_TEMPERATURE,
+                cost_tracker=cost_tracker,
+            )
+        return judges[judge_model]
 
     valid_responses = [r for r in raw_responses if "error" not in r]
     print(f"   Evaluating {len(valid_responses)} valid responses")
@@ -1003,61 +1017,62 @@ def evaluate_with_judge(
                     "goal_specification", "absent"
                 )
 
-        result = judge.evaluate_response(
-            scenario_context=scenario["context"],
-            action_a=scenario["action_a"],
-            action_b=scenario["action_b"],
-            model_response=resp["response_text"],
-            evaluation_context="pipe_a7_phase1",
-            metadata={
-                "prompt_id": resp.get("variant_id"),
-                "deployment_context": dep_ctx,
-                "goal_specification": goal_spec,
-            },
-            deployment_context=dep_ctx,
-            goal_specification=goal_spec,
-        )
+        for judge_model in judges_for(resp["model"]):
+            result = _judge_for(judge_model).evaluate_response(
+                scenario_context=scenario["context"],
+                action_a=scenario["action_a"],
+                action_b=scenario["action_b"],
+                model_response=resp["response_text"],
+                evaluation_context="pipe_a7_phase1",
+                metadata={
+                    "prompt_id": resp.get("variant_id"),
+                    "deployment_context": dep_ctx,
+                    "goal_specification": goal_spec,
+                },
+                deployment_context=dep_ctx,
+                goal_specification=goal_spec,
+            )
 
-        # Ensure the 6th dimension key exists (populated by INFRA-6 / issue #27)
-        if "instrumental_vs_terminal_score" not in result:
-            result["instrumental_vs_terminal_score"] = None
+            # Ensure the 6th dimension key exists (populated by INFRA-6 / issue #27)
+            if "instrumental_vs_terminal_score" not in result:
+                result["instrumental_vs_terminal_score"] = None
 
-        # FIX (#9): keep parsed_choice consistent between raw_responses.json
-        # and judge_metrics.json. If the raw row lacks the field (legacy
-        # data), re-parse response_text so downstream consumers (P1-6 plot,
-        # detect_patterns, scenario_summaries) can trust this single field
-        # instead of falling back to raw-text parsing.
-        parsed_choice = resp.get("parsed_choice")
-        if parsed_choice is None:
-            parsed_choice = parse_response(resp.get("response_text", ""))
+            # FIX (#9): keep parsed_choice consistent between raw_responses.json
+            # and judge_metrics.json. If the raw row lacks the field (legacy
+            # data), re-parse response_text so downstream consumers (P1-6 plot,
+            # detect_patterns, scenario_summaries) can trust this single field
+            # instead of falling back to raw-text parsing.
+            parsed_choice = resp.get("parsed_choice")
+            if parsed_choice is None:
+                parsed_choice = parse_response(resp.get("response_text", ""))
 
-        result.update(
-            {
-                "scenario_id": resp["scenario_id"],
-                "variant_id": resp["variant_id"],
-                "provider": resp["provider"],
-                "model": resp["model"],
-                "run": resp["run"],
-                # Carried through to judge_metrics.json so a refusal is still
-                # identifiable at analysis time; None on legacy rows collected
-                # before the field existed (`data/findings.md` §17e-7).
-                "stop_reason": resp.get("stop_reason"),
-                # Propagate raw response text so downstream scenario-level choice
-                # analysis (parse_response in P1-6/P1-7 and scenario_summaries) can
-                # classify A / B / equal / refusal correctly. Without this, every
-                # row looked empty and was bucketed as "refusal".
-                "response_text": resp.get("response_text", ""),
-                "parsed_choice": parsed_choice,
-                "has_reasoning": _has_reasoning_text(resp.get("response_text", "")),
-                # FIX (#5): persist the deployment_context + goal_specification
-                # actually sent to the judge so audit / rerun / calibration-anchor
-                # computations can group rows consistently with how they were scored.
-                "deployment_context": dep_ctx,
-                "goal_specification": goal_spec,
-                "is_calibration": bool(resp.get("is_calibration", False)),
-            }
-        )
-        judge_results.append(result)
+            result.update(
+                {
+                    "scenario_id": resp["scenario_id"],
+                    "variant_id": resp["variant_id"],
+                    "provider": resp["provider"],
+                    "model": resp["model"],
+                    "run": resp["run"],
+                    # Carried through to judge_metrics.json so a refusal is still
+                    # identifiable at analysis time; None on legacy rows collected
+                    # before the field existed (`data/findings.md` §17e-7).
+                    "stop_reason": resp.get("stop_reason"),
+                    # Propagate raw response text so downstream scenario-level choice
+                    # analysis (parse_response in P1-6/P1-7 and scenario_summaries) can
+                    # classify A / B / equal / refusal correctly. Without this, every
+                    # row looked empty and was bucketed as "refusal".
+                    "response_text": resp.get("response_text", ""),
+                    "parsed_choice": parsed_choice,
+                    "has_reasoning": _has_reasoning_text(resp.get("response_text", "")),
+                    # FIX (#5): persist the deployment_context + goal_specification
+                    # actually sent to the judge so audit / rerun / calibration-anchor
+                    # computations can group rows consistently with how they were scored.
+                    "deployment_context": dep_ctx,
+                    "goal_specification": goal_spec,
+                    "is_calibration": bool(resp.get("is_calibration", False)),
+                }
+            )
+            judge_results.append(result)
 
         if (i + 1) % 50 == 0:
             print(f"   Progress: {i+1}/{len(valid_responses)}")
