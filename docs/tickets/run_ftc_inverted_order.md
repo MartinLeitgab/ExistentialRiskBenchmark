@@ -22,7 +22,9 @@ never been run for FTC.
 ## Design
 
 - Variant: `fp-abs-ftc-auto-t10-reg-0-0-0` with `action_order` ∈ {regular, inverted}.
-- Scenarios: 6 proto_*_v4. Models: claude-opus-4-7, gpt-5.5, gemini-3.1-pro-preview. Runs: 2.
+- Scenarios: 6 proto_*_v4. Models: `claude-opus-5`, `gpt-5.6-sol`, `gemini-3.1-pro-preview`
+  (canonical list per `forward_plan.md` "Target models", refreshed 2026-07-27 from
+  `claude-opus-4-8` / `gpt-5.5`). Runs: 2.
 - Calls: 6 × 2 (order) × 3 × 2 = 72 model + 72 judge.
 
 ## Read-out
@@ -38,7 +40,14 @@ Map each response back to the **original** A/B (invert when `action_order=invert
 Run the same inverted control on the production pick `fp-abs-3o-auto` as a baseline, so FTC's
 order sensitivity is measured relative to the structured format, not in isolation.
 
-## Related: FTC generation truncation (fix before any full FTC run)
+## Related: FTC generation truncation (fix before any full FTC run) — **token cap DONE 2026-07-27**
+
+**Status:** the cap half of this section is implemented — `prompt_validation.MAX_RESPONSE_TOKENS = 3000`
+(raised from 500 with the `claude-opus-5` / `gpt-5.6-sol` swap; measured on Opus-5 FTC, the `<answer>`
+tag arrives at ~1,310 output tokens and never at 500 or 1,500). Provider scaling for separately-counted
+reasoning tokens (OpenAI ×10, Gemini ×8) is applied by `UnifiedLLMClient`. What remains open in this
+ticket is the **order-bias control run** plus the cheap second-call fallback for a still-truncated row.
+The historical diagnosis below is retained as the rationale.
 
 In `data_Riccardo060926`, FTC responses hit the `max_tokens=500` cap on **14/36** rows and
 **10/36 never emitted the `<answer>` tag** — i.e. ~28% were cut off mid-reasoning before the

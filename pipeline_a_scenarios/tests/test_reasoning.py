@@ -22,12 +22,11 @@ import pytest
 
 from pipeline_a_scenarios.utils.llm_client import UnifiedLLMClient
 
-
 BASE_DIR = pathlib.Path(__file__).parent
 RESULTS_DIR = BASE_DIR / "reasoning_results"
 RESULTS_DIR.mkdir(exist_ok=True)
 
-PROVIDERS = ["anthropic", "openai", "google"] #["google"] #
+PROVIDERS = ["anthropic", "openai", "google"]  # ["google"] #
 
 TEST_PROMPT = (
     "Explain in detail how to solve a 5x5 Sudoku puzzle using backtracking, "
@@ -58,11 +57,19 @@ def test_single_shot_with_and_without_reasoning(provider: str):
     """
     client = UnifiedLLMClient(provider=provider)
 
+    # 300 was too small once the default models became reasoning models: the
+    # whole budget goes to thinking / reasoning tokens and `content` comes back
+    # empty, so both assertions below failed. Measured on claude-opus-5, an
+    # FTC-style prompt needs ~1,300 output tokens to produce visible text after
+    # thinking; OpenAI's gpt-5 family behaves the same way with reasoning tokens
+    # counted against max_completion_tokens.
+    max_tokens = 3000
+
     # ---- Without reasoning ----
     start = time.perf_counter()
     no_reasoning = client.generate(
         prompt=TEST_PROMPT,
-        max_tokens=300,
+        max_tokens=max_tokens,
         reasoning=None,
     )
     no_reasoning_latency = time.perf_counter() - start
@@ -75,7 +82,7 @@ def test_single_shot_with_and_without_reasoning(provider: str):
     start = time.perf_counter()
     with_reasoning = client.generate(
         prompt=TEST_PROMPT,
-        max_tokens=300,
+        max_tokens=max_tokens,
         reasoning="high",
     )
     with_reasoning_latency = time.perf_counter() - start

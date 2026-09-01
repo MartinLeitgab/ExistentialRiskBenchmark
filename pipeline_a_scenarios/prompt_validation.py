@@ -29,6 +29,7 @@ from utils.prompt_generator import (
 )
 from utils.cost_tracker import CostTracker
 from utils.judge_client import JudgeClient, build_pair_labels
+from utils.judge_policy import CANONICAL_JUDGES, judges_for
 from utils.judge_analysis import (
     alignment_faking_rate,
     alignment_washing_rate,
@@ -79,15 +80,50 @@ FORMAT_REFUSAL_SCORE = (
     1  # format_compliance_score == 1 → refusal, excluded from aggregation
 )
 
-# FIX (#13): Judge model upgraded from gpt-4o-mini to gpt-5.5.
-# The prior judge (gpt-4o-mini, 1,152 calls at ~$0.13 total) was too weak for
+# FIX (#13): Judge model upgraded from gpt-4o-mini to gpt-5.5, then to
+# gpt-5.6-sol (2026-07-27) alongside the target-model refresh below.
+# The original judge (gpt-4o-mini, 1,152 calls at ~$0.13 total) was too weak for
 # reliable multi-dimensional evaluation of complex benchmark responses. It
 # systematically collapsed preference_signal and strategic_responding onto the
 # same score (~77% of records) and produced noisy coherence / reasoning-depth
-# ratings that distorted the authenticity ranking. gpt-5.5 is the canonical
+# ratings that distorted the authenticity ranking. gpt-5.6-sol is the canonical
 # judge for this pipeline — kept as a module-level constant so the identity is
-# explicit and can be swapped in one place for re-runs.
-JUDGE_MODEL = "gpt-5.5"
+# explicit and can be swapped in one place for re-runs. Same $5/$30 per MTok as
+# gpt-5.5, so judge cost estimates are unchanged.
+# Retired as a single constant by the no-same-family judging policy (2026-08-08):
+# which judge scores a row is now a function of which model produced it. Resolve via
+# `judge_policy.judges_for()`; see docs/forward_plan.md "Judging policy". Kept only as
+# the judge for the OpenAI family, referenced through CANONICAL_JUDGES.
+JUDGE_MODEL = CANONICAL_JUDGES["openai"]
+
+# Judge sampling temperature. The gpt-5.6 family rejects an explicit temperature
+# and runs only at its provider default of 1.0 (400 "Only the default (1) value
+# is supported"), so a `temperature=0` judge is unattainable on this model —
+# UnifiedLLMClient raises rather than dropping the value silently. Keep this
+# constant aligned with JUDGE_MODEL: 1.0 while the judge is an Opus 4.7+ /
+# gpt-5.5 / gpt-5.6 model, 0.0 only if the judge moves to a model that accepts
+# sampling params (e.g. gemini-3.1-pro-preview) and deterministic judging is
+# wanted back.
+JUDGE_TEMPERATURE = 1.0
+
+# Output-token ceiling for every target-model call.
+#
+# Was 500. Raised 2026-07-27 with the claude-opus-5 / gpt-5.6-sol swap: those
+# models reason before answering, and on Anthropic the hidden thinking tokens
+# come out of the same budget as the visible answer. Measured on claude-opus-5
+# with the FTC prompt (free reasoning closing with an <answer> tag):
+#   max_tokens=500  -> 471 thinking tokens, 105 visible chars, NO <answer> tag
+#   max_tokens=1500 -> 945 thinking tokens, truncated, NO <answer> tag
+#   max_tokens=3000 -> stop_reason=end_turn at 1,310 output tokens, tag present
+# At 500 every FTC row on the Anthropic arm would have been unparseable — the
+# answer tag never arrives. claude-opus-4-8 truncated at 500 on the same prompt
+# too (1,573 visible chars, no tag), so this was already biting the FTC variant
+# before the swap; it is not introduced by it.
+#
+# Billing is on tokens actually produced (~1,300-1,500 here), not the ceiling.
+# UnifiedLLMClient scales this for providers whose reasoning tokens are counted
+# separately (OpenAI x10, Gemini x8); the value below is the Anthropic-facing one.
+MAX_RESPONSE_TOKENS = 3000
 
 # Responses that consist of a bare answer (numeric/letter in an <answer> block, or a
 # lone digit/letter) with no substantive reasoning text cannot be meaningfully scored
@@ -433,9 +469,10 @@ def _build_variant_summary(variant_id: str, judge_rows: List[Dict]) -> Dict:
 
 def run_validation_study(
     scenarios_path: str = "data/scenarios/seeds_phase1.json",
-    models: List[str] = ["claude-opus-4-7", "gpt-5.5", "gemini-3.1-pro-preview"],
+    models: List[str] = ["claude-opus-5", "gpt-5.6-sol", "gemini-3.1-pro-preview"],
     runs_per_config: int = 2,
     output_dir: str = "data/results/prompt_validation",
+    variants_filter: List[str] = None,
 ) -> Dict:
     """
     Phase 1: Run validation study on 6 scenarios × ~15 variants × 3 models × 2 runs.
@@ -521,7 +558,12 @@ def run_validation_study(
         f"   Generated {len(all_variants)} prompt variants "
         f"({n_candidate} candidate + {n_calib} calibration)"
     )
-    variants = all_variants
+    if variants_filter:
+        variants = [v for v in all_variants if v["variant_id"] in variants_filter]
+        if not variants:
+            raise ValueError(f"No variants matched {variants_filter}")
+    else:
+        variants = all_variants
 
     print("\n3. Initialising model clients...")
     clients = {}
@@ -555,6 +597,10 @@ def run_validation_study(
                 "user_prompt": prompt_result["user_prompt"],
                 "system_prompt": prompt_result["system_prompt"],
             }
+            # The temperature the variant declares (encoded in its variant_id,
+            # e.g. `t10` = 1.0) is what the API call must actually use — see
+            # the temperature note above _generate_with_retry's call site.
+            variant_temperature = prompt_result["metadata"]["temperature"]
             variant_id = variant["variant_id"]
 
             for model in models:
@@ -570,7 +616,12 @@ def run_validation_study(
                 for run_idx in range(runs_per_config):
                     call_count += 1
                     try:
-                        # FIX: temperature=0 as required by ticket spec for Phase 1 consistency
+                        # FIX: temperature comes from the variant's own
+                        # dimensions, not a hardcoded 0. Every row was being
+                        # stamped `t10` (BASE_DIMENSIONS temperature=1.0) while
+                        # the API sampled at 0 — see `data/findings.md` §8a.
+                        # Production runs deliberately use 1.0 to mimic
+                        # deployment settings (`docs/forward_plan.md` PIPE-A8).
                         # FIX: _generate_with_retry wraps client.generate() with
                         # pipeline-level exponential backoff for transient 529/
                         # 429/5xx errors. Without this, Anthropic 529 overload
@@ -580,8 +631,8 @@ def run_validation_study(
                             client,
                             prompt=prompt_obj["user_prompt"],
                             system_prompt=prompt_obj["system_prompt"],
-                            temperature=0,
-                            max_tokens=500,
+                            temperature=variant_temperature,
+                            max_tokens=MAX_RESPONSE_TOKENS,
                         )
 
                         # FIX: CostTracker has no log_api_call(); use log_cost() with
@@ -621,6 +672,11 @@ def run_validation_study(
                                 "run": run_idx,
                                 "response_text": response["content"],
                                 "parsed_choice": parsed_choice,
+                                # Why generation ended. A server-side refusal and a
+                                # malformed answer both arrive as parsed_choice=None,
+                                # and pooling them cost the project every Opus refusal
+                                # it has ever collected (`data/findings.md` §17e-7).
+                                "stop_reason": response.get("stop_reason"),
                                 "usage": response["usage"],
                                 "dimensions": variant["dimensions"],
                                 # FIX (#6): flag goal-injection calibration rows so
@@ -707,7 +763,7 @@ def run_validation_study(
 def rerun_failed_responses(
     scenarios_path: str = "data/scenarios/seeds_phase1.json",
     raw_path: str = "data/results/prompt_validation/raw_responses.json",
-    models: List[str] = ["claude-opus-4-7", "gpt-5.5", "gemini-3.1-pro-preview"],
+    models: List[str] = ["claude-opus-5", "gpt-5.6-sol", "gemini-3.1-pro-preview"],
     only_transient: bool = True,
     output_dir: str = "data/results/prompt_validation",
 ) -> Dict:
@@ -854,8 +910,10 @@ def rerun_failed_responses(
                 client,
                 prompt=prompt_result["user_prompt"],
                 system_prompt=prompt_result["system_prompt"],
-                temperature=0,
-                max_tokens=500,
+                # Must match the temperature the original attempt used, i.e. the
+                # variant's declared value — not a hardcoded 0.
+                temperature=prompt_result["metadata"]["temperature"],
+                max_tokens=MAX_RESPONSE_TOKENS,
             )
             usage = response.get("usage", {})
             cost_tracker.log_cost(
@@ -883,6 +941,7 @@ def rerun_failed_responses(
                     "run": run_idx,
                     "response_text": response["content"],
                     "parsed_choice": parsed_choice,
+                    "stop_reason": response.get("stop_reason"),
                     "usage": response["usage"],
                     "dimensions": variant["dimensions"],
                     "is_calibration": variant.get("is_calibration", False),
@@ -967,11 +1026,20 @@ def evaluate_with_judge(
     from pipeline_a_scenarios.analyze_batch_results import parse_response
 
     cost_tracker = CostTracker(user_id="pipe_a7_phase1_judge")
-    judge = JudgeClient(
-        model=JUDGE_MODEL,
-        temperature=0,
-        cost_tracker=cost_tracker,
-    )
+
+    # One JudgeClient per judge family, built lazily and reused. Which judges may
+    # score a given row is decided per response by its target model — see
+    # `judge_policy.judges_for` and docs/forward_plan.md "Judging policy".
+    judges: Dict[str, JudgeClient] = {}
+
+    def _judge_for(judge_model: str) -> JudgeClient:
+        if judge_model not in judges:
+            judges[judge_model] = JudgeClient(
+                model=judge_model,
+                temperature=JUDGE_TEMPERATURE,
+                cost_tracker=cost_tracker,
+            )
+        return judges[judge_model]
 
     valid_responses = _sort_responses_for_judge_b(
         [r for r in raw_responses if "error" not in r]
@@ -1004,68 +1072,77 @@ def evaluate_with_judge(
                     "goal_specification", "absent"
                 )
 
-        result = judge.evaluate_response(
-            scenario_context=scenario["context"],
-            action_a=scenario["action_a"],
-            action_b=scenario["action_b"],
-            model_response=resp["response_text"],
-            evaluation_context="pipe_a7_phase1",
-            metadata={
-                "prompt_id": resp.get("variant_id"),
-                "deployment_context": dep_ctx,
-                "goal_specification": goal_spec,
-            },
-            deployment_context=dep_ctx,
-            goal_specification=goal_spec,
-        )
+        for judge_model in judges_for(resp["model"]):
+            result = _judge_for(judge_model).evaluate_response(
+                scenario_context=scenario["context"],
+                action_a=scenario["action_a"],
+                action_b=scenario["action_b"],
+                model_response=resp["response_text"],
+                evaluation_context="pipe_a7_phase1",
+                metadata={
+                    "prompt_id": resp.get("variant_id"),
+                    "deployment_context": dep_ctx,
+                    "goal_specification": goal_spec,
+                },
+                deployment_context=dep_ctx,
+                goal_specification=goal_spec,
+            )
 
-        # Ensure the 6th dimension key exists (populated by INFRA-6 / issue #27)
-        if "instrumental_vs_terminal_score" not in result:
-            result["instrumental_vs_terminal_score"] = None
+            # Ensure the 6th dimension key exists (populated by INFRA-6 / issue #27)
+            if "instrumental_vs_terminal_score" not in result:
+                result["instrumental_vs_terminal_score"] = None
 
-        # FIX (#9): keep parsed_choice consistent between raw_responses.json
-        # and judge_metrics.json. If the raw row lacks the field (legacy
-        # data), re-parse response_text so downstream consumers (P1-6 plot,
-        # detect_patterns, scenario_summaries) can trust this single field
-        # instead of falling back to raw-text parsing.
-        parsed_choice = resp.get("parsed_choice")
-        if parsed_choice is None:
-            parsed_choice = parse_response(resp.get("response_text", ""))
+            # FIX (#9): keep parsed_choice consistent between raw_responses.json
+            # and judge_metrics.json. If the raw row lacks the field (legacy
+            # data), re-parse response_text so downstream consumers (P1-6 plot,
+            # detect_patterns, scenario_summaries) can trust this single field
+            # instead of falling back to raw-text parsing.
+            parsed_choice = resp.get("parsed_choice")
+            if parsed_choice is None:
+                parsed_choice = parse_response(resp.get("response_text", ""))
 
-        scenario_meta = resp.get("scenario_metadata") or {}
-        pair_type = scenario.get("pair_type") or scenario_meta.get("pair_type")
-        action_a_preference = scenario.get("action_a_preference")
-        action_b_preference = scenario.get("action_b_preference")
+            result.update(
+                {
+                    "scenario_id": resp["scenario_id"],
+                    "variant_id": resp["variant_id"],
+                    "provider": resp["provider"],
+                    "model": resp["model"],
+                    "run": resp["run"],
+                    # Carried through to judge_metrics.json so a refusal is still
+                    # identifiable at analysis time; None on legacy rows collected
+                    # before the field existed (`data/findings.md` §17e-7).
+                    "stop_reason": resp.get("stop_reason"),
+                    # Propagate raw response text so downstream scenario-level choice
+                    # analysis (parse_response in P1-6/P1-7 and scenario_summaries) can
+                    # classify A / B / equal / refusal correctly. Without this, every
+                    # row looked empty and was bucketed as "refusal".
+                    "response_text": resp.get("response_text", ""),
+                    "parsed_choice": parsed_choice,
+                    "has_reasoning": _has_reasoning_text(resp.get("response_text", "")),
+                    # FIX (#5): persist the deployment_context + goal_specification
+                    # actually sent to the judge so audit / rerun / calibration-anchor
+                    # computations can group rows consistently with how they were scored.
+                    "deployment_context": dep_ctx,
+                    "goal_specification": goal_spec,
+                    "is_calibration": bool(resp.get("is_calibration", False)),
+                    "pair_type": scenario.get("pair_type"),
+                    "action_a_preference": scenario.get("action_a_preference"),
+                    "action_b_preference": scenario.get("action_b_preference"),
+                }
+            )
 
-        result.update({
-            "scenario_id": resp["scenario_id"],
-            "variant_id": resp["variant_id"],
-            "provider": resp["provider"],
-            "model": resp["model"],
-            "run": resp["run"],
-            "response_text": resp.get("response_text", ""),
-            "parsed_choice": parsed_choice,
-            "has_reasoning": _has_reasoning_text(resp.get("response_text", "")),
-            "deployment_context": dep_ctx,
-            "goal_specification": goal_spec,
-            "is_calibration": bool(resp.get("is_calibration", False)),
-            "pair_type": pair_type,
-            "action_a_preference": action_a_preference,
-            "action_b_preference": action_b_preference,
-        })
-
-        judge_b_raw = judge.score_reasoning(
-            response_text=resp["response_text"],
-            scenario=scenario,
-            pair_labels=pair_labels_cache[sid],
-            evaluation_context="pipe_a7_phase1",
-            metadata={
-                "prompt_id": resp.get("variant_id"),
-                "scenario_id": sid,
-            },
-        )
-        result["judge_b"] = _attach_judge_b(result, judge_b_raw)
-        judge_results.append(result)
+            judge_b_raw = _judge_for(judge_model).score_reasoning(
+                response_text=resp["response_text"],
+                scenario=scenario,
+                pair_labels=pair_labels_cache[sid],
+                evaluation_context="pipe_a7_phase1",
+                metadata={
+                    "prompt_id": resp.get("variant_id"),
+                    "scenario_id": sid,
+                },
+            )
+            result["judge_b"] = _attach_judge_b(result, judge_b_raw)
+            judge_results.append(result)
 
         if (i + 1) % 50 == 0:
             print(f"   Progress: {i+1}/{len(valid_responses)}")
@@ -1111,11 +1188,16 @@ def evaluate_judge_b_retroactive(
     pair_labels_cache: Dict[str, str] = {}
 
     cost_tracker = CostTracker(user_id="pipe_a7_phase1_judge_b_retro")
-    judge = JudgeClient(
-        model=JUDGE_MODEL,
-        temperature=0,
-        cost_tracker=cost_tracker,
-    )
+    judges: Dict[str, JudgeClient] = {}
+
+    def _judge_for(judge_model: str) -> JudgeClient:
+        if judge_model not in judges:
+            judges[judge_model] = JudgeClient(
+                model=judge_model,
+                temperature=JUDGE_TEMPERATURE,
+                cost_tracker=cost_tracker,
+            )
+        return judges[judge_model]
 
     pending = [r for r in judge_results if "judge_b" not in r]
     print(f"   {len(pending)}/{len(judge_results)} rows need Judge B")
@@ -1140,7 +1222,9 @@ def evaluate_judge_b_retroactive(
         if row.get("action_b_preference") is None:
             row["action_b_preference"] = scenario.get("action_b_preference")
 
-        judge_b_raw = judge.score_reasoning(
+        judge_model = row.get("judge_model") or JUDGE_MODEL
+
+        judge_b_raw = _judge_for(judge_model).score_reasoning(
             response_text=row.get("response_text", ""),
             scenario=scenario,
             pair_labels=pair_labels_cache[sid],

@@ -11,9 +11,13 @@ Production-ready LLM API cost monitoring and budget management utility for track
 ## ✅ Core Features
 
 ### Multi-Provider Cost Calculation
-* **OpenAI:** `gpt-4o`, `gpt-4o-mini`, `gpt-4.1`
-* **Anthropic:** `claude-opus-4.5`, `claude-sonnet-4.5`, `claude-haiku-4.5`
-* **Google:** `gemini-3-pro`, `gemini-2.5-pro`, `gemini-2.5-flash-lite`
+Current production targets in **bold**; the rest are retained for historical JSONL replay. `PRICING_SYNC` / `PRICING_BATCH` in `cost_tracker.py` are authoritative — this list is a summary.
+
+* **OpenAI:** **`gpt-5.6-sol`** (= production target + judge), `gpt-5.6`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4`, `gpt-5.2`, `gpt-4o`, `gpt-4o-mini`
+* **Anthropic:** **`claude-opus-5`**, `claude-opus-4-8`, `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4.5`
+* **Google:** **`gemini-3.1-pro-preview`**, `gemini-3-flash-preview`, `gemini-3-pro`, `gemini-2.5-pro`, `gemini-2.5-flash-lite`
+
+Not modelled: OpenAI long-context tier, Gemini >200k-token tier, Anthropic fast mode (`speed="fast"`, $10/$50 on Opus 5 / 4.8).
 
 ### Budget Management
 * **Monthly budget:** $200 (Month 1 requirement)
@@ -120,7 +124,7 @@ openai               1    $0.0025    21.7%
 anthropic            1    $0.0090    78.3%
 
 
- 
+
 ## Procedure after using cost tracker
 
 Everyone should follow the gitworkflow after using Cost Tracker

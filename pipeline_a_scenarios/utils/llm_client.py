@@ -28,6 +28,144 @@ from google.genai import types  # noqa: E402
 
 BatchProvider = Literal["anthropic", "openai", "google"]
 
+# Models that reject an explicit `temperature` and run only at their provider
+# default. Anthropic removed `temperature`/`top_p`/`top_k` permanently for the
+# Opus 4.7+ family, and the Anthropic migration guide states the restriction is
+# unchanged on Opus 5 ("Setting temperature, top_p, or top_k to a non-default
+# value returns a 400 error on Claude Opus 5, the same as on Claude Opus 4.8" —
+# platform.claude.com/docs/en/about-claude/models/migration-guide, checked
+# 2026-07-27). OpenAI's gpt-5.5 and the gpt-5.6 family return
+#   400 "Unsupported value: 'temperature' does not support 0 with this model.
+#        Only the default (1) value is supported."
+# `gpt-5.6` covers the bare alias and the -sol / -terra / -luna suffixes.
+# Deliberately NOT generalised to every `gpt-5*` id: the 2026-04-21 Phase 1 run
+# (`outputs/data_Riccardo042126/results/prompt_validation/raw_responses.json`,
+# 192 gpt-5.4 rows, zero errors) shows gpt-5.4 accepted temperature=0. Add ids
+# here only with evidence that the API rejects the parameter.
+# Both hyphen and dot spellings are listed because
+# "claude-opus-4.7".startswith("claude-opus-4-7") is False.
+SAMPLING_RESTRICTED_MODEL_PREFIXES = (
+    "claude-opus-5",
+    "claude-opus-4-7",
+    "claude-opus-4.7",
+    "claude-opus-4-8",
+    "claude-opus-4.8",
+    "gpt-5.5",
+    "gpt-5.6",
+)
+
+# The only sampling temperature the models above will run at.
+SAMPLING_RESTRICTED_TEMPERATURE = 1.0
+
+# Anthropic models that run adaptive thinking when the `thinking` field is
+# OMITTED. On Opus 4.8 and earlier, omitting it means no thinking; on Opus 5 and
+# Sonnet 5 it means thinking is on, and hidden thinking tokens are drawn from the
+# same `max_tokens` budget as the visible answer.
+#
+# Thinking is left ON deliberately: production deployments run with it enabled,
+# and the benchmark's premise is to mimic deployment settings (the same argument
+# that fixes sampling temperature at 1.0). The consequence is a budget one, and
+# it is why MAX_RESPONSE_TOKENS below is not 500.
+#
+# Measured 2026-07-27 on claude-opus-5 with an FTC prompt (free reasoning closing
+# with an <answer> tag), thinking left at its default:
+#   max_tokens=500  -> 471 thinking tokens, 105 visible chars, no <answer> tag
+#   max_tokens=1500 -> 945 thinking tokens, truncated, no <answer> tag
+#   max_tokens=3000 -> 597 thinking tokens, 2,270 visible chars, tag present,
+#                      stop_reason=end_turn at 1,310 output tokens
+# Adaptive thinking varies run to run (584-945 tokens across these samples), so
+# the budget carries headroom rather than tracking the median.
+#
+# This predicate exists so callers can size budgets and so the reasoning branch
+# can pick `{"type": "adaptive"}` over the removed `budget_tokens` form; nothing
+# in the request path disables thinking.
+ADAPTIVE_THINKING_ON_BY_DEFAULT_PREFIXES = (
+    "claude-opus-5",
+    "claude-sonnet-5",
+)
+
+
+def adaptive_thinking_on_by_default(model: str) -> bool:
+    """Report whether omitting `thinking` leaves adaptive thinking enabled.
+
+    Args:
+        model: Provider model id.
+
+    Returns:
+        True if hidden thinking tokens will be drawn from `max_tokens` even
+        though the request never mentions thinking.
+    """
+    return str(model).startswith(ADAPTIVE_THINKING_ON_BY_DEFAULT_PREFIXES)
+
+
+def rejects_sampling_params(model: str) -> bool:
+    """Report whether a model rejects an explicit `temperature` parameter.
+
+    Args:
+        model: Provider model id (e.g. ``"claude-opus-4-8"``).
+
+    Returns:
+        True if the parameter must be omitted from the request payload.
+    """
+    return str(model).startswith(SAMPLING_RESTRICTED_MODEL_PREFIXES)
+
+
+def assert_temperature_supported(model: str, temperature: Optional[float]) -> None:
+    """Fail fast when a caller asks a restricted model for an unattainable temperature.
+
+    Silently dropping the parameter would let a run record one temperature in its
+    metadata while the API sampled at another — the provenance bug this guard
+    exists to prevent (see `data/findings.md` §8a).
+
+    Args:
+        model: Provider model id the request will be sent to.
+        temperature: Temperature the caller asked for; None means "unset".
+
+    Raises:
+        ValueError: If `model` cannot honour a non-default `temperature`.
+    """
+    if temperature is None or not rejects_sampling_params(model):
+        return
+    if float(temperature) == SAMPLING_RESTRICTED_TEMPERATURE:
+        return
+    raise ValueError(
+        f"{model} does not accept an explicit temperature; it runs only at its "
+        f"provider default ({SAMPLING_RESTRICTED_TEMPERATURE}), but "
+        f"temperature={temperature} was requested. Either pass "
+        f"temperature={SAMPLING_RESTRICTED_TEMPERATURE}, or use a model that "
+        f"supports sampling params (e.g. gemini-3.1-pro-preview, "
+        f"claude-sonnet-4-6). Restricted ids: "
+        f"{', '.join(SAMPLING_RESTRICTED_MODEL_PREFIXES)}."
+    )
+
+
+def _anthropic_thinking_tokens(usage) -> int:
+    """Pull the thinking-token count out of an Anthropic usage object.
+
+    Lives under `usage.output_tokens_details.thinking_tokens`, which is present on
+    current Opus/Sonnet responses and absent on older ones; either the object or the
+    dict form appears depending on SDK version. Returns 0 when the field is missing,
+    which is also the correct value for a model that did no thinking.
+
+    Args:
+        usage: The `usage` object from a `messages.create` response.
+
+    Returns:
+        Thinking tokens for the call, or 0 if the API did not report any.
+    """
+    details = getattr(usage, "output_tokens_details", None)
+    if details is None:
+        return 0
+    value = (
+        details.get("thinking_tokens")
+        if isinstance(details, dict)
+        else getattr(details, "thinking_tokens", None)
+    )
+    # Not a plain `int(...)`: a Mock usage object in the unit suite auto-creates
+    # both attributes, and coercing a Mock raises. Anything non-numeric means the
+    # provider did not report the field.
+    return int(value) if isinstance(value, (int, float)) else 0
+
 
 @dataclass(frozen=True)
 class BatchHandle:
@@ -61,15 +199,18 @@ class TokenBucket:
 
 class UnifiedLLMClient:
     DEFAULT_MODELS = {
-        "anthropic": "claude-sonnet-4-6",
-        "openai": "gpt-5.2",
-        "google": "gemini-3-flash-preview",
+        "anthropic": "claude-opus-5",
+        "openai": "gpt-5.6-sol",
+        "google": "gemini-3.1-pro-preview",
     }
 
     # Per-token USD for estimate_cost(); canonical full tables live in CostTracker.PRICING_SYNC.
     PRICING = {
+        "claude-opus-5": (5 / 1e6, 25 / 1e6),
         "claude-opus-4-7": (5 / 1e6, 25 / 1e6),
+        "claude-opus-4-8": (5 / 1e6, 25 / 1e6),
         "claude-sonnet-4-6": (3 / 1e6, 15 / 1e6),
+        "gpt-5.6-sol": (5 / 1e6, 30 / 1e6),
         "gpt-5.5": (5 / 1e6, 30 / 1e6),
         "gpt-5.2": (1.75 / 1e6, 14 / 1e6),
         "gpt-4o": (2.5 / 1e6, 10 / 1e6),
@@ -95,15 +236,39 @@ class UnifiedLLMClient:
         self,
         provider: str,
         model: Optional[str] = None,
-        enable_cache: bool = True,
+        # Opt-in, not opt-out. The cache keys on (prompt, system_prompt, temperature,
+        # max_tokens, reasoning) — the repeat index is NOT part of the key — so with
+        # this defaulting to True every `runs_per_config` loop returned run 0's
+        # response verbatim for every later run. Verified byte-identical across
+        # 324/324 April cells, 342/342 June cells and 45/45 July cells; see
+        # `data/findings.md` §8a, which retracts the reproducibility finding built
+        # on it. Only enable this where the same prompt is genuinely expected to
+        # recur and one answer is wanted for all of them.
+        enable_cache: bool = False,
         rate_limit_per_sec: float = 5.0,
         client_override=None,
+        # Opt-in auto-logging. When a CostTracker is passed, every non-cached
+        # `generate()` logs its own usage — the caller does not have to remember.
+        # Cost logging used to be entirely caller-side, so the pipeline scripts
+        # (`prompt_validation`, `suppression_matrix`, `generate_scenarios`) logged
+        # and every standalone script under `scripts/` did not: the §17a-§17c probe
+        # series (360 responses) and every label-validation run spent real money
+        # with no JSONL row, so the dashboard under-reported project spend by the
+        # whole probe programme. Pass a tracker here rather than adding another
+        # log_cost() call site. Callers that already log manually must NOT pass one
+        # — that would double-count.
+        cost_tracker=None,
     ):
         self.provider = provider
         self.model = model or self.DEFAULT_MODELS[provider]
         self.enable_cache = enable_cache
         self.cache: Dict[str, dict] = {}
         self.bucket = TokenBucket(rate_limit_per_sec, rate_limit_per_sec)
+        self.cost_tracker = cost_tracker
+        # CostTracker appends to a shared JSONL and holds no lock of its own, while
+        # `submit_gemini_parallel` and `scripts/probe_proto01_guards.py` call
+        # `generate()` from a thread pool. Serialise the append here.
+        self._cost_lock = threading.Lock()
 
         if client_override:
             self.client = client_override
@@ -137,10 +302,23 @@ class UnifiedLLMClient:
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        temperature: float = 0.7,
+        temperature: Optional[float] = None,
         max_tokens: int = 1000,
         reasoning: Optional[Literal["none", "standard", "high"]] = None,
     ) -> dict:
+        """Single-shot generation.
+
+        Args:
+            temperature: Sampling temperature. `None` (the default) omits the
+                parameter entirely and lets the provider apply its own default.
+                Previously this defaulted to 0.7, which meant a caller that never
+                mentioned temperature still pinned one — and, now that
+                DEFAULT_MODELS points at sampling-restricted models, would have
+                raised. Callers that care about the value must pass it explicitly;
+                the pipeline passes the variant's declared temperature.
+        """
+        assert_temperature_supported(self.model, temperature)
+
         cache_key = self._hash(
             prompt, system_prompt, temperature, max_tokens, reasoning
         )
@@ -164,6 +342,8 @@ class UnifiedLLMClient:
                         prompt, system_prompt, temperature, max_tokens, reasoning
                     )
 
+                self._log_cost(result)
+
                 if self.enable_cache:
                     self.cache[cache_key] = result
                 return result
@@ -172,6 +352,92 @@ class UnifiedLLMClient:
                 if attempt == 2:
                     raise
                 time.sleep(2**attempt)
+
+    def _log_cost(self, result: dict) -> None:
+        """Log one call's usage if a CostTracker was supplied.
+
+        Deliberately not called on the cache-hit path above: a cache hit issues no
+        provider call and must not be billed a second time.
+
+        Fails loudly on a missing `usage` block rather than logging zeros — a silent
+        zero is indistinguishable from a free call and would corrupt the budget
+        dashboard in the direction that matters (under-reporting).
+        """
+        if self.cost_tracker is None:
+            return
+
+        usage = result.get("usage")
+        if not usage or "input_tokens" not in usage or "output_tokens" not in usage:
+            raise KeyError(
+                f"{self.provider} response carries no usage block, so its cost cannot "
+                f"be logged: {sorted(result)}. Fix the provider adapter rather than "
+                f"logging a zero."
+            )
+
+        with self._cost_lock:
+            self.cost_tracker.log_cost(
+                provider=self.provider,
+                model=self.model,
+                input_tokens=usage["input_tokens"],
+                output_tokens=usage["output_tokens"],
+                call_type="sync",
+                metadata={"auto_logged": True},
+            )
+
+    def _log_batch_cost(
+        self,
+        input_tokens: int,
+        output_tokens: int,
+        n_requests: int,
+        rows_missing_usage: int = 0,
+    ) -> None:
+        """Log one aggregated row for a completed batch retrieval.
+
+        Billed at the batch tier (`call_type="batch"`), which is ~50% of sync list
+        price — logging batch work as sync would overstate spend roughly 2x and
+        distort the budget alerts.
+
+        One row per retrieval rather than per request: the tokens are what the
+        dashboard sums, and `n_requests` is carried in metadata so the row is not
+        mistaken for a single call.
+
+        Unlike `_log_cost`, a row without usage does not raise here. Batch error and
+        expiry rows legitimately carry no usage, and raising after a retrieval has
+        completed would discard results already paid for. The count is recorded in
+        metadata and warned about instead, so the gap is visible rather than silent.
+        """
+        if self.cost_tracker is None or n_requests == 0:
+            return
+
+        if rows_missing_usage:
+            print(
+                f"   ⚠ {rows_missing_usage}/{n_requests} {self.provider} batch rows "
+                f"carried no usage block; logged cost excludes them"
+            )
+
+        with self._cost_lock:
+            self.cost_tracker.log_cost(
+                provider=self.provider,
+                model=self.model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                call_type="batch",
+                metadata={
+                    "auto_logged": True,
+                    "batch": True,
+                    "n_requests": n_requests,
+                    "rows_missing_usage": rows_missing_usage,
+                },
+            )
+
+    @staticmethod
+    def _accumulate(totals: dict, input_tokens, output_tokens) -> None:
+        """Add one row's usage to a running total, counting absent usage separately."""
+        if input_tokens is None or output_tokens is None:
+            totals["missing"] += 1
+            return
+        totals["input"] += int(input_tokens or 0)
+        totals["output"] += int(output_tokens or 0)
 
     def _apply_reasoning(
         self, base_tokens: int, reasoning: Optional[str]
@@ -194,48 +460,79 @@ class UnifiedLLMClient:
             "messages": [{"role": "user", "content": prompt}],
         }
 
-        # Claude Opus 4.7+ permanently removed `temperature`, `top_p`, and `top_k`;
-        # any non-default value returns 400. Per Anthropic's migration guide, the
-        # required path is to omit these parameters entirely and rely on prompting
-        # (and output_config.effort) instead. This check covers opus-4-7 and any
-        # future aliases in that family (e.g. claude-opus-4-7-<date>).
-        sampling_params_rejected = self.model.startswith("claude-opus-4-7")
+        # Claude Opus 4.7+ family permanently removed `temperature`, `top_p`,
+        # and `top_k`; any non-default value returns 400. Per Anthropic's
+        # migration guide, the required path is to omit these parameters
+        # entirely and rely on prompting (and output_config.effort) instead.
+        # Membership (both hyphen and dot spellings) lives in
+        # SAMPLING_RESTRICTED_MODEL_PREFIXES; generate() has already raised if a
+        # non-default temperature was requested, so omitting here cannot silently
+        # change the sampling the caller recorded.
+        sampling_params_rejected = rejects_sampling_params(self.model)
 
         budget, adjusted_tokens = self._apply_reasoning(max_tokens, reasoning)
         if budget:
-            thinking_params = {
-                "thinking": {"type": "enabled", "budget_tokens": budget},
-                "max_tokens": adjusted_tokens,
-            }
-            if not sampling_params_rejected:
-                thinking_params["temperature"] = 1.0
+            # `{"type": "enabled", "budget_tokens": N}` is removed on the Opus
+            # 4.7+ family and on Opus 5 — sending it returns a 400. Those models
+            # take adaptive thinking instead, where depth is chosen by the model
+            # rather than by a token budget.
+            if rejects_sampling_params(self.model) or adaptive_thinking_on_by_default(
+                self.model
+            ):
+                thinking_params = {
+                    "thinking": {"type": "adaptive"},
+                    "max_tokens": adjusted_tokens,
+                }
+            else:
+                thinking_params = {
+                    "thinking": {"type": "enabled", "budget_tokens": budget},
+                    "max_tokens": adjusted_tokens,
+                    "temperature": 1.0,
+                }
             params.update(thinking_params)
         else:
             base_params = {"max_tokens": max_tokens}
-            if not sampling_params_rejected:
+            if not sampling_params_rejected and temperature is not None:
                 base_params["temperature"] = temperature
             params.update(base_params)
 
         r = self.client.messages.create(**params)
 
-        content_text = next(
-            (
-                block.text
-                for block in r.content
-                if getattr(block, "type", None) == "text"
-            ),
-            "",
-        )
-        if not content_text:
-            content_text = next(
-                (block.text for block in r.content if hasattr(block, "text")), ""
-            )
+        # Join every text block, in order. Taking only the first one silently
+        # truncated any response the model split across blocks — which adaptive
+        # thinking makes routine on Opus 5, since `content` comes back as an
+        # interleaved [thinking, text, thinking, text, ...] sequence. The symptom
+        # was a response that stopped mid-sentence and never showed its closing
+        # <answer> tag, indistinguishable from hitting `max_tokens`: the
+        # proto_05_v4 probe lost 8/10 Opus draws that way at a 3,000-token cap and
+        # still lost them at 8,000, while `usage.output_tokens` reported only
+        # 1,014-1,596 — the tell that the cap was never the binding constraint.
+        text_blocks = [
+            block.text for block in r.content if getattr(block, "type", None) == "text"
+        ]
+        if not text_blocks:
+            text_blocks = [block.text for block in r.content if hasattr(block, "text")]
+        content_text = "".join(text_blocks)
 
         return {
             "content": content_text,
+            # Why the response ended. Without it, a text that stops mid-sentence is
+            # unattributable: `max_tokens` truncation, a refusal, a tool pause and a
+            # dropped block all look identical downstream, and diagnosing the
+            # proto_05_v4 Opus rows cost four probe runs for want of this one field.
+            "stop_reason": getattr(r, "stop_reason", None),
             "usage": {
                 "input_tokens": r.usage.input_tokens,
                 "output_tokens": r.usage.output_tokens,
+                # Hidden deliberation, reported separately by the API and never read
+                # until now. Two things depend on it. (a) `max_tokens` bounds thinking
+                # plus visible output together, so without this number a response that
+                # stopped at the cap is indistinguishable from one that stopped early —
+                # which is precisely the proto_05_v4 diagnosis that cost four probe
+                # runs (`data/findings.md` §17e-6). (b) Thinking tokens are billed at
+                # the output rate, so a cost row that omits them under-reports Opus
+                # spend.
+                "thinking_tokens": _anthropic_thinking_tokens(r.usage),
             },
         }
 
@@ -265,6 +562,14 @@ class UnifiedLLMClient:
             self._openai_max_token_param(): adjusted_tokens,
         }
         if not self._openai_omit_temperature():
+            params["temperature"] = temperature
+
+        # gpt-5.5 and the gpt-5.6 family reject an explicit temperature (400
+        # "Only the default (1) value is supported"). generate() has already
+        # raised for any non-default request, so omitting the parameter here
+        # preserves the recorded value. `temperature=None` means "provider
+        # default" and is likewise omitted.
+        if not rejects_sampling_params(self.model) and temperature is not None:
             params["temperature"] = temperature
 
         if reasoning in ("standard", "high") and not is_reasoning:
@@ -376,7 +681,7 @@ class UnifiedLLMClient:
 
         for r in requests:
             max_tokens = r.get("max_tokens", 2048)
-            temperature = r.get("temperature", 0.7)
+            temperature = r.get("temperature")
             reasoning = r.get("reasoning")
 
             params = {
@@ -385,17 +690,23 @@ class UnifiedLLMClient:
                 "system": r.get("system_prompt", "You are a helpful assistant."),
             }
 
+            assert_temperature_supported(self.model, temperature)
+            sampling_params_rejected = rejects_sampling_params(self.model)
+
             budget, adjusted_tokens = self._apply_reasoning(max_tokens, reasoning)
             if budget:
-                params.update(
-                    {
-                        "thinking": {"type": "enabled", "budget_tokens": budget},
-                        "temperature": 1.0,
-                        "max_tokens": adjusted_tokens,
-                    }
-                )
+                thinking_params = {
+                    "thinking": {"type": "enabled", "budget_tokens": budget},
+                    "max_tokens": adjusted_tokens,
+                }
+                if not sampling_params_rejected:
+                    thinking_params["temperature"] = 1.0
+                params.update(thinking_params)
             else:
-                params.update({"temperature": temperature, "max_tokens": max_tokens})
+                base_params = {"max_tokens": max_tokens}
+                if not sampling_params_rejected and temperature is not None:
+                    base_params["temperature"] = temperature
+                params.update(base_params)
 
             batch_reqs.append(
                 AnthropicBatchRequest(
@@ -428,7 +739,9 @@ class UnifiedLLMClient:
                         0, {"role": "system", "content": r["system_prompt"]}
                     )
                 if "temperature" in r:
-                    body["temperature"] = r["temperature"]
+                    assert_temperature_supported(self.model, r["temperature"])
+                    if not rejects_sampling_params(self.model):
+                        body["temperature"] = r["temperature"]
 
                 reasoning = r.get("reasoning")
                 if reasoning in ("standard", "high") and not is_reasoning:
@@ -550,6 +863,7 @@ class UnifiedLLMClient:
         response.raise_for_status()
 
         results = {}
+        totals = {"input": 0, "output": 0, "missing": 0}
         for line in response.text.splitlines():
             if not line.strip():
                 continue
@@ -568,15 +882,20 @@ class UnifiedLLMClient:
             custom_id = obj.get("custom_id", "unknown")
 
             if result["type"] == "succeeded":
+                message = result.get("message", {})
                 text = next(
                     (
                         block.get("text", "")
-                        for block in result.get("message", {}).get("content", [])
+                        for block in message.get("content", [])
                         if isinstance(block, dict) and block.get("type") == "text"
                     ),
                     "",
                 )
                 results[custom_id] = text
+                usage = message.get("usage") or {}
+                self._accumulate(
+                    totals, usage.get("input_tokens"), usage.get("output_tokens")
+                )
             elif result["type"] == "errored":
                 results[
                     custom_id
@@ -584,6 +903,9 @@ class UnifiedLLMClient:
             else:
                 results[custom_id] = f"[UNKNOWN] Result type: {result.get('type')}"
 
+        self._log_batch_cost(
+            totals["input"], totals["output"], len(results), totals["missing"]
+        )
         return results
 
     def retrieve_batch_results_with_usage(
@@ -595,6 +917,11 @@ class UnifiedLLMClient:
 
         Error/unknown rows return zero token counts so callers can safely sum.
         Non-Anthropic providers raise ValueError until added on demand.
+
+        Deliberately does NOT auto-log to `cost_tracker`, unlike the three
+        `retrieve_*_batch_results` methods: handing usage back so the caller can bill
+        it is this method's entire purpose, so logging here as well would double-count
+        exactly the callers that asked for the usage.
         """
         if handle.provider != "anthropic":
             raise ValueError(
@@ -734,6 +1061,7 @@ class UnifiedLLMClient:
         raw = output_content.read().decode("utf-8")
 
         results = {}
+        totals = {"input": 0, "output": 0, "missing": 0}
         for line in raw.splitlines():
             if not line.strip():
                 continue
@@ -756,13 +1084,21 @@ class UnifiedLLMClient:
                 results[custom_id] = f"[ERROR] HTTP {response.get('status_code')}"
                 continue
 
-            choices = response.get("body", {}).get("choices", [])
+            body = response.get("body", {})
+            choices = body.get("choices", [])
             results[custom_id] = (
                 choices[0].get("message", {}).get("content", "")
                 if choices
                 else "[ERROR] No choices"
             )
+            usage = body.get("usage") or {}
+            self._accumulate(
+                totals, usage.get("prompt_tokens"), usage.get("completion_tokens")
+            )
 
+        self._log_batch_cost(
+            totals["input"], totals["output"], len(results), totals["missing"]
+        )
         return results
 
     def retrieve_gemini_batch_results(
@@ -809,20 +1145,36 @@ class UnifiedLLMClient:
             raise TimeoutError("Result download timed out")
 
         results = {}
+        totals = {"input": 0, "output": 0, "missing": 0}
         for line in result_bytes.decode("utf-8").splitlines():
             if not line.strip():
                 continue
             item = json.loads(line)
             key = item.get("key")
-            candidates = item.get("response", {}).get("candidates", [])
+            item_response = item.get("response", {})
+            candidates = item_response.get("candidates", [])
             if candidates:
                 parts = candidates[0].get("content", {}).get("parts", [])
                 results[key] = "".join(p.get("text", "") for p in parts)
+                # Gemini's REST payload is camelCase; the SDK object form is snake.
+                meta = (
+                    item_response.get("usageMetadata")
+                    or item_response.get("usage_metadata")
+                    or {}
+                )
+                self._accumulate(
+                    totals,
+                    meta.get("promptTokenCount", meta.get("prompt_token_count")),
+                    meta.get(
+                        "candidatesTokenCount", meta.get("candidates_token_count")
+                    ),
+                )
             else:
-                results[
-                    key
-                ] = f"[ERROR] {item.get('response', {}).get('error', 'No candidates')}"
+                results[key] = f"[ERROR] {item_response.get('error', 'No candidates')}"
 
+        self._log_batch_cost(
+            totals["input"], totals["output"], len(results), totals["missing"]
+        )
         return results
 
     def submit_gemini_parallel(self, requests: List[Dict]) -> BatchHandle:
@@ -839,7 +1191,7 @@ class UnifiedLLMClient:
                     prompt=r["prompt"],
                     system_prompt=r.get("system_prompt"),
                     max_tokens=r.get("max_tokens", 1000),
-                    temperature=r.get("temperature", 0.7),
+                    temperature=r.get("temperature"),
                     reasoning=r.get("reasoning"),
                 )
                 return {"id": r["id"], "content": result["content"], "error": None}

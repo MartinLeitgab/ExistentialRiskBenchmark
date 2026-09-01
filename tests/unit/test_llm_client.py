@@ -5,66 +5,81 @@ Author: Pooja Puranik
 Date: 12/02/2026
 """
 
+import ast
 import pytest
 import os
 import time
 import sys
-from unittest.mock import Mock, patch, MagicMock
+from pathlib import Path
+from unittest.mock import Mock, patch
 
-from pipeline_a_scenarios.utils.llm_client import UnifiedLLMClient, BatchHandle, TokenBucket
-
+from pipeline_a_scenarios.utils.llm_client import (
+    UnifiedLLMClient,
+    BatchHandle,
+    TokenBucket,
+    SAMPLING_RESTRICTED_TEMPERATURE,
+)
 
 # ==================== FIXTURES ====================
+
 
 @pytest.fixture
 def mock_env_vars():
     """Mock environment variables for API keys."""
-    with patch.dict(os.environ, {
-        "ANTHROPIC_API_KEY": "mock-anthropic-key",
-        "OPENAI_API_KEY": "mock-openai-key",
-        "GOOGLE_API_KEY": "mock-google-key"
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "ANTHROPIC_API_KEY": "mock-anthropic-key",
+            "OPENAI_API_KEY": "mock-openai-key",
+            "GOOGLE_API_KEY": "mock-google-key",
+        },
+    ):
         yield
 
 
-@pytest.fixture
-def mock_cost_tracker():
-    """Mock CostTracker to avoid real file I/O."""
-    with patch("pipeline_a_scenarios.utils.llm_client.get_tracker") as mock_get:
-        mock_tracker = Mock()
-        mock_get.return_value = mock_tracker
-        yield mock_tracker
+# NOTE: there is no `mock_cost_tracker` fixture, because a default-constructed
+# UnifiedLLMClient logs nothing — there is no `enable_cost_tracking` flag, and the
+# optional `cost_tracker=` constructor argument defaults to None. Two disjoint call
+# paths exist and must stay disjoint:
+#   * caller-side — the pipeline scripts call `cost_tracker.log_cost(...)` after each
+#     response and JudgeClient calls `_log_judge_cost`; covered by
+#     `pipeline_a_scenarios/tests/unit/test_prompt_validation.py::TestRunValidationStudy::test_cost_tracker_log_cost_called`
+#   * client-side (opt-in) — pass `cost_tracker=` and `generate()` logs its own usage;
+#     used by the standalone scripts under `scripts/`, whose spend was previously
+#     invisible. Covered by
+#     `pipeline_a_scenarios/tests/unit/test_cost_logging_and_bands.py`.
 
 
 # ==================== TEST 1: INITIALIZATION ====================
 
+
 def test_client_initialization(mock_env_vars):
     """Test 1: Client initializes with all providers and handles errors."""
-    
+
     # Test successful initialization with each provider
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_anthropic.return_value = Mock()
         client = UnifiedLLMClient(provider="anthropic")
         assert client.provider == "anthropic"
-        assert client.model == "claude-sonnet-4-6"
-    
+        assert client.model == UnifiedLLMClient.DEFAULT_MODELS["anthropic"]
+
     with patch("openai.OpenAI") as mock_openai:
         mock_openai.return_value = Mock()
         client = UnifiedLLMClient(provider="openai")
         assert client.provider == "openai"
-        assert client.model == "gpt-5.2"
-    
+        assert client.model == UnifiedLLMClient.DEFAULT_MODELS["openai"]
+
     with patch("google.genai.Client") as mock_google:
         mock_google.return_value = Mock()
         client = UnifiedLLMClient(provider="google")
         assert client.provider == "google"
-        assert client.model == "gemini-3-flash-preview"
-    
+        assert client.model == UnifiedLLMClient.DEFAULT_MODELS["google"]
+
     # Test missing API key
     with patch.dict(os.environ, {}, clear=True):
         with pytest.raises(OSError, match="Missing required API key"):
             UnifiedLLMClient(provider="anthropic")
-    
+
     # Test invalid provider
     with pytest.raises(KeyError, match="invalid"):
         UnifiedLLMClient(provider="invalid")
@@ -72,9 +87,16 @@ def test_client_initialization(mock_env_vars):
 
 # ==================== TEST 2: GENERATE METHOD ====================
 
-def test_generate_method(mock_env_vars, mock_cost_tracker):
-    """Test 2: Generate works with all providers and tracks costs."""
-    
+
+def test_generate_method(mock_env_vars):
+    """Test 2: Generate returns normalised content + usage for all providers.
+
+    Cost tracking is deliberately NOT asserted here — it is caller-side (see
+    the note above the fixtures). What every provider branch must guarantee is
+    a `{content, usage{input_tokens, output_tokens}}` shape, because that is
+    what the pipeline records and what CostTracker.log_cost is fed.
+    """
+
     # Test Anthropic
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
@@ -84,19 +106,14 @@ def test_generate_method(mock_env_vars, mock_cost_tracker):
         mock_response.usage.output_tokens = 25
         mock_client.messages.create.return_value = mock_response
         mock_anthropic.return_value = mock_client
-        
-        client = UnifiedLLMClient(
-            provider="anthropic",
-            client_override=mock_client,
-            enable_cost_tracking=True
-        )
-        
+
+        client = UnifiedLLMClient(provider="anthropic", client_override=mock_client)
+
         response = client.generate(prompt="Hello")
         assert response["content"] == "Anthropic response"
         assert response["usage"]["input_tokens"] == 15
         assert response["usage"]["output_tokens"] == 25
-        mock_cost_tracker.auto_log_from_llm_client.assert_called_once()
-    
+
     # Test OpenAI
     with patch("openai.OpenAI") as mock_openai:
         mock_client = Mock()
@@ -106,32 +123,28 @@ def test_generate_method(mock_env_vars, mock_cost_tracker):
         mock_response.usage.completion_tokens = 20
         mock_client.chat.completions.create.return_value = mock_response
         mock_openai.return_value = mock_client
-        
-        client = UnifiedLLMClient(
-            provider="openai",
-            client_override=mock_client
-        )
-        
+
+        client = UnifiedLLMClient(provider="openai", client_override=mock_client)
+
         response = client.generate(prompt="Hello")
         assert response["content"] == "OpenAI response"
         assert response["usage"]["input_tokens"] == 10
         assert response["usage"]["output_tokens"] == 20
-    
+
     # Test Google
     with patch("google.genai.Client") as mock_google:
         mock_client = Mock()
         mock_response = Mock()
-        mock_response.candidates = [Mock(content=Mock(parts=[Mock(text="Google response")]))]
+        mock_response.candidates = [
+            Mock(content=Mock(parts=[Mock(text="Google response")]))
+        ]
         mock_response.usage_metadata.prompt_token_count = 12
         mock_response.usage_metadata.candidates_token_count = 18
         mock_client.models.generate_content.return_value = mock_response
         mock_google.return_value = mock_client
-        
-        client = UnifiedLLMClient(
-            provider="google",
-            client_override=mock_client
-        )
-        
+
+        client = UnifiedLLMClient(provider="google", client_override=mock_client)
+
         response = client.generate(prompt="Hello")
         assert response["content"] == "Google response"
         assert response["usage"]["input_tokens"] == 12
@@ -140,9 +153,10 @@ def test_generate_method(mock_env_vars, mock_cost_tracker):
 
 # ==================== TEST 3: RETRY LOGIC ====================
 
+
 def test_retry_on_error(mock_env_vars):
     """Test 3: Client retries on transient errors."""
-    
+
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
         # First call fails, second succeeds
@@ -150,16 +164,13 @@ def test_retry_on_error(mock_env_vars):
             Exception("Rate limit exceeded"),
             Mock(
                 content=[Mock(text="Success after retry")],
-                usage=Mock(input_tokens=10, output_tokens=20)
-            )
+                usage=Mock(input_tokens=10, output_tokens=20),
+            ),
         ]
         mock_anthropic.return_value = mock_client
-        
-        client = UnifiedLLMClient(
-            provider="anthropic",
-            client_override=mock_client
-        )
-        
+
+        client = UnifiedLLMClient(provider="anthropic", client_override=mock_client)
+
         response = client.generate(prompt="Test")
         assert response["content"] == "Success after retry"
         assert mock_client.messages.create.call_count == 2
@@ -167,37 +178,34 @@ def test_retry_on_error(mock_env_vars):
 
 # ==================== TEST 4: CACHING ====================
 
+
 def test_caching_behavior(mock_env_vars):
     """Test 4: Cache returns same response for identical prompts and can be disabled."""
-    
+
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
         mock_response = Mock(
             content=[Mock(text="Cached response")],
-            usage=Mock(input_tokens=10, output_tokens=20)
+            usage=Mock(input_tokens=10, output_tokens=20),
         )
         mock_client.messages.create.return_value = mock_response
         mock_anthropic.return_value = mock_client
-        
+
         # Test cache enabled
         client = UnifiedLLMClient(
-            provider="anthropic",
-            enable_cache=True,
-            client_override=mock_client
+            provider="anthropic", enable_cache=True, client_override=mock_client
         )
-        
+
         response1 = client.generate("Same prompt")
         response2 = client.generate("Same prompt")
         assert response1 == response2
         assert mock_client.messages.create.call_count == 1
-        
+
         # Test cache disabled
         client = UnifiedLLMClient(
-            provider="anthropic",
-            enable_cache=False,
-            client_override=mock_client
+            provider="anthropic", enable_cache=False, client_override=mock_client
         )
-        
+
         client.generate("Same prompt")
         client.generate("Same prompt")
         assert mock_client.messages.create.call_count == 3  # +2 more calls
@@ -205,21 +213,22 @@ def test_caching_behavior(mock_env_vars):
 
 # ==================== TEST 5: TOKEN COUNTING ====================
 
+
 def test_token_counting(mock_env_vars):
     """Test 5: Token counting works with tiktoken and falls back when needed."""
-    
+
     client = UnifiedLLMClient(provider="openai", model="gpt-4o")
-    
+
     # Test with tiktoken
     with patch("tiktoken.encoding_for_model") as mock_encoding:
         mock_enc = Mock()
         mock_enc.encode.return_value = [1, 2, 3, 4, 5]
         mock_encoding.return_value = mock_enc
-        
+
         tokens = client.count_tokens("Hello world", "Goodbye")
         assert tokens["input_tokens"] == 5
         assert tokens["output_tokens"] == 5
-    
+
     # Test fallback
     with patch("tiktoken.encoding_for_model", side_effect=Exception):
         tokens = client.count_tokens("Hello world", "Goodbye")
@@ -229,15 +238,16 @@ def test_token_counting(mock_env_vars):
 
 # ==================== TEST 6: RATE LIMITING ====================
 
+
 def test_token_bucket_rate_limiting():
     """Test 6: TokenBucket correctly limits request rate."""
-    
+
     bucket = TokenBucket(rate=10.0, capacity=10.0)
     assert bucket.tokens == 10.0
-    
+
     bucket.consume(5.0)
     assert bucket.tokens == 5.0
-    
+
     # Not enough tokens - should sleep
     start = time.time()
     bucket.consume(10.0)
@@ -248,14 +258,12 @@ def test_token_bucket_rate_limiting():
 
 # ==================== TEST 7: BATCH OPERATIONS ====================
 
+
 def test_batch_operations(mock_env_vars):
     """Test 7: Batch submission and handle creation work."""
-    
-    requests = [
-        {"id": "req1", "prompt": "Hello"},
-        {"id": "req2", "prompt": "World"}
-    ]
-    
+
+    requests = [{"id": "req1", "prompt": "Hello"}, {"id": "req2", "prompt": "World"}]
+
     # Test Anthropic batch
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
@@ -263,30 +271,31 @@ def test_batch_operations(mock_env_vars):
         mock_batch.id = "anthropic_batch_123"
         mock_client.messages.batches.create.return_value = mock_batch
         mock_anthropic.return_value = mock_client
-        
-        client = UnifiedLLMClient(
-            provider="anthropic",
-            client_override=mock_client
-        )
-        
+
+        client = UnifiedLLMClient(provider="anthropic", client_override=mock_client)
+
         handle = client.submit_batch(requests)
         assert handle.provider == "anthropic"
         assert handle.id == "anthropic_batch_123"
-        assert handle.metadata["requests"] == requests
-    
+        # `metadata` carries the request list only on the mock-client path
+        # (submit_batch's `_is_mock_client()` short-circuit). The real Anthropic
+        # path returns the batch id alone — the requests are already server-side,
+        # keyed by custom_id, and retrieve_batch_results() joins on that. Asserting
+        # a populated metadata here was asserting the mock's behaviour.
+        assert handle.metadata is None
+        submitted = mock_client.messages.batches.create.call_args.kwargs["requests"]
+        assert [r.get("custom_id") for r in submitted] == ["req1", "req2"]
+
     # Test OpenAI batch requires jsonl_path
     with patch("openai.OpenAI") as mock_openai:
         mock_client = Mock()
         mock_openai.return_value = mock_client
-        
-        client = UnifiedLLMClient(
-            provider="openai",
-            client_override=mock_client
-        )
-        
+
+        client = UnifiedLLMClient(provider="openai", client_override=mock_client)
+
         with pytest.raises(ValueError, match="jsonl_path is required"):
             client.submit_batch(requests)
-    
+
     # Test BatchHandle dataclass
     handle = BatchHandle(provider="test", id="123", metadata={"key": "value"})
     assert handle.provider == "test"
@@ -296,72 +305,104 @@ def test_batch_operations(mock_env_vars):
         handle.id = "new_id"
 
 
-# ==================== TEST 8: COST TRACKING CONTROL ====================
-# FIXED: Removed method call that causes recursion
+# ==================== TEST 8: COST TRACKING IS CALLER-SIDE ====================
 
-def test_cost_tracking_control(mock_env_vars, mock_cost_tracker):
-    """Test 8: Cost tracking can be enabled/disabled and toggled."""
-    
+
+def test_cost_tracking_is_off_unless_opted_into(mock_env_vars):
+    """Test 8: the client reports usage and logs nothing unless handed a tracker.
+
+    This test used to assert an `enable_cost_tracking` flag and an
+    `auto_log_from_llm_client` hook (neither existed), and was then tightened to
+    forbid a `cost_tracker` attribute outright. That last form was too strong: it
+    also forbade the fix for the opposite bug, which was that purely caller-side
+    logging left every standalone script under `scripts/` billing silently — the
+    §17a-§17c probe series and all label-validation runs produced no JSONL row at
+    all (`data/findings.md` §17e-5 flags the gap).
+
+    The invariant that actually matters is unchanged and is what is asserted here:
+    a default-constructed client bills nothing, so it cannot double-count against
+    the manual `cost_tracker.log_cost(...)` calls in `prompt_validation` /
+    `suppression_matrix` / `generate_scenarios` / `JudgeClient._log_judge_cost`.
+    Auto-logging is opt-in per call site; see
+    `pipeline_a_scenarios/tests/unit/test_cost_logging_and_bands.py` for its
+    behaviour, and keep the two sets of call sites disjoint.
+    """
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
         mock_response = Mock(
-            content=[Mock(text="Response")],
-            usage=Mock(input_tokens=100, output_tokens=50)
+            content=[Mock(type="text", text="Response")],
+            usage=Mock(input_tokens=100, output_tokens=50),
         )
         mock_client.messages.create.return_value = mock_response
         mock_anthropic.return_value = mock_client
-        
-        # Test enabled (default)
-        client = UnifiedLLMClient(
-            provider="anthropic",
-            client_override=mock_client,
-            enable_cost_tracking=True
+
+        client = UnifiedLLMClient(provider="anthropic", client_override=mock_client)
+        result = client.generate(prompt="Test")
+
+        # `thinking_tokens` joined the Anthropic usage block; assert the billing
+        # fields rather than the exact dict so adding a diagnostic field is not a
+        # breaking change.
+        assert result["usage"]["input_tokens"] == 100
+        assert result["usage"]["output_tokens"] == 50
+        assert client.cost_tracker is None, (
+            "auto-logging must stay opt-in — a client that bills by default would "
+            "double-count against the caller-side log_cost() calls in the pipeline "
+            "scripts"
         )
-        client.generate(prompt="Test")
-        mock_cost_tracker.auto_log_from_llm_client.assert_called_once()
-        
-        # Test disabled
-        mock_cost_tracker.reset_mock()
-        client = UnifiedLLMClient(
-            provider="anthropic",
-            client_override=mock_client,
-            enable_cost_tracking=False
-        )
-        client.cost_tracker = None
-        client.generate(prompt="Test")
-        mock_cost_tracker.auto_log_from_llm_client.assert_not_called()
-        
-        # FIXED: Simply check the attribute value - don't call the method
-        assert client.enable_cost_tracking is False  # Already False from constructor
+        assert not hasattr(client, "enable_cost_tracking")
+
+    # The manual-logging call sites must not also hand the client a tracker.
+    manual_loggers = (
+        "pipeline_a_scenarios/prompt_validation.py",
+        "pipeline_a_scenarios/suppression_matrix.py",
+        "pipeline_a_scenarios/generate_scenarios.py",
+    )
+    repo_root = Path(__file__).resolve().parents[2]
+    for relative in manual_loggers:
+        source = (repo_root / relative).read_text(encoding="utf-8")
+        assert "log_cost(" in source, f"{relative} no longer logs manually"
+
+        # Match on the constructor call itself: these modules legitimately pass
+        # `cost_tracker=` to their own helpers, so a substring search is useless.
+        for node in ast.walk(ast.parse(source)):
+            if not isinstance(node, ast.Call):
+                continue
+            callee = node.func
+            name = getattr(callee, "id", None) or getattr(callee, "attr", None)
+            if name != "UnifiedLLMClient":
+                continue
+            passed = {kw.arg for kw in node.keywords}
+            assert "cost_tracker" not in passed, (
+                f"{relative}:{node.lineno} logs cost manually AND passes a tracker "
+                f"to UnifiedLLMClient — that double-counts every call"
+            )
 
 
 # ==================== TEST 9: REASONING MODES ====================
 
+
 def test_reasoning_modes(mock_env_vars):
     """Test 9: Reasoning modes work correctly for Anthropic."""
-    
+
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
         mock_client.messages.create.return_value = Mock(
             content=[Mock(text="Response")],
-            usage=Mock(input_tokens=10, output_tokens=20)
+            usage=Mock(input_tokens=10, output_tokens=20),
         )
         mock_anthropic.return_value = mock_client
-        
-        client = UnifiedLLMClient(
-            provider="anthropic",
-            client_override=mock_client
-        )
-        
+
+        client = UnifiedLLMClient(provider="anthropic", client_override=mock_client)
+
         # Test _apply_reasoning method directly
         budget, tokens = client._apply_reasoning(1000, "high")
         assert budget >= 1024
         assert tokens > 1000
-        
+
         budget, tokens = client._apply_reasoning(1000, "standard")
         assert budget >= 1024
         assert tokens > 1000
-        
+
         budget, tokens = client._apply_reasoning(1000, "none")
         assert budget == 0
         assert tokens == 1000
@@ -370,63 +411,60 @@ def test_reasoning_modes(mock_env_vars):
 # ==================== TEST 10: MOCK CLIENT DETECTION ====================
 # FIXED: Properly mock the module with real classes
 
+
 def test_mock_client_detection():
     """Test 10: Client correctly detects mock clients for testing."""
-    
+
     # Create simple mock classes
     class MockAnthropicClient:
         pass
-    
+
     class MockOpenAIClient:
         pass
-    
+
     class MockGeminiClient:
         pass
-    
+
     # Mock the entire module
     mock_module = Mock()
     mock_module.MockAnthropicClient = MockAnthropicClient
     mock_module.MockOpenAIClient = MockOpenAIClient
     mock_module.MockGeminiClient = MockGeminiClient
-    
-    with patch.dict(sys.modules, {'pipeline_a_scenarios.tests.test_mock_clients': mock_module}):
+
+    with patch.dict(
+        sys.modules, {"pipeline_a_scenarios.tests.test_mock_clients": mock_module}
+    ):
         # Test Anthropic
         client = UnifiedLLMClient(
-            provider="anthropic",
-            client_override=MockAnthropicClient()
+            provider="anthropic", client_override=MockAnthropicClient()
         )
         assert client._is_mock_client() is True
-        
+
         # Test OpenAI
-        client = UnifiedLLMClient(
-            provider="openai",
-            client_override=MockOpenAIClient()
-        )
+        client = UnifiedLLMClient(provider="openai", client_override=MockOpenAIClient())
         assert client._is_mock_client() is True
-        
+
         # Test Google
-        client = UnifiedLLMClient(
-            provider="google",
-            client_override=MockGeminiClient()
-        )
+        client = UnifiedLLMClient(provider="google", client_override=MockGeminiClient())
         assert client._is_mock_client() is True
 
 
 # ==================== TEST 11: COST ESTIMATION ====================
 
+
 def test_cost_estimation(mock_env_vars):
     """Test 11: Cost estimation calculates correctly."""
-    
+
     client = UnifiedLLMClient(provider="openai", model="gpt-4o")
-    
-    with patch.object(client, 'count_tokens') as mock_count:
+
+    with patch.object(client, "count_tokens") as mock_count:
         mock_count.return_value = {"input_tokens": 1000}
-        
+
         # Test with known model
         cost = client.estimate_cost("Test prompt", expected_output_tokens=500)
         expected = (1000 * 2.5 / 1_000_000) + (500 * 10 / 1_000_000)
         assert cost == expected
-        
+
         # Test with unknown model
         client.model = "unknown-model"
         cost = client.estimate_cost("Test")
@@ -435,29 +473,278 @@ def test_cost_estimation(mock_env_vars):
 
 # ==================== TEST 12: ANTHROPIC THINKING TOKENS ====================
 
-def test_anthropic_thinking_tokens_handling(mock_env_vars, mock_cost_tracker):
-    """Test 12: Anthropic thinking tokens are properly handled in cost tracking."""
-    
+
+def test_anthropic_thinking_blocks_are_excluded_from_content(mock_env_vars):
+    """Test 12: thinking blocks never leak into `content`, and their tokens bill.
+
+    Rewritten from an `auto_log_from_llm_client` assertion (a hook the client
+    does not have). The live behaviour that matters, confirmed against
+    claude-opus-5 on 2026-07-27:
+
+    * A thinking-enabled response returns `[ThinkingBlock, TextBlock]`. Reading
+      `content[0].text` raises `AttributeError` — the extractor must select the
+      block whose `type == "text"`, or the pipeline records reasoning traces as
+      if they were the answer.
+    * `usage.output_tokens` already INCLUDES the thinking tokens (measured: 1,000
+      output tokens of which 1,000 were thinking). Callers must bill on
+      `output_tokens` as returned and must not add a thinking figure on top.
+    """
     with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
+        thinking_block = Mock(type="thinking")
+        # A real ThinkingBlock has no `.text`; Mock would auto-create one.
+        del thinking_block.text
         mock_response = Mock(
-            content=[Mock(text="Response with thinking")],
-            usage=Mock(input_tokens=100, output_tokens=50)
+            content=[thinking_block, Mock(type="text", text="Visible answer")],
+            usage=Mock(input_tokens=100, output_tokens=50),
         )
-        # Add thinking_tokens attribute
-        mock_response.usage.thinking_tokens = 30
         mock_client.messages.create.return_value = mock_response
         mock_anthropic.return_value = mock_client
-        
+
         client = UnifiedLLMClient(
             provider="anthropic",
+            model="claude-opus-5",
+            enable_cache=False,
             client_override=mock_client,
-            enable_cost_tracking=True
         )
-        
-        response = client.generate(prompt="Complex reasoning task", reasoning="high")
-        
-        # Verify cost tracker was called
-        mock_cost_tracker.auto_log_from_llm_client.assert_called_once()
-        
-        assert response["content"] == "Response with thinking"
+        response = client.generate(prompt="Complex reasoning task", max_tokens=3000)
+
+        assert response["content"] == "Visible answer", (
+            "content must come from the text block; a thinking block leaking "
+            "through would put hidden reasoning into the recorded response"
+        )
+        assert response["usage"]["output_tokens"] == 50
+
+
+# ==================== TEST 13: OPUS 4.7+ SAMPLING-PARAM REJECTION ====================
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        "claude-opus-4-7",
+        "claude-opus-4.7",
+        "claude-opus-4-8",
+        "claude-opus-4.8",
+    ],
+)
+def test_opus_4_7_plus_rejects_sampling_params(mock_env_vars, model):
+    """
+    Regression guard: every Opus 4.7+ spelling (hyphen and dot, 4-7 and 4-8)
+    MUST omit `temperature` from the Anthropic payload because Anthropic returns
+    400 if it is passed. Pre-fix, the dot form silently slipped through
+    `startswith("claude-opus-4-7")` and would have failed at runtime.
+
+    The request asks for the provider default (1.0); asking for anything else
+    now raises — see test_sampling_restricted_model_raises_on_non_default_temp.
+    """
+    mock_client = Mock()
+    mock_response = Mock()
+    mock_response.content = [Mock(type="text", text="ok")]
+    mock_response.usage = Mock(input_tokens=5, output_tokens=2)
+    mock_client.messages.create.return_value = mock_response
+
+    client = UnifiedLLMClient(
+        provider="anthropic",
+        model=model,
+        enable_cache=False,
+        client_override=mock_client,
+    )
+    client.generate(prompt="hi", temperature=SAMPLING_RESTRICTED_TEMPERATURE)
+
+    call_kwargs = mock_client.messages.create.call_args.kwargs
+    assert "temperature" not in call_kwargs, (
+        f"{model} must NOT receive temperature (Opus 4.7+ rejects it). "
+        f"Got params: {sorted(call_kwargs)}"
+    )
+
+
+@pytest.mark.parametrize(
+    "provider,model",
+    [
+        ("anthropic", "claude-opus-4-8"),
+        ("anthropic", "claude-opus-5"),
+        ("openai", "gpt-5.5"),
+        ("openai", "gpt-5.6-sol"),
+    ],
+)
+def test_sampling_restricted_model_raises_on_non_default_temp(
+    mock_env_vars, provider, model
+):
+    """
+    A model that cannot honour an explicit temperature must fail loudly rather
+    than have the parameter silently dropped.
+
+    Silent dropping is the provenance bug this guard exists for: pre-fix,
+    `prompt_validation` asked for temperature=0 on claude-opus-4-8, the
+    Anthropic branch discarded it, and every row was still written to disk
+    labelled with the variant's declared 1.0. See `data/findings.md` §8a.
+    """
+    mock_client = Mock()
+
+    client = UnifiedLLMClient(
+        provider=provider,
+        model=model,
+        enable_cache=False,
+        client_override=mock_client,
+    )
+
+    with pytest.raises(ValueError, match="does not accept an explicit temperature"):
+        client.generate(prompt="hi", temperature=0)
+
+
+def test_gpt_5_5_omits_temperature_at_provider_default(mock_env_vars):
+    """
+    gpt-5.5 returns 400 "Unsupported value: 'temperature' does not support 0
+    with this model. Only the default (1) value is supported." — so the
+    parameter must be omitted from the OpenAI payload entirely.
+    """
+    mock_client = Mock()
+    mock_client.chat.completions.create.return_value = Mock(
+        choices=[Mock(message=Mock(content="ok"))],
+        usage=Mock(prompt_tokens=5, completion_tokens=2),
+    )
+
+    client = UnifiedLLMClient(
+        provider="openai",
+        model="gpt-5.5",
+        enable_cache=False,
+        client_override=mock_client,
+    )
+    client.generate(prompt="hi", temperature=SAMPLING_RESTRICTED_TEMPERATURE)
+
+    call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+    assert "temperature" not in call_kwargs, (
+        "gpt-5.5 must NOT receive an explicit temperature. "
+        f"Got params: {sorted(call_kwargs)}"
+    )
+
+
+def _anthropic_mock():
+    mock_client = Mock()
+    mock_response = Mock()
+    mock_response.content = [Mock(type="text", text="ok")]
+    mock_response.usage = Mock(input_tokens=5, output_tokens=2)
+    mock_client.messages.create.return_value = mock_response
+    return mock_client
+
+
+@pytest.mark.parametrize("model", ["claude-opus-5", "claude-opus-4-8"])
+def test_thinking_is_never_disabled_when_no_reasoning_requested(mock_env_vars, model):
+    """The request must not carry a thinking block when none was asked for.
+
+    Production deployments run with thinking enabled, and the benchmark mimics
+    deployment settings, so Opus 5's adaptive-by-default behaviour is left alone.
+    The cost is budget, not correctness: measured 2026-07-27, an FTC prompt on
+    claude-opus-5 at max_tokens=500 spent 471 tokens thinking and never emitted
+    the <answer> tag — which is why the pipeline's MAX_RESPONSE_TOKENS is 3000.
+    A regression that sends `{"type": "disabled"}` here would silently change
+    what the benchmark measures.
+    """
+    mock_client = _anthropic_mock()
+    client = UnifiedLLMClient(
+        provider="anthropic",
+        model=model,
+        enable_cache=False,
+        client_override=mock_client,
+    )
+    client.generate(prompt="hi", max_tokens=3000)
+
+    call_kwargs = mock_client.messages.create.call_args.kwargs
+    assert (
+        "thinking" not in call_kwargs
+    ), f"{model} must inherit the provider thinking default; got {sorted(call_kwargs)}"
+
+
+@pytest.mark.parametrize(
+    "model,expect_adaptive",
+    [
+        ("claude-opus-5", True),
+        ("claude-opus-4-8", True),
+        ("claude-sonnet-4-6", False),
+    ],
+)
+def test_reasoning_request_uses_adaptive_where_budget_tokens_is_removed(
+    mock_env_vars, model, expect_adaptive
+):
+    """`reasoning=` must not send `budget_tokens` to models that removed it.
+
+    `{"type": "enabled", "budget_tokens": N}` returns a 400 on the Opus 4.7+
+    family and on Opus 5; those models take `{"type": "adaptive"}` instead.
+    Models that still accept a budget keep the old form.
+    """
+    mock_client = _anthropic_mock()
+    client = UnifiedLLMClient(
+        provider="anthropic",
+        model=model,
+        enable_cache=False,
+        client_override=mock_client,
+    )
+    client.generate(prompt="hi", max_tokens=3000, reasoning="high")
+
+    thinking = mock_client.messages.create.call_args.kwargs.get("thinking")
+    if expect_adaptive:
+        assert thinking == {"type": "adaptive"}, (
+            f"{model} rejects budget_tokens with a 400; expected adaptive "
+            f"thinking, got {thinking}"
+        )
+    else:
+        assert (
+            thinking["type"] == "enabled" and "budget_tokens" in thinking
+        ), f"{model} still supports a thinking budget; got {thinking}"
+
+
+def test_gpt_5_4_still_receives_temperature(mock_env_vars):
+    """
+    Counter-test: the restriction is per-model, NOT the whole gpt-5 family. The
+    2026-04-21 Phase 1 run
+    (`outputs/data_Riccardo042126/results/prompt_validation/raw_responses.json`)
+    produced 192 gpt-5.4 rows with zero errors at temperature=0, so a
+    generalisation to `startswith("gpt-5")` would silently disable temperature
+    control on a model that accepts it.
+    """
+    mock_client = Mock()
+    mock_client.chat.completions.create.return_value = Mock(
+        choices=[Mock(message=Mock(content="ok"))],
+        usage=Mock(prompt_tokens=5, completion_tokens=2),
+    )
+
+    client = UnifiedLLMClient(
+        provider="openai",
+        model="gpt-5.4",
+        enable_cache=False,
+        client_override=mock_client,
+    )
+    client.generate(prompt="hi", temperature=0)
+
+    call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+    assert (
+        call_kwargs.get("temperature") == 0
+    ), f"gpt-5.4 SHOULD receive temperature; got: {sorted(call_kwargs)}"
+
+
+def test_non_opus_4_7_plus_still_receives_temperature(mock_env_vars):
+    """
+    Counter-test: ensure the family check does NOT regress models that DO
+    accept sampling params (e.g. claude-sonnet-4-6). Without this assertion,
+    a future over-generalisation to `startswith("claude-")` would pass the
+    test above but break Sonnet/Haiku temperature control silently.
+    """
+    mock_client = Mock()
+    mock_response = Mock()
+    mock_response.content = [Mock(type="text", text="ok")]
+    mock_response.usage = Mock(input_tokens=5, output_tokens=2)
+    mock_client.messages.create.return_value = mock_response
+
+    client = UnifiedLLMClient(
+        provider="anthropic",
+        model="claude-sonnet-4-6",
+        enable_cache=False,
+        client_override=mock_client,
+    )
+    client.generate(prompt="hi", temperature=0.5)
+
+    call_kwargs = mock_client.messages.create.call_args.kwargs
+    assert (
+        call_kwargs.get("temperature") == 0.5
+    ), f"claude-sonnet-4-6 SHOULD receive temperature; got: {call_kwargs}"

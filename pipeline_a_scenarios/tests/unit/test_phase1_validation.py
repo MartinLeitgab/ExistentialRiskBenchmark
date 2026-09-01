@@ -2,12 +2,9 @@
 Unit tests for Phase 1 validation pipeline components.
 """
 
-import pytest
-import json
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from tests.mock_helpers import configure_mock_cost_tracker
 from pipeline_a_scenarios.prompt_validation import (
     run_validation_study,
     evaluate_with_judge,
@@ -16,13 +13,17 @@ from pipeline_a_scenarios.prompt_validation import (
     generate_recommendation_text,
 )
 
+from pipeline_a_scenarios.tests.conftest import (  # shared CostTracker mock
+    install_cost_mock,
+)
+
 
 class TestValidationStudy:
     """Test validation study execution."""
-    
-    @patch('pipeline_a_scenarios.prompt_validation.UnifiedLLMClient')
-    @patch('pipeline_a_scenarios.prompt_validation.generate_all_variants')
-    @patch('pipeline_a_scenarios.prompt_validation.CostTracker')
+
+    @patch("pipeline_a_scenarios.prompt_validation.UnifiedLLMClient")
+    @patch("pipeline_a_scenarios.prompt_validation.generate_all_variants")
+    @patch("pipeline_a_scenarios.prompt_validation.CostTracker")
     def test_run_validation_study_structure(
         self,
         mock_cost_class,
@@ -38,31 +39,31 @@ class TestValidationStudy:
         mock_client = Mock()
         mock_client.generate.return_value = mock_llm_response
         mock_client_class.return_value = mock_client
-        
+
         mock_gen_variants.return_value = test_variants
-        
-        mock_cost_class.return_value = configure_mock_cost_tracker(Mock(), total_cost=2.50)
-        
+
+        install_cost_mock(mock_cost_class, total_cost=2.50)
+
         # Run validation
         results = run_validation_study(
             scenarios_path=test_scenarios_file,
             models=["claude-sonnet-4-20250514"],
             runs_per_config=1,
-            output_dir=test_output_dir
+            output_dir=test_output_dir,
         )
-        
+
         # Verify structure
         assert "raw_responses" in results
         assert "cost_summary" in results
         assert isinstance(results["raw_responses"], list)
-        
+
         # Verify output files
         assert Path(test_output_dir, "raw_responses.json").exists()
         assert Path(test_output_dir, "cost_summary.json").exists()
-    
-    @patch('pipeline_a_scenarios.prompt_validation.UnifiedLLMClient')
-    @patch('pipeline_a_scenarios.prompt_validation.generate_all_variants')
-    @patch('pipeline_a_scenarios.prompt_validation.CostTracker')
+
+    @patch("pipeline_a_scenarios.prompt_validation.UnifiedLLMClient")
+    @patch("pipeline_a_scenarios.prompt_validation.generate_all_variants")
+    @patch("pipeline_a_scenarios.prompt_validation.CostTracker")
     def test_api_error_handling(
         self,
         mock_cost_class,
@@ -77,19 +78,19 @@ class TestValidationStudy:
         mock_client = Mock()
         mock_client.generate.side_effect = Exception("API Error")
         mock_client_class.return_value = mock_client
-        
+
         mock_gen_variants.return_value = test_variants[:1]
-        
-        mock_cost_class.return_value = configure_mock_cost_tracker(Mock())
-        
+
+        install_cost_mock(mock_cost_class, total_cost=0)
+
         # Should not raise exception
         results = run_validation_study(
             scenarios_path=test_scenarios_file,
             models=["claude-sonnet-4-20250514"],
             runs_per_config=1,
-            output_dir=test_output_dir
+            output_dir=test_output_dir,
         )
-        
+
         # Verify errors were logged
         assert len(results["raw_responses"]) > 0
         has_error = any("error" in r for r in results["raw_responses"])
@@ -98,16 +99,16 @@ class TestValidationStudy:
 
 class TestJudgeEvaluation:
     """Test judge evaluation functions."""
-    
-    @patch('pipeline_a_scenarios.prompt_validation.JudgeClient')
-    @patch('pipeline_a_scenarios.prompt_validation.CostTracker')
+
+    @patch("pipeline_a_scenarios.prompt_validation.JudgeClient")
+    @patch("pipeline_a_scenarios.prompt_validation.CostTracker")
     def test_evaluate_with_judge(
         self,
         mock_cost_class,
         mock_judge_class,
         test_scenarios,
         mock_judge_result,
-        test_output_dir
+        test_output_dir,
     ):
         """Test judge evaluation integration."""
         raw_responses = [
@@ -118,10 +119,10 @@ class TestJudgeEvaluation:
                 "model": "claude-sonnet-4-20250514",
                 "run": 0,
                 "response_text": "I choose Action B because it's safer.",
-                "usage": {"input_tokens": 100, "output_tokens": 15}
+                "usage": {"input_tokens": 100, "output_tokens": 15},
             }
         ]
-        
+
         # Setup mocks
         mock_judge = Mock()
         mock_judge.evaluate_response.return_value = mock_judge_result
@@ -131,29 +132,35 @@ class TestJudgeEvaluation:
             "reasoning_summary": "Pro-human.",
         }
         mock_judge_class.return_value = mock_judge
-        
-        mock_cost_class.return_value = configure_mock_cost_tracker(Mock(), total_cost=0.50)
-        
+
+        install_cost_mock(mock_cost_class, total_cost=0.50)
+
         # Run evaluation
-        scenarios = [{"id": "test_01", "context": "An AI must choose.", 
-               "action_a": "Action A", "action_b": "Action B"}]
+        scenarios = [
+            {
+                "id": "test_01",
+                "context": "An AI must choose.",
+                "action_a": "Action A",
+                "action_b": "Action B",
+            }
+        ]
 
         judge_results = evaluate_with_judge(
-            raw_responses=raw_responses,
-            scenarios=scenarios,
-            output_dir=test_output_dir
+            raw_responses=raw_responses, scenarios=scenarios, output_dir=test_output_dir
         )
-        
+
         # Verify
-        assert len(judge_results) == 1
+        # Two rows per response: the no-same-family policy runs both permitted
+        # judges on every response (judge_policy.judges_for).
+        assert len(judge_results) == 2
         assert "preference_signal_score" in judge_results[0]
-        assert "scenario_id" in judge_results[0]
+        assert "judge_b" in judge_results[0]
         assert judge_results[0]["scenario_id"] == "test_01"
 
 
 class TestVariantRanking:
     """Test variant ranking and analysis."""
-    
+
     def test_analyze_and_rank_variants(self, test_output_dir):
         judge_results = [
             {
@@ -161,11 +168,11 @@ class TestVariantRanking:
                 "variant_id": "variant_A",
                 "model": "m1",
                 "run": 0,
-                "preference_signal_score":        4,
-                "reasoning_depth_score":          3,
-                "strategic_responding_score":     3,
-                "coherence_score":                4,
-                "format_compliance_score":        5,
+                "preference_signal_score": 4,
+                "reasoning_depth_score": 3,
+                "strategic_responding_score": 3,
+                "coherence_score": 4,
+                "format_compliance_score": 5,
                 "instrumental_vs_terminal_score": 3,
             },
             {
@@ -173,28 +180,27 @@ class TestVariantRanking:
                 "variant_id": "variant_B",
                 "model": "m1",
                 "run": 0,
-                "preference_signal_score":        3,
-                "reasoning_depth_score":          3,
-                "strategic_responding_score":     3,
-                "coherence_score":                3,
-                "format_compliance_score":        4,
+                "preference_signal_score": 3,
+                "reasoning_depth_score": 3,
+                "strategic_responding_score": 3,
+                "coherence_score": 3,
+                "format_compliance_score": 4,
                 "instrumental_vs_terminal_score": 3,
             },
         ]
 
         recommendations = analyze_and_rank_variants(
-            judge_results=judge_results,
-            output_dir=test_output_dir
+            judge_results=judge_results, output_dir=test_output_dir
         )
 
-        assert "top_variants"     in recommendations
+        assert "top_variants" in recommendations
         assert "variant_rankings" in recommendations
         assert len(recommendations["top_variants"]) > 0
 
 
 class TestAnomalyReporting:
     """Test anomaly detection and reporting."""
-    
+
     def test_generate_anomaly_report(self, test_output_dir):
         """Test anomaly report generation."""
         judge_results = [
@@ -202,28 +208,28 @@ class TestAnomalyReporting:
                 "scenario_id": "test_01",
                 "variant_id": "variant_A",
                 "model": "claude-sonnet-4-20250514",
-                "anomalies": ["refusal", "parsing_error"]
+                "anomalies": ["refusal", "parsing_error"],
             },
             {
                 "scenario_id": "test_02",
                 "variant_id": "variant_A",
                 "model": "claude-sonnet-4-20250514",
-                "anomalies": ["refusal"]
-            }
+                "anomalies": ["refusal"],
+            },
         ]
-        
+
         # Generate report
         generate_anomaly_report(judge_results, output_dir=test_output_dir)
-        
+
         # Verify report exists
         report_path = Path(test_output_dir) / "anomaly_report.md"
         assert report_path.exists()
-        
+
         # Verify content
         content = report_path.read_text()
         assert "Anomaly Report" in content
         assert "refusal" in content
-    
+
     def test_recommendation_text_generation(self):
         """Test recommendation text generation."""
         top_variants = [
@@ -231,8 +237,8 @@ class TestAnomalyReporting:
             {"variant_id": "v2", "composite_score": 0.85},
         ]
         patterns = {"high_refusal_rate": ["v3"]}
-        
+
         text = generate_recommendation_text(top_variants, patterns)
-        
+
         assert "RECOMMENDATIONS" in text
         assert "v1" in text or "variants" in text

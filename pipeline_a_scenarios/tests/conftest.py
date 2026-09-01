@@ -237,3 +237,36 @@ def test_scenarios_file(tmp_path, test_scenarios):
     with open(scenarios_path, "w") as f:
         json.dump(test_scenarios, f)
     return str(scenarios_path)
+
+
+# ============================================================================
+# COST TRACKER MOCK
+# ============================================================================
+
+
+def install_cost_mock(mock_cost_cls, total_cost=0.0):
+    """Configure a patched CostTracker class with the summary API in production use.
+
+    `run_validation_study`, `evaluate_with_judge`, and `run_suppression_matrix`
+    build their cost summaries from get_total_cost() +
+    get_cost_breakdown_by_model() + get_provider_breakdown() + get_batch_stats()
+    and json.dump the result, so a bare Mock for any of them raises "Object of
+    type Mock is not JSON serializable" before the test reaches its assertions.
+
+    Tests previously stubbed a `get_summary()` method that CostTracker no longer
+    has, which is why every test touching those functions failed.
+
+    Args:
+        mock_cost_cls: The patched CostTracker class object.
+        total_cost: Value get_total_cost() should report.
+
+    Returns:
+        The configured tracker instance mock.
+    """
+    mock_cost = Mock()
+    mock_cost.get_total_cost.return_value = total_cost
+    mock_cost.get_cost_breakdown_by_model.return_value = {}
+    mock_cost.get_provider_breakdown.return_value = {}
+    mock_cost.get_batch_stats.return_value = {}
+    mock_cost_cls.return_value = mock_cost
+    return mock_cost
