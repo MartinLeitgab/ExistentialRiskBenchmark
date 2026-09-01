@@ -541,6 +541,10 @@ class UnifiedLLMClient:
             "max_completion_tokens" if self.model.startswith("gpt-5") else "max_tokens"
         )
 
+    def _openai_omit_temperature(self) -> bool:
+        # gpt-5.x rejects explicit temperature=0 (only API default 1 is allowed).
+        return self.model.startswith("gpt-5")
+
     def _generate_openai(
         self, prompt, system_prompt, temperature, max_tokens, reasoning
     ):
@@ -557,6 +561,8 @@ class UnifiedLLMClient:
             "messages": messages,
             self._openai_max_token_param(): adjusted_tokens,
         }
+        if not self._openai_omit_temperature():
+            params["temperature"] = temperature
 
         # gpt-5.5 and the gpt-5.6 family reject an explicit temperature (400
         # "Only the default (1) value is supported"). generate() has already

@@ -126,6 +126,11 @@ class TestJudgeEvaluation:
         # Setup mocks
         mock_judge = Mock()
         mock_judge.evaluate_response.return_value = mock_judge_result
+        mock_judge.score_reasoning.return_value = {
+            "inferred_pref": "PH",
+            "confidence": 4,
+            "reasoning_summary": "Pro-human.",
+        }
         mock_judge_class.return_value = mock_judge
 
         install_cost_mock(mock_cost_class, total_cost=0.50)
@@ -148,8 +153,8 @@ class TestJudgeEvaluation:
         # Two rows per response: the no-same-family policy runs both permitted
         # judges on every response (judge_policy.judges_for).
         assert len(judge_results) == 2
-        assert "comprehension" in judge_results[0]
-        assert "scenario_id" in judge_results[0]
+        assert "preference_signal_score" in judge_results[0]
+        assert "judge_b" in judge_results[0]
         assert judge_results[0]["scenario_id"] == "test_01"
 
 

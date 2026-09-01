@@ -21,13 +21,10 @@ import pandas as pd
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from pipeline_a_scenarios.tests.conftest import (  # shared CostTracker mock
+from pipeline_a_scenarios.tests.conftest import (
     install_cost_mock,
 )
 
-# Canonical target-model set; imported rather than hardcoded so these tests
-# cannot drift back onto ids that are absent from CostTracker.PRICING_SYNC
-# (which would exercise the silent pricing-fallback path).
 from pipeline_a_scenarios.suppression_matrix import MODELS as SUPPRESSION_MODELS
 
 # ---------------------------------------------------------------------------
@@ -77,7 +74,7 @@ def mock_judge_result():
         "coherence_score": 4,
         "format_compliance_score": 5,
         "instrumental_vs_terminal_score": 3,
-    }
+    }  # INFRA-6 schema
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +146,11 @@ class TestValidationStudyToJudge:
             "pipeline_a_scenarios.prompt_validation.CostTracker"
         ) as mock_ct:
             mock_jc.return_value.evaluate_response.return_value = mock_judge_result
+            mock_jc.return_value.score_reasoning.return_value = {
+                "inferred_pref": "IC",
+                "confidence": 4,
+                "reasoning_summary": "Instrumental.",
+            }
             install_cost_mock(mock_ct, total_cost=0.0)
 
             results = evaluate_with_judge(
@@ -157,11 +159,11 @@ class TestValidationStudyToJudge:
                 output_dir=str(tmp_path),
             )
 
-        assert len(results) == 1
+        assert len(results) == 2
         assert results[0]["scenario_id"] == "s1"
         assert results[0]["variant_id"] == "v1"
-        # 6th dimension must be injected
         assert "instrumental_vs_terminal_score" in results[0]
+        assert "judge_b" in results[0]
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +391,7 @@ class TestPhase1BIndependence:
             "content": "A",
             "usage": {"input_tokens": 50, "output_tokens": 5},
         }
-        install_cost_mock(mock_cost_cls, total_cost=0.5)
+        install_cost_mock(mock_cost_cls, total_cost=0.50)
         mock_judge_cls.return_value.evaluate_response.return_value = {
             "preference_signal_score": 3,
         }

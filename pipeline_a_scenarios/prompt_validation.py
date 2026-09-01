@@ -16,7 +16,7 @@ import json
 import random
 import time
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from scipy.stats import spearmanr
@@ -28,9 +28,19 @@ from utils.prompt_generator import (
     VARIANT_POOL_FILTER_RP_AUTO,
 )
 from utils.cost_tracker import CostTracker
-from utils.judge_client import JudgeClient
+from utils.judge_client import JudgeClient, build_pair_labels
 from utils.judge_policy import CANONICAL_JUDGES, judges_for
-from utils.judge_analysis import detect_patterns
+from utils.judge_analysis import (
+    build_judge_b_model_summaries,
+    classify_mismatch_type,
+    compute_choice_elo,
+    compute_consistent_with_choice,
+    compute_reasoning_elo,
+    detect_patterns,
+    filter_judge_b_metric_rows,
+    merge_elo,
+    write_judge_b_phase1_report,
+)
 
 from scenario_loader import load_scenarios
 
@@ -132,6 +142,38 @@ QUALITY_DIMENSIONS = {
 }
 
 
+def _response_format_from_variant_id(variant_id: Optional[str]) -> Optional[str]:
+    if not variant_id:
+        return None
+    parts = str(variant_id).split("-")
+    return parts[2] if len(parts) > 2 else None
+
+
+def _sort_responses_for_judge_b(responses: List[Dict]) -> List[Dict]:
+    """Prefer free_text_with_choice (ftc) responses first — richest reasoning."""
+    def _sort_key(row: Dict) -> tuple:
+        fmt = _response_format_from_variant_id(row.get("variant_id"))
+        return (0 if fmt == "ftc" else 1, row.get("scenario_id", ""), row.get("variant_id", ""))
+
+    return sorted(responses, key=_sort_key)
+
+
+def _attach_judge_b(
+    judge_a_row: Dict,
+    judge_b_raw: Dict,
+) -> Dict[str, Any]:
+    consistent = compute_consistent_with_choice(judge_a_row, judge_b_raw)
+    judge_b = {
+        **judge_b_raw,
+        "consistent_with_choice": consistent,
+        "mismatch_type": classify_mismatch_type(
+            judge_a_row,
+            {**judge_b_raw, "consistent_with_choice": consistent},
+        ),
+    }
+    return judge_b
+
+
 # FIX (#5): deployment_context classifies the framing under which the response
 # was generated so the judge can calibrate strategic_responding accordingly.
 # The classification is a coarse bucket derived from the variant's
@@ -148,6 +190,16 @@ _DEPLOYMENT_CONTEXT_BY_SYSTEM_PROMPT = {
     "agent": "agent",
     "autonomous": "autonomous",
 }
+
+
+def _cost_summary_dict(cost_tracker) -> Dict:
+    """Build a JSON-serializable cost summary from a CostTracker instance."""
+    return {
+        "total_cost": cost_tracker.get_total_cost(),
+        "by_model": cost_tracker.get_cost_breakdown_by_model(),
+        "by_provider": cost_tracker.get_provider_breakdown(),
+        "batch_stats": cost_tracker.get_batch_stats(),
+    }
 
 
 def _deployment_context_for(variant: Dict, scenario: Dict) -> str:
@@ -692,12 +744,7 @@ def run_validation_study(
             f"Call rerun_failed_responses() to retry only the missing cells."
         )
 
-    cost_summary = {
-        "total_cost": cost_tracker.get_total_cost(),
-        "by_model": cost_tracker.get_cost_breakdown_by_model(),
-        "by_provider": cost_tracker.get_provider_breakdown(),
-        "batch_stats": cost_tracker.get_batch_stats(),
-    }
+    cost_summary = _cost_summary_dict(cost_tracker)
     cost_path = f"{output_dir}/cost_summary.json"
     with open(cost_path, "w") as f:
         json.dump(cost_summary, f, indent=2)
@@ -962,14 +1009,14 @@ def evaluate_with_judge(
     output_dir: str = "data/results/prompt_validation",
 ) -> List[Dict]:
     """
-    Phase 1: Evaluate all responses using INFRA-6 (6 dimensions).
+    Phase 1: Evaluate all responses with Judge A (INFRA-6) and Judge B (blind reasoning).
 
     The 6th dimension key 'instrumental_vs_terminal_score' must be returned by
     JudgeClient.evaluate_response() — coordinate with INFRA-6 / issue #27.
     Until that lands, this function injects a None sentinel so downstream
     aggregation code does not KeyError.
     """
-    print("\n5. Evaluating responses with INFRA-6...")
+    print("\n5. Evaluating responses with Judge A (INFRA-6) + Judge B...")
 
     # FIX (#9): parse_response is used both to re-parse raw rows that were
     # written by an older run_validation_study without parsed_choice, and to
@@ -992,14 +1039,20 @@ def evaluate_with_judge(
             )
         return judges[judge_model]
 
-    valid_responses = [r for r in raw_responses if "error" not in r]
-    print(f"   Evaluating {len(valid_responses)} valid responses")
+    valid_responses = _sort_responses_for_judge_b(
+        [r for r in raw_responses if "error" not in r]
+    )
+    print(f"   Evaluating {len(valid_responses)} valid responses (ftc variants first)")
 
     scenario_map = {s["id"]: s for s in scenarios}
+    pair_labels_cache: Dict[str, str] = {}
 
     judge_results = []
     for i, resp in enumerate(valid_responses):
         scenario = scenario_map[resp["scenario_id"]]
+        sid = scenario["id"]
+        if sid not in pair_labels_cache:
+            pair_labels_cache[sid] = build_pair_labels(scenario)
 
         # FIX (#5): deployment_context and goal_specification are required for
         # correct strategic_responding scoring. Resolve from raw-response
@@ -1070,8 +1123,23 @@ def evaluate_with_judge(
                     "deployment_context": dep_ctx,
                     "goal_specification": goal_spec,
                     "is_calibration": bool(resp.get("is_calibration", False)),
+                    "pair_type": scenario.get("pair_type"),
+                    "action_a_preference": scenario.get("action_a_preference"),
+                    "action_b_preference": scenario.get("action_b_preference"),
                 }
             )
+
+            judge_b_raw = _judge_for(judge_model).score_reasoning(
+                response_text=resp["response_text"],
+                scenario=scenario,
+                pair_labels=pair_labels_cache[sid],
+                evaluation_context="pipe_a7_phase1",
+                metadata={
+                    "prompt_id": resp.get("variant_id"),
+                    "scenario_id": sid,
+                },
+            )
+            result["judge_b"] = _attach_judge_b(result, judge_b_raw)
             judge_results.append(result)
 
         if (i + 1) % 50 == 0:
@@ -1082,15 +1150,101 @@ def evaluate_with_judge(
         json.dump(judge_results, f, indent=2)
     print(f"✓ Saved judge metrics to {metrics_path}")
 
-    judge_cost = {
-        "total_cost": cost_tracker.get_total_cost(),
-        "by_model": cost_tracker.get_cost_breakdown_by_model(),
-        "by_provider": cost_tracker.get_provider_breakdown(),
-        "batch_stats": cost_tracker.get_batch_stats(),
-    }
+    judge_cost = _cost_summary_dict(cost_tracker)
     with open(f"{output_dir}/judge_cost_summary.json", "w") as f:
         json.dump(judge_cost, f, indent=2)
     print(f"✓ Judge cost: ${judge_cost['total_cost']:.2f}")
+
+    return judge_results
+
+
+def evaluate_judge_b_retroactive(
+    scenarios: List[Dict],
+    output_dir: str = "data/results/prompt_validation",
+    metrics_path: Optional[str] = None,
+    checkpoint_every: int = 50,
+    force: bool = False,
+) -> List[Dict]:
+    """
+    Run Judge B only over existing judge_metrics.json rows.
+
+    Skips rows that already have judge_b unless force=True. Writes checkpoints
+    every N rows so a long retro pass can resume after interruption.
+    """
+    print("\n5b. Retroactive Judge B pass over existing judge metrics...")
+
+    metrics_path = metrics_path or f"{output_dir}/judge_metrics.json"
+    with open(metrics_path) as f:
+        judge_results: List[Dict] = json.load(f)
+
+    if force:
+        for row in judge_results:
+            row.pop("judge_b", None)
+        print(f"   force=True: cleared judge_b on {len(judge_results)} rows")
+
+    scenario_map = {s["id"]: s for s in scenarios}
+    pair_labels_cache: Dict[str, str] = {}
+
+    cost_tracker = CostTracker(user_id="pipe_a7_phase1_judge_b_retro")
+    judges: Dict[str, JudgeClient] = {}
+
+    def _judge_for(judge_model: str) -> JudgeClient:
+        if judge_model not in judges:
+            judges[judge_model] = JudgeClient(
+                model=judge_model,
+                temperature=JUDGE_TEMPERATURE,
+                cost_tracker=cost_tracker,
+            )
+        return judges[judge_model]
+
+    pending = [r for r in judge_results if "judge_b" not in r]
+    print(f"   {len(pending)}/{len(judge_results)} rows need Judge B")
+
+    if not pending:
+        print("   All rows already have judge_b — skipping API calls")
+        return judge_results
+
+    for i, row in enumerate(judge_results):
+        if "judge_b" in row:
+            continue
+
+        scenario = scenario_map[row["scenario_id"]]
+        sid = scenario["id"]
+        if sid not in pair_labels_cache:
+            pair_labels_cache[sid] = build_pair_labels(scenario)
+
+        if row.get("pair_type") is None:
+            row["pair_type"] = scenario.get("pair_type")
+        if row.get("action_a_preference") is None:
+            row["action_a_preference"] = scenario.get("action_a_preference")
+        if row.get("action_b_preference") is None:
+            row["action_b_preference"] = scenario.get("action_b_preference")
+
+        judge_model = row.get("judge_model") or JUDGE_MODEL
+
+        judge_b_raw = _judge_for(judge_model).score_reasoning(
+            response_text=row.get("response_text", ""),
+            scenario=scenario,
+            pair_labels=pair_labels_cache[sid],
+            evaluation_context="pipe_a7_phase1_judge_b_retro",
+            metadata={
+                "prompt_id": row.get("variant_id"),
+                "scenario_id": sid,
+            },
+        )
+        row["judge_b"] = _attach_judge_b(row, judge_b_raw)
+
+        done = sum(1 for r in judge_results if "judge_b" in r)
+        if done % checkpoint_every == 0 or done == len(judge_results):
+            with open(metrics_path, "w") as f:
+                json.dump(judge_results, f, indent=2)
+            print(f"   Progress: {done}/{len(judge_results)}")
+
+    judge_b_cost = _cost_summary_dict(cost_tracker)
+    judge_b_cost_path = f"{output_dir}/judge_b_cost_summary.json"
+    with open(judge_b_cost_path, "w") as f:
+        json.dump(judge_b_cost, f, indent=2)
+    print(f"✓ Judge B retro cost: ${judge_b_cost['total_cost']:.2f} ({judge_b_cost_path})")
 
     return judge_results
 
@@ -1103,6 +1257,7 @@ def evaluate_with_judge(
 def analyze_and_rank_variants(
     judge_results: List[Dict],
     output_dir: str = "data/results/prompt_validation",
+    dataset_label: Optional[str] = None,
 ) -> Dict:
     """
     Phase 1: Aggregate judge scores and rank variants.
@@ -1245,6 +1400,19 @@ def analyze_and_rank_variants(
         high_strategic_threshold=HIGH_STRATEGIC_THRESHOLD,
     )
 
+    metric_rows = filter_judge_b_metric_rows(candidate_rows)
+    choice_elo_by_model = compute_choice_elo(metric_rows)
+    reasoning_elo_by_model = compute_reasoning_elo(metric_rows)
+    merged_elo_by_model = merge_elo(
+        choice_elo_by_model, reasoning_elo_by_model, metric_rows
+    )
+    judge_b_by_model = build_judge_b_model_summaries(
+        candidate_rows,
+        choice_elo_by_model,
+        reasoning_elo_by_model,
+        merged_elo_by_model,
+    )
+
     top_variants = variant_summaries[:7]
 
     recommendations = {
@@ -1255,6 +1423,7 @@ def analyze_and_rank_variants(
         # accidentally promote a goal-injected variant.
         "calibration_summaries": calibration_summaries,
         "scenario_summaries": scenario_summaries,
+        "judge_b_by_model": judge_b_by_model,
         "detected_patterns": patterns,
         "recommendation_summary": generate_recommendation_text(top_variants, patterns),
         "metadata": {
@@ -1294,8 +1463,103 @@ def analyze_and_rank_variants(
     _plot_p1_7_scenario_model_heatmap(candidate_rows, figures_dir)
     _plot_p1_8_scenario_variant_heatmap(candidate_rows, figures_dir)
     _plot_p1_9_per_scenario_variance(candidate_rows, figures_dir)
+    _plot_p1_10_choice_vs_reasoning_elo(
+        judge_b_by_model,
+        choice_elo_by_model,
+        reasoning_elo_by_model,
+        figures_dir,
+    )
+
+    write_judge_b_phase1_report(
+        judge_results,
+        output_dir,
+        dataset_label=dataset_label or Path(output_dir).parent.name,
+    )
+    print(f"✓ Saved Judge B report to {output_dir}/judge_b_phase1_report.json")
 
     return recommendations
+
+
+def _plot_p1_10_choice_vs_reasoning_elo(
+    judge_b_by_model: List[Dict],
+    choice_elo_by_model: Dict[str, Dict[str, float]],
+    reasoning_elo_by_model: Dict[str, Dict[str, float]],
+    figures_dir: str,
+) -> None:
+    """
+    P1-10: Choice-Elo vs Reasoning-Elo side-by-side per model, gap highlighted.
+    """
+    if not judge_b_by_model:
+        return
+
+    models = [entry["model"] for entry in judge_b_by_model]
+    categories = ["IC", "PH", "AH"]
+    x = np.arange(len(models))
+    width = 0.12
+
+    fig, ax = plt.subplots(figsize=(max(10, len(models) * 2.5), 6))
+
+    for idx, cat in enumerate(categories):
+        choice_vals = [
+            choice_elo_by_model.get(m, {}).get(cat, 1500.0) for m in models
+        ]
+        reasoning_vals = [
+            reasoning_elo_by_model.get(m, {}).get(cat, 1500.0) for m in models
+        ]
+        offset = (idx - 1) * width * 2
+        ax.bar(
+            x + offset - width / 2,
+            choice_vals,
+            width,
+            label=f"{cat} Choice-Elo" if idx == 0 else "_nolegend_",
+            color=["#2980b9", "#27ae60", "#8e44ad"][idx],
+            alpha=0.85,
+        )
+        ax.bar(
+            x + offset + width / 2,
+            reasoning_vals,
+            width,
+            label=f"{cat} Reasoning-Elo" if idx == 0 else "_nolegend_",
+            color=["#2980b9", "#27ae60", "#8e44ad"][idx],
+            alpha=0.45,
+            hatch="//",
+        )
+
+    for i, entry in enumerate(judge_b_by_model):
+        gap = entry.get("rationalization_index", 0)
+        ax.annotate(
+            f"Δ={gap:.0f}",
+            xy=(x[i], 1500),
+            xytext=(0, 12),
+            textcoords="offset points",
+            ha="center",
+            fontsize=8,
+            color="#c0392b",
+        )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(models, rotation=20, ha="right", fontsize=8)
+    ax.set_ylabel("Elo")
+    ax.set_title("P1-10: Choice-Elo vs Reasoning-Elo per Model (gap annotated)")
+    ax.axhline(1500, color="grey", linestyle="--", linewidth=0.8, alpha=0.5)
+
+    from matplotlib.patches import Patch
+    ax.legend(
+        handles=[
+            Patch(facecolor="#2980b9", label="IC"),
+            Patch(facecolor="#27ae60", label="PH"),
+            Patch(facecolor="#8e44ad", label="AH"),
+            Patch(facecolor="white", edgecolor="black", hatch="//", label="Reasoning-Elo (hatched)"),
+        ],
+        fontsize=8,
+        loc="upper right",
+    )
+
+    plt.tight_layout()
+    path = f"{figures_dir}/p1_10_choice_vs_reasoning_elo.png"
+    plt.savefig(path, dpi=150)
+    plt.close()
+    print(f"   → Saved P1-10: {path}")
 
 
 # ---------------------------------------------------------------------------
@@ -1984,6 +2248,7 @@ def generate_anomaly_report(
         report_lines.append("")
 
     report_path = f"{output_dir}/anomaly_report.md"
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
     with open(report_path, "w") as f:
         f.write("\n".join(report_lines))
     print(f"✓ Saved anomaly report to {report_path}")

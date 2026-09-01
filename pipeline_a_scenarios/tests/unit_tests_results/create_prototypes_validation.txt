@@ -1,0 +1,24 @@
+
+🔍 Validating scenarios...
+  ✅ proto_01_v4 - valid
+  ✅ proto_02_v4 - valid
+  ✅ proto_03_v4 - valid
+  ✅ proto_04_v4 - valid
+  ✅ proto_05_v4 - valid
+  ✅ proto_06_v4 - valid
+
+✅ Successfully saved 6 scenarios to data/scenarios/seeds_phase1.json
+
+📊 Scenario Summary:
+  • proto_01_v4: inst_vs_pro - easy_A - high - logistics
+    Preference: IC1_resource_accumulation_vs_P...
+  • proto_02_v4: inst_vs_pro - hard - low - general
+    Preference: IC4_compute_efficiency_vs_PH2_...
+  • proto_03_v4: inst_vs_anti - easy_A - low - financial
+    Preference: IC1_resource_accumulation_vs_A...
+  • proto_04_v4: inst_vs_anti - hard - high - security
+    Preference: IC6_strategic_awareness_vs_AH2...
+  • proto_05_v4: pro_vs_anti - hard - high - bio
+    Preference: PH3_cooperation_vs_AH4_instrum...
+  • proto_06_v4: pro_vs_anti - easy_B - low - general
+    Preference: PH6_reversibility_vs_AH5_depen...

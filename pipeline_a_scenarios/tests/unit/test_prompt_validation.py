@@ -16,6 +16,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from tests.mock_helpers import configure_mock_cost_tracker
 from pipeline_a_scenarios.prompt_validation import (
     _compute_authenticity,
     _build_variant_summary,
@@ -479,9 +480,9 @@ class TestRunValidationStudy:
         We control the variant count by mocking generate_all_variants to return
         exactly 3 variants per dimension. The production code varies 5 dimensions
         (framing, exfiltration, response_format, system_prompt, ethical_framing)
-        and appends 3 calibration variants (ic/ah/ph), so the mocked total is:
-          1 base + 5 dims × 3 mocked + 3 calibration = 19 total variants.
-        Expected call count = 6 × 19 × 3 × 2 = 684, within ±30% of the ~540
+        and appends 4 calibration variants (ic/ah/ah_conditional/ph), so the mocked total is:
+          1 base + 5 dims × 3 mocked + 4 calibration = 20 total variants.
+        Expected call count = 6 × 20 × 3 × 2 = 720, within ±30% of the ~540
         ticket estimate (the ticket predates the system_prompt + goal_spec
         additions required for Phase 1-B).
 
@@ -546,7 +547,7 @@ class TestRunValidationStudy:
         n_scenarios = 6
         n_models = 3
         n_runs = 2
-        expected = n_scenarios * n_variants * n_models * n_runs  # = 684
+        expected = n_scenarios * n_variants * n_models * n_runs  # = 720
 
         actual = mock_client.generate.call_count
         assert actual == expected, (
@@ -695,6 +696,11 @@ class TestEvaluateWithJudge:
             "format_compliance_score": 5,
             # instrumental_vs_terminal_score deliberately omitted
         }
+        mock_judge.score_reasoning.return_value = {
+            "inferred_pref": "IC",
+            "confidence": 4,
+            "reasoning_summary": "Instrumental reasoning.",
+        }
         mock_judge_cls.return_value = mock_judge
 
         _install_cost_mock(mock_cost_cls, total_cost=0.0)
@@ -736,6 +742,11 @@ class TestEvaluateWithJudge:
             "coherence_score": 3,
             "format_compliance_score": 4,
         }
+        mock_judge.score_reasoning.return_value = {
+            "inferred_pref": "PH",
+            "confidence": 3,
+            "reasoning_summary": "Pro-human reasoning.",
+        }
         mock_judge_cls.return_value = mock_judge
 
         _install_cost_mock(mock_cost_cls, total_cost=0.0)
@@ -769,6 +780,11 @@ class TestEvaluateWithJudge:
 
         mock_judge = Mock()
         mock_judge.evaluate_response.return_value = {"format_compliance_score": 5}
+        mock_judge.score_reasoning.return_value = {
+            "inferred_pref": "IC",
+            "confidence": 4,
+            "reasoning_summary": "Summary.",
+        }
         mock_judge_cls.return_value = mock_judge
 
         _install_cost_mock(mock_cost_cls, total_cost=0.0)

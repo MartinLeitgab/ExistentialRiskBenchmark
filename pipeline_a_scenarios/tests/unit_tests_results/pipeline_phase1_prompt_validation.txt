@@ -1,0 +1,775 @@
+✓ Found existing seed scenarios at data/scenarios/seeds_phase1.json
+================================================================================
+PIPE-A7 PHASE 1: PROMPT VALIDATION STUDY
+================================================================================
+
+✅ COST TRACKER INITIALIZED
+   User: pipe_a7_phase1
+   File: data/metadata/costs_pipe_a7_phase1.jsonl
+   Monthly Budget: $200.00
+   Total Budget: $1000.00
+   Loaded: 646 entries
+        
+
+1. Loading scenarios from PIPE-A1...
+   Loaded 6 seed scenarios
+
+2. Loading prompt variants from PIPE-A2...
+   Generated 19 prompt variants (15 candidate + 4 calibration)
+
+3. Initialising model clients...
+
+4. Executing test matrix...
+   6 scenarios × 19 variants × 3 models × 2 runs = 684 calls
+📝 Cost logged: $0.004305 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004305 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001186 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001186 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005120 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005120 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001340 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001340 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004460 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004460 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001210 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001210 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004410 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004410 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001162 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001162 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005420 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005420 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001312 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001312 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004205 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004205 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.000920 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.000920 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004555 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004555 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001230 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001230 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004140 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004140 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001194 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001194 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.014000 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.014000 | anthropic/claude-opus-4-7
+   Progress: 50/684
+  ⚠ Error on proto_01_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.004254 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004254 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005105 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005105 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001162 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001162 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004790 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004790 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001238 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001238 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004395 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004395 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001230 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001230 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004455 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004455 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001174 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001174 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005080 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005080 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001438 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001438 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004830 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004830 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001258 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001258 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004785 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004785 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001640 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001640 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004705 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004705 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+   Progress: 100/684
+📝 Cost logged: $0.001548 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001548 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004855 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004855 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001244 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001244 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005015 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005015 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_01_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001714 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001714 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005475 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005475 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001250 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001250 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004945 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004945 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001204 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001204 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005510 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005510 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001302 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001302 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005830 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005830 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001178 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001178 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005365 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005365 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001196 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001196 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005175 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005175 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.000984 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.000984 | google/gemini-3.1-pro-preview
+   Progress: 150/684
+📝 Cost logged: $0.005125 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005125 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001330 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001330 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004885 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004885 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001378 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001378 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.014445 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.014445 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.004078 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004078 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005125 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005125 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001334 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001334 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004760 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004760 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001242 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001242 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004715 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004715 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001318 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001318 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005400 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005400 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001154 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001154 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005075 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005075 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001358 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001358 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005500 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005500 | anthropic/claude-opus-4-7
+   Progress: 200/684
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001082 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001082 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006080 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006080 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001320 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001320 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005900 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005900 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001252 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001252 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006750 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006750 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001224 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001224 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005335 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005335 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_02_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001418 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001418 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.007770 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007770 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001342 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001342 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005985 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005985 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001340 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001340 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006925 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006925 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001366 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001366 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.007750 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007750 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+   Progress: 250/684
+📝 Cost logged: $0.001234 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001234 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006660 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006660 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001252 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001252 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006670 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006670 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001016 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001016 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006020 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006020 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001278 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001278 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005855 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005855 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001182 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001182 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.014790 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.014790 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.002874 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.002874 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005270 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005270 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001174 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001174 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.007355 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007355 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001478 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001478 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006185 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006185 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001206 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001206 | google/gemini-3.1-pro-preview
+   Progress: 300/684
+📝 Cost logged: $0.006070 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006070 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001354 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001354 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006245 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006245 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001606 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001606 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.007520 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007520 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001414 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001414 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.007825 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007825 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001316 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001316 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.007645 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007645 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001296 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001296 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.008170 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.008170 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001400 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001400 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006755 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006755 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_03_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001606 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001606 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004655 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004655 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001270 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001270 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004370 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004370 | anthropic/claude-opus-4-7
+   Progress: 350/684
+  ⚠ Error on proto_04_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001364 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001364 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005360 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005360 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001438 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001438 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005010 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005010 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001246 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001246 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005645 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005645 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001204 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001204 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005405 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005405 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001088 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001088 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005230 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005230 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001446 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001446 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004715 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004715 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001206 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001206 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.014600 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.014600 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.005394 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005394 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004780 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004780 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+   Progress: 400/684
+📝 Cost logged: $0.001222 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001222 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004915 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004915 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001226 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001226 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005095 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005095 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001302 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001302 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005305 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005305 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001246 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001246 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004955 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004955 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001630 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001630 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004605 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004605 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001234 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001234 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.007560 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007560 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001472 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001472 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.007405 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007405 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001596 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001596 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.007055 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007055 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001328 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001328 | google/gemini-3.1-pro-preview
+   Progress: 450/684
+📝 Cost logged: $0.005515 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005515 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_04_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001462 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001462 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006030 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006030 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001632 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001632 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005470 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005470 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001726 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001726 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006985 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006985 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001344 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001344 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005560 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005560 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001608 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001608 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005495 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005495 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001398 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001398 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006430 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006430 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001102 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001102 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004905 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004905 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001484 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001484 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005340 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005340 | anthropic/claude-opus-4-7
+   Progress: 500/684
+  ⚠ Error on proto_05_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001532 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001532 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.014875 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.014875 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.004772 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004772 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005105 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005105 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001584 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001584 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005365 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005365 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001228 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001228 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005895 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005895 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001556 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001556 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006030 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006030 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001368 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001368 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006105 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006105 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001500 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001500 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005705 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005705 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001704 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001704 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005885 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005885 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+   Progress: 550/684
+📝 Cost logged: $0.001486 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001486 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006530 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006530 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001610 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001610 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005930 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005930 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001546 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001546 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006140 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006140 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_05_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001440 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001440 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004415 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004415 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001300 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001300 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005600 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005600 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/tp-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001386 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001386 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005365 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005365 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/con-abs-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001160 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001160 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004945 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004945 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-imp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001192 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001192 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004780 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004780 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-exp-3o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001642 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001642 | google/gemini-3.1-pro-preview
+   Progress: 600/684
+📝 Cost logged: $0.005640 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005640 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-0o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001106 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001106 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005215 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005215 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-2o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001680 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001680 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005100 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005100 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-4o-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001284 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001284 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.014760 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.014760 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-ftc-auto-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.004164 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004164 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004740 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004740 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-0-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001276 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001276 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004575 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004575 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-asst-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001172 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001172 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005130 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005130 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-ag-t10-reg-0-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001284 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001284 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004790 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004790 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-cons-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001384 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001384 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004590 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004590 | anthropic/claude-opus-4-7
+   Progress: 650/684
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-deon-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001564 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001564 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005215 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005215 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-virt-0-0/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001312 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001312 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005645 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005645 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-0-0-icd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001466 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001466 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005890 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005890 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-0-0-ahd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001338 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001338 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006540 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006540 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-0-0-ahdc/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001466 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001466 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006050 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006050 | anthropic/claude-opus-4-7
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+  ⚠ Error on proto_06_v4/fp-abs-3o-auto-t10-reg-0-0-phd/gpt-5.5: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+📝 Cost logged: $0.001384 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001384 | google/gemini-3.1-pro-preview
+
+✓ Saved 684 raw responses to data/results/prompt_validation/raw_responses.json
+  ⚠ 228 error record(s) remain (0 classified as transient). Call rerun_failed_responses() to retry only the missing cells.
+✓ Cost summary: $3.65
+
+5. Evaluating responses with INFRA-6...
+
+✅ COST TRACKER INITIALIZED
+   User: pipe_a7_phase1_judge
+   File: data/metadata/costs_pipe_a7_phase1_judge.jsonl
+   Monthly Budget: $200.00
+   Total Budget: $1000.00
+   Loaded: 646 entries
+        
+   Evaluating 456 valid responses
+Traceback (most recent call last):
+  File "/Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark/pipeline_a_scenarios/prompt_validation.py", line 1784, in <module>
+    main_phase1()
+    ~~~~~~~~~~~^^
+  File "/Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark/pipeline_a_scenarios/prompt_validation.py", line 1765, in main_phase1
+    judge_results   = evaluate_with_judge(study_results["raw_responses"], scenarios)
+  File "/Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark/pipeline_a_scenarios/prompt_validation.py", line 881, in evaluate_with_judge
+    result = judge.evaluate_response(
+        scenario_context=scenario["context"],
+    ...<10 lines>...
+        goal_specification=goal_spec,
+    )
+  File "/Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark/pipeline_a_scenarios/utils/judge_client.py", line 291, in evaluate_response
+    out = self.client.generate(
+        prompt=prompt,
+        temperature=self.temperature,
+        max_tokens=400,
+    )
+  File "/Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark/pipeline_a_scenarios/utils/llm_client.py", line 143, in generate
+    result = self._generate_openai(prompt, system_prompt, temperature, max_tokens, reasoning)
+  File "/Users/riccardocampanella/Documents/Benchmarks/ExistentialRiskBenchmark/pipeline_a_scenarios/utils/llm_client.py", line 231, in _generate_openai
+    r = self.client.chat.completions.create(**params)
+  File "/opt/anaconda3/lib/python3.13/site-packages/openai/_utils/_utils.py", line 287, in wrapper
+    return func(*args, **kwargs)
+  File "/opt/anaconda3/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1211, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<47 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/opt/anaconda3/lib/python3.13/site-packages/openai/_base_client.py", line 1314, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.13/site-packages/openai/_base_client.py", line 1087, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}

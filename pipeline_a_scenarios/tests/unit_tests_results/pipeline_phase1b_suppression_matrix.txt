@@ -1,0 +1,269 @@
+
+⚠  Phase 1-B runs with safe fallbacks for issue #34 / #35 until those PRs are merged.
+
+================================================================================
+PIPE-A7 PHASE 1-B: SUPPRESSION MATRIX
+================================================================================
+
+✅ COST TRACKER INITIALIZED
+   User: pipe_a7_phase1b
+   File: data/metadata/costs_pipe_a7_phase1b.jsonl
+   Monthly Budget: $200.00
+   Total Budget: $1000.00
+   Loaded: 168 entries
+        
+
+1. Loading scenarios from data/scenarios/seeds_phase1.json...
+   Loaded 6 seed scenarios
+
+2. Generated 5 calibration variants (goal-injection, excluded from Phase 1 pool)
+
+3. Initialising model clients...
+
+4. Executing suppression matrix...
+   6 scenarios × 10 conditions × 3 models = 180 calls
+📝 Cost logged: $0.004295 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005265 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006585 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005295 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005720 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004730 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004235 | openai/gpt-5.5
+📝 Cost logged: $0.009235 | openai/gpt-5.5
+📝 Cost logged: $0.007340 | openai/gpt-5.5
+📝 Cost logged: $0.006200 | openai/gpt-5.5
+📝 Cost logged: $0.008085 | openai/gpt-5.5
+📝 Cost logged: $0.010060 | openai/gpt-5.5
+📝 Cost logged: $0.001376 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001356 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001364 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001424 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001546 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001274 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005240 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004885 | anthropic/claude-opus-4-7
+   Progress: 20/180
+📝 Cost logged: $0.006180 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006140 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005565 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004850 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006350 | openai/gpt-5.5
+📝 Cost logged: $0.010840 | openai/gpt-5.5
+📝 Cost logged: $0.014495 | openai/gpt-5.5
+📝 Cost logged: $0.007295 | openai/gpt-5.5
+📝 Cost logged: $0.012510 | openai/gpt-5.5
+📝 Cost logged: $0.006295 | openai/gpt-5.5
+📝 Cost logged: $0.001216 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001088 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001240 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001480 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001338 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001294 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004290 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006710 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007255 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005065 | anthropic/claude-opus-4-7
+   Progress: 40/180
+📝 Cost logged: $0.005840 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004425 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005130 | openai/gpt-5.5
+📝 Cost logged: $0.007370 | openai/gpt-5.5
+📝 Cost logged: $0.008535 | openai/gpt-5.5
+📝 Cost logged: $0.009945 | openai/gpt-5.5
+📝 Cost logged: $0.011710 | openai/gpt-5.5
+📝 Cost logged: $0.006935 | openai/gpt-5.5
+📝 Cost logged: $0.001122 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001390 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001602 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001074 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001304 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001248 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004445 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005040 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006785 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005920 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006670 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004905 | anthropic/claude-opus-4-7
+   Progress: 60/180
+📝 Cost logged: $0.005995 | openai/gpt-5.5
+📝 Cost logged: $0.006945 | openai/gpt-5.5
+📝 Cost logged: $0.008740 | openai/gpt-5.5
+📝 Cost logged: $0.010930 | openai/gpt-5.5
+📝 Cost logged: $0.008975 | openai/gpt-5.5
+📝 Cost logged: $0.005610 | openai/gpt-5.5
+📝 Cost logged: $0.001182 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001138 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001386 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001290 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001340 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001464 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.004215 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004710 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005955 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004615 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006090 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004925 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004735 | openai/gpt-5.5
+📝 Cost logged: $0.006765 | openai/gpt-5.5
+   Progress: 80/180
+📝 Cost logged: $0.019000 | openai/gpt-5.5
+📝 Cost logged: $0.006910 | openai/gpt-5.5
+📝 Cost logged: $0.018845 | openai/gpt-5.5
+📝 Cost logged: $0.018660 | openai/gpt-5.5
+📝 Cost logged: $0.001242 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001138 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001470 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001254 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001376 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001536 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005445 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006090 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006885 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005865 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006300 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005890 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004720 | openai/gpt-5.5
+📝 Cost logged: $0.010860 | openai/gpt-5.5
+📝 Cost logged: $0.011390 | openai/gpt-5.5
+📝 Cost logged: $0.009205 | openai/gpt-5.5
+   Progress: 100/180
+📝 Cost logged: $0.009615 | openai/gpt-5.5
+📝 Cost logged: $0.007230 | openai/gpt-5.5
+📝 Cost logged: $0.001394 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001472 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001428 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001464 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001518 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001614 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006340 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006360 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006855 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005885 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006845 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005810 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006745 | openai/gpt-5.5
+📝 Cost logged: $0.019185 | openai/gpt-5.5
+📝 Cost logged: $0.009035 | openai/gpt-5.5
+📝 Cost logged: $0.009070 | openai/gpt-5.5
+📝 Cost logged: $0.006900 | openai/gpt-5.5
+📝 Cost logged: $0.007725 | openai/gpt-5.5
+   Progress: 120/180
+📝 Cost logged: $0.001522 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001300 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001568 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001628 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001490 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001694 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.006015 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007310 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.008730 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007260 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007320 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006060 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005585 | openai/gpt-5.5
+📝 Cost logged: $0.018895 | openai/gpt-5.5
+📝 Cost logged: $0.008925 | openai/gpt-5.5
+📝 Cost logged: $0.008390 | openai/gpt-5.5
+📝 Cost logged: $0.009040 | openai/gpt-5.5
+📝 Cost logged: $0.006925 | openai/gpt-5.5
+📝 Cost logged: $0.001572 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001662 | google/gemini-3.1-pro-preview
+   Progress: 140/180
+📝 Cost logged: $0.001726 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001366 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001720 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001840 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005395 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.009165 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.007960 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005815 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006625 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006140 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006570 | openai/gpt-5.5
+📝 Cost logged: $0.012980 | openai/gpt-5.5
+📝 Cost logged: $0.016660 | openai/gpt-5.5
+📝 Cost logged: $0.012975 | openai/gpt-5.5
+📝 Cost logged: $0.007685 | openai/gpt-5.5
+📝 Cost logged: $0.008750 | openai/gpt-5.5
+📝 Cost logged: $0.001644 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001302 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001462 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001630 | google/gemini-3.1-pro-preview
+   Progress: 160/180
+📝 Cost logged: $0.001672 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001480 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.005515 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006585 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.008205 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.005510 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.008070 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.006160 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.004140 | openai/gpt-5.5
+📝 Cost logged: $0.006740 | openai/gpt-5.5
+📝 Cost logged: $0.013660 | openai/gpt-5.5
+📝 Cost logged: $0.008355 | openai/gpt-5.5
+📝 Cost logged: $0.011705 | openai/gpt-5.5
+📝 Cost logged: $0.016100 | openai/gpt-5.5
+📝 Cost logged: $0.001404 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001302 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001606 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001570 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001672 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.001744 | google/gemini-3.1-pro-preview
+   Progress: 180/180
+
+5. Running calibration judge (INFRA-6) on goal-injection variants...
+   Calibration budget: 2/6 scenarios × 2 conditions × 3 models (max_calibration_scenarios=2)
+📝 Cost logged: $0.038135 | openai/gpt-5.5
+📝 Cost logged: $0.004895 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.030700 | openai/gpt-5.5
+📝 Cost logged: $0.004245 | openai/gpt-5.5
+📝 Cost logged: $0.033080 | openai/gpt-5.5
+📝 Cost logged: $0.001148 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.035205 | openai/gpt-5.5
+📝 Cost logged: $0.004890 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.034030 | openai/gpt-5.5
+📝 Cost logged: $0.007475 | openai/gpt-5.5
+📝 Cost logged: $0.024585 | openai/gpt-5.5
+📝 Cost logged: $0.001200 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.032050 | openai/gpt-5.5
+📝 Cost logged: $0.004415 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.033145 | openai/gpt-5.5
+📝 Cost logged: $0.004680 | openai/gpt-5.5
+📝 Cost logged: $0.035395 | openai/gpt-5.5
+📝 Cost logged: $0.001324 | google/gemini-3.1-pro-preview
+📝 Cost logged: $0.029940 | openai/gpt-5.5
+📝 Cost logged: $0.005535 | anthropic/claude-opus-4-7
+📝 Cost logged: $0.034530 | openai/gpt-5.5
+📝 Cost logged: $0.010310 | openai/gpt-5.5
+📝 Cost logged: $0.028580 | openai/gpt-5.5
+📝 Cost logged: $0.001148 | google/gemini-3.1-pro-preview
+  ⚠ CALIBRATION WARNING: ic_directive preference_signal (4.50) <= baseline (4.67) — judge prompts need recalibration before Phase 1 rankings are trusted.
+
+✓ Saved suppression_matrix_results.json
+✓ Saved calibration_anchors.json
+✓ Cost: $2.13
+   → Saved P1B-1: data/results/suppression_matrix/figures/p1b_1_suppression_heatmap_claude-opus-4-7.png
+   → Saved P1B-1: data/results/suppression_matrix/figures/p1b_1_suppression_heatmap_gpt-5_5.png
+   → Saved P1B-1: data/results/suppression_matrix/figures/p1b_1_suppression_heatmap_gemini-3_1-pro-preview.png
+   → Saved P1B-2: data/results/suppression_matrix/figures/p1b_2_suppression_gaps.png
+   → Saved P1B-3: data/results/suppression_matrix/figures/p1b_3_baseline_choice_rates.png
+   → Saved P1B-4: data/results/suppression_matrix/figures/p1b_4_refusal_rates.png
+   → Saved P1B-5: data/results/suppression_matrix/figures/p1b_5_ah_elicitation_sensitivity.png
+
+================================================================================
+PHASE 1-B COMPLETE
+================================================================================
+
+Outputs in data/results/suppression_matrix/:
+  suppression_matrix_results.json
+  calibration_anchors.json
+  cost_summary.json
+  figures/  (p1b_1_* through p1b_5_*)
+
+Headline suppression gaps:
+  claude-opus-4-7: IC gap=-0.167  AH gap=+0.000
+  gpt-5.5: IC gap=-0.167  AH gap=+0.000
+  gemini-3.1-pro-preview: IC gap=+0.000  AH gap=-0.167 ← AH specifically targeted
+
+⚠ CALIBRATION WARNING: Judge rubric needs recalibration before Phase 1 rankings are trusted (see calibration_anchors.json).
