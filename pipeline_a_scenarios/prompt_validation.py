@@ -37,8 +37,10 @@ from utils.judge_analysis import (
     compute_consistent_with_choice,
     compute_reasoning_elo,
     detect_patterns,
+    merge_elo,
     rationalization_index,
     validate_judge_b_vs_ivt,
+    write_judge_b_phase1_report,
 )
 
 from scenario_loader import load_scenarios
@@ -1086,18 +1088,24 @@ def evaluate_judge_b_retroactive(
     output_dir: str = "data/results/prompt_validation",
     metrics_path: Optional[str] = None,
     checkpoint_every: int = 50,
+    force: bool = False,
 ) -> List[Dict]:
     """
     Run Judge B only over existing judge_metrics.json rows.
 
-    Skips rows that already have judge_b. Writes checkpoints every N rows so a
-    long retro pass can resume after interruption.
+    Skips rows that already have judge_b unless force=True. Writes checkpoints
+    every N rows so a long retro pass can resume after interruption.
     """
     print("\n5b. Retroactive Judge B pass over existing judge metrics...")
 
     metrics_path = metrics_path or f"{output_dir}/judge_metrics.json"
     with open(metrics_path) as f:
         judge_results: List[Dict] = json.load(f)
+
+    if force:
+        for row in judge_results:
+            row.pop("judge_b", None)
+        print(f"   force=True: cleared judge_b on {len(judge_results)} rows")
 
     scenario_map = {s["id"]: s for s in scenarios}
     pair_labels_cache: Dict[str, str] = {}
@@ -1111,6 +1119,10 @@ def evaluate_judge_b_retroactive(
 
     pending = [r for r in judge_results if "judge_b" not in r]
     print(f"   {len(pending)}/{len(judge_results)} rows need Judge B")
+
+    if not pending:
+        print("   All rows already have judge_b — skipping API calls")
+        return judge_results
 
     for i, row in enumerate(judge_results):
         if "judge_b" in row:
@@ -1163,6 +1175,7 @@ def evaluate_judge_b_retroactive(
 def analyze_and_rank_variants(
     judge_results: List[Dict],
     output_dir: str = "data/results/prompt_validation",
+    dataset_label: Optional[str] = None,
 ) -> Dict:
     """
     Phase 1: Aggregate judge scores and rank variants.
@@ -1307,10 +1320,14 @@ def analyze_and_rank_variants(
 
     choice_elo_by_model = compute_choice_elo(candidate_rows)
     reasoning_elo_by_model = compute_reasoning_elo(candidate_rows)
+    merged_elo_by_model = merge_elo(
+        choice_elo_by_model, reasoning_elo_by_model, candidate_rows
+    )
     judge_b_by_model = _build_judge_b_model_summaries(
         candidate_rows,
         choice_elo_by_model,
         reasoning_elo_by_model,
+        merged_elo_by_model,
     )
 
     top_variants = variant_summaries[:7]
@@ -1370,6 +1387,13 @@ def analyze_and_rank_variants(
         figures_dir,
     )
 
+    write_judge_b_phase1_report(
+        judge_results,
+        output_dir,
+        dataset_label=dataset_label or Path(output_dir).parent.name,
+    )
+    print(f"✓ Saved Judge B report to {output_dir}/judge_b_phase1_report.json")
+
     return recommendations
 
 
@@ -1377,6 +1401,7 @@ def _build_judge_b_model_summaries(
     rows: List[Dict],
     choice_elo_by_model: Dict[str, Dict[str, float]],
     reasoning_elo_by_model: Dict[str, Dict[str, float]],
+    merged_elo_by_model: Optional[Dict[str, Dict[str, float]]] = None,
 ) -> List[Dict]:
     """Per-model Judge B decomposition metrics for variant_rankings.json."""
     models = sorted({r.get("model") for r in rows if r.get("model")})
@@ -1385,6 +1410,7 @@ def _build_judge_b_model_summaries(
     for model in models:
         choice_elo = choice_elo_by_model.get(model, {})
         reasoning_elo = reasoning_elo_by_model.get(model, {})
+        merged = (merged_elo_by_model or {}).get(model, {})
         summaries.append({
             "model": model,
             "alignment_washing_rate": round(alignment_washing_rate(rows, model), 4),
@@ -1394,6 +1420,7 @@ def _build_judge_b_model_summaries(
             ),
             "choice_elo": {k: round(v, 1) for k, v in choice_elo.items()},
             "reasoning_elo": {k: round(v, 1) for k, v in reasoning_elo.items()},
+            "merged_elo": {k: round(v, 1) for k, v in merged.items()},
             "judge_b_validation": validate_judge_b_vs_ivt(
                 [r for r in rows if r.get("model") == model]
             ),
@@ -2170,6 +2197,7 @@ def generate_anomaly_report(
         report_lines.append("")
 
     report_path = f"{output_dir}/anomaly_report.md"
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
     with open(report_path, "w") as f:
         f.write("\n".join(report_lines))
     print(f"✓ Saved anomaly report to {report_path}")
