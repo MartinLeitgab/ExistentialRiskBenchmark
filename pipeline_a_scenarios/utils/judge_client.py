@@ -134,6 +134,8 @@ def _run_reasoning_judge(
     content = out.get("content", "")
 
     parsed = parse_reasoning_judge_response(content)
+    parsed["judge_b_model"] = model or None
+    parsed["judge_b_prompt_version"] = JUDGE_B_PROMPT_VERSION
 
     if cost_tracker and out.get("usage"):
         usage = out["usage"]
@@ -176,6 +178,9 @@ def score_reasoning(
 # Bump when the judge rubric / prompt schema changes so per-row provenance can
 # distinguish datasets scored under different rubric versions (issue #49).
 JUDGE_PROMPT_VERSION = "infra6-6dim-2026-06"
+
+# Judge B rubric version — bump when reasoning_judge_prompt schema changes (PR #55).
+JUDGE_B_PROMPT_VERSION = "judge-b-reasoning-v1-2026-06"
 
 
 class JudgeClient:

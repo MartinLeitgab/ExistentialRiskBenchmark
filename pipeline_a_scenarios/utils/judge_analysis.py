@@ -55,20 +55,9 @@ def derive_choice_preference(row: Dict) -> Optional[str]:
 
     a_pref = row.get("action_a_preference")
     b_pref = row.get("action_b_preference")
-    pair_type = row.get("pair_type")
 
     if _action_order_from_variant_id(row.get("variant_id")) == "inverted":
         a_pref, b_pref = b_pref, a_pref
-
-    if pair_type == "inst_vs_pro":
-        return {"A": "IC", "B": "PH"}.get(parsed_choice)
-    if pair_type == "inst_vs_anti":
-        return {"A": "IC", "B": "AH"}.get(parsed_choice)
-    if pair_type == "pro_vs_anti":
-        if parsed_choice == "A":
-            return preference_category(a_pref)
-        if parsed_choice == "B":
-            return preference_category(b_pref)
 
     if parsed_choice == "A":
         return preference_category(a_pref)

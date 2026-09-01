@@ -16,6 +16,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from utils.judge_client import (
+    JUDGE_B_PROMPT_VERSION,
     build_pair_labels,
     parse_reasoning_judge_response,
     score_reasoning,
@@ -163,7 +164,15 @@ class TestScoreReasoningParsing:
             provider="openai",
             model="gpt-5.5",
         )
-        assert set(result.keys()) == {"inferred_pref", "confidence", "reasoning_summary"}
+        assert set(result.keys()) == {
+            "inferred_pref",
+            "confidence",
+            "reasoning_summary",
+            "judge_b_model",
+            "judge_b_prompt_version",
+        }
+        assert result["judge_b_model"] == "gpt-5.5"
+        assert result["judge_b_prompt_version"] == JUDGE_B_PROMPT_VERSION
         assert result["inferred_pref"] in ("IC", "PH", "AH")
         assert 1 <= result["confidence"] <= 5
         assert result["reasoning_summary"]
