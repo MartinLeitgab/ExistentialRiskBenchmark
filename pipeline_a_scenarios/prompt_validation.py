@@ -31,16 +31,14 @@ from utils.cost_tracker import CostTracker
 from utils.judge_client import JudgeClient, build_pair_labels
 from utils.judge_policy import CANONICAL_JUDGES, judges_for
 from utils.judge_analysis import (
-    alignment_faking_rate,
-    alignment_washing_rate,
+    build_judge_b_model_summaries,
     classify_mismatch_type,
     compute_choice_elo,
     compute_consistent_with_choice,
     compute_reasoning_elo,
     detect_patterns,
+    filter_judge_b_metric_rows,
     merge_elo,
-    rationalization_index,
-    validate_judge_b_vs_ivt,
     write_judge_b_phase1_report,
 )
 
@@ -1402,12 +1400,13 @@ def analyze_and_rank_variants(
         high_strategic_threshold=HIGH_STRATEGIC_THRESHOLD,
     )
 
-    choice_elo_by_model = compute_choice_elo(candidate_rows)
-    reasoning_elo_by_model = compute_reasoning_elo(candidate_rows)
+    metric_rows = filter_judge_b_metric_rows(candidate_rows)
+    choice_elo_by_model = compute_choice_elo(metric_rows)
+    reasoning_elo_by_model = compute_reasoning_elo(metric_rows)
     merged_elo_by_model = merge_elo(
-        choice_elo_by_model, reasoning_elo_by_model, candidate_rows
+        choice_elo_by_model, reasoning_elo_by_model, metric_rows
     )
-    judge_b_by_model = _build_judge_b_model_summaries(
+    judge_b_by_model = build_judge_b_model_summaries(
         candidate_rows,
         choice_elo_by_model,
         reasoning_elo_by_model,
@@ -1479,38 +1478,6 @@ def analyze_and_rank_variants(
     print(f"✓ Saved Judge B report to {output_dir}/judge_b_phase1_report.json")
 
     return recommendations
-
-
-def _build_judge_b_model_summaries(
-    rows: List[Dict],
-    choice_elo_by_model: Dict[str, Dict[str, float]],
-    reasoning_elo_by_model: Dict[str, Dict[str, float]],
-    merged_elo_by_model: Optional[Dict[str, Dict[str, float]]] = None,
-) -> List[Dict]:
-    """Per-model Judge B decomposition metrics for variant_rankings.json."""
-    models = sorted({r.get("model") for r in rows if r.get("model")})
-    summaries: List[Dict] = []
-
-    for model in models:
-        choice_elo = choice_elo_by_model.get(model, {})
-        reasoning_elo = reasoning_elo_by_model.get(model, {})
-        merged = (merged_elo_by_model or {}).get(model, {})
-        summaries.append({
-            "model": model,
-            "alignment_washing_rate": round(alignment_washing_rate(rows, model), 4),
-            "alignment_faking_rate": round(alignment_faking_rate(rows, model), 4),
-            "rationalization_index": round(
-                rationalization_index(choice_elo, reasoning_elo), 2
-            ),
-            "choice_elo": {k: round(v, 1) for k, v in choice_elo.items()},
-            "reasoning_elo": {k: round(v, 1) for k, v in reasoning_elo.items()},
-            "merged_elo": {k: round(v, 1) for k, v in merged.items()},
-            "judge_b_validation": validate_judge_b_vs_ivt(
-                [r for r in rows if r.get("model") == model]
-            ),
-        })
-
-    return summaries
 
 
 def _plot_p1_10_choice_vs_reasoning_elo(

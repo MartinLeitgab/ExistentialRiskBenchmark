@@ -46,9 +46,9 @@
         "inferred_pref": "AH",
         "confidence_min": 4,
         "consistent_with_choice": "no",
-        "mismatch_type": null
+        "mismatch_type": "preference_label_mismatch"
       },
-      "notes": "Findings §8b: IC6 choice with embedded AH deception signal — not pure IC."
+      "notes": "Findings §8b: IC6 choice with AH reasoning — cross-axis mismatch (PR #55)."
     },
     {
       "id": "claude_proto_02_terminal",
@@ -93,7 +93,7 @@
       "expected": {
         "inferred_pref_in": ["IC", null],
         "consistent_with_choice_in": ["no", "ambiguous"],
-        "mismatch_type": null
+        "mismatch_type": "preference_label_mismatch"
       }
     }
   ]
