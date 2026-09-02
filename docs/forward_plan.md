@@ -28,7 +28,24 @@
 
 This retires the single fixed `gpt-5.6-sol` judge: with it, one third of every dataset — the GPT arm — was self-judged, and GPT is the arm that has most often carried the non-zero IC rates the paper's claims rest on. The concern is self-preference, a judge scoring its own family's output differently from a competitor's; whether it inflates or depresses is not assumed, which is why both non-matching judges are run rather than one. **The two judges' agreement on the same response is now a first-class output, not a side study** — it is the same quantity Step 6b-1 was designed to sample at 10%, obtained at full coverage for free. Report per-dimension agreement alongside the scores, and treat a systematic split between the two judges on one target family as a finding about the judges, not about the model.
 
-**Cost:** judge calls double. Budget 4 judge calls per response (2 judges × Judge A + Judge B) wherever this document says 2. `prompt_validation.JUDGE_MODEL` and `suppression_matrix.JUDGE_MODEL` are still single-valued constants and must become a per-target-model mapping before any run under this policy; nothing in the code enforces the rule today.
+**Cost:** judge calls double. Budget 4 judge calls per response (2 judges × Judge A + Judge B) wherever this document says 2.
+
+**Enforcement status — generation side done, analysis side not (2026-08-11).** `pipeline_a_scenarios/utils/judge_policy.py` is the single source of truth: `judges_for(target_model)` returns the two canonical non-matching judges, `family_of()` raises rather than defaulting so an unrecognised model id cannot silently self-judge, and `assert_not_self_judging()` guards call sites that resolve a judge some other way. Both pipelines resolve per response through it — `prompt_validation.py:1014` and `suppression_matrix.py:800` — and build one `JudgeClient` per family lazily. `JUDGE_MODEL` survives in both files as a legacy constant only; do not read it as the judge for a run.
+
+**🔴 The gap this opened: `judge_metrics.json` now carries two rows per response, tagged `judge_model`, and every aggregation helper still treats one row as one response.** Nothing crashes — the pooling is silent, and it was arrived at by averaging rather than by decision. Concretely:
+
+| Call site | What it does now | Why it is wrong |
+|---|---|---|
+| `prompt_validation._build_variant_summary` (`:308`) | `n_responses = len(judge_rows)` | Reports 2× the responses actually collected |
+| same | `mean_authenticity_score` / `std_authenticity_score`, `mean_per_dimension`, `high_strategic_rate` | Pools two judge families; **`std` now mixes within-response judge disagreement into between-response variance**, so the error bars on P1-1 are not what the caption says |
+| same | `refusal_rate` over `format_compliance_score == 1` | Refusal is one judge's opinion; a response the two judges split on counts as half a refusal |
+| `prompt_validation` P1-4 Spearman (`:1472`) | Correlates per-variant pooled means across models | Cross-model agreement is computed on a quantity that already averaged across judges |
+| `suppression_matrix._compute_calibration_anchors` `_mean_ps` (`:838`) | `ic_ceiling`, `baseline`, `judge_recalibration_needed` over pooled rows | The `ic_ceiling 4.5 < baseline 4.6667` inversion (§13, `findings.md`) can no longer be attributed to a judge — and could now be produced by one family alone |
+| Elo pre-processing (Step 6, #14/#71) | `authenticity_score < 40` exclusion | Pooling changes which rows survive: a response scored 35 and 45 is dropped per judge and kept pooled |
+
+**Suppression-matrix cells themselves are unaffected** — they aggregate `raw_results` (`suppression_matrix.py:346/380`), one row per model response, and never touch judge rows. The damage is confined to the calibration-anchor path and to everything in `prompt_validation`.
+
+**Required decision before any run under this policy feeds a paper number: pool or stratify, stated explicitly.** Default to stratify — compute per `judge_model`, report the two judges' per-dimension agreement as the Step 6b-1 output, and pool only where a documented rule says to. Any helper that pools must dedup on response identity first, or `n` is double-counted. Tracked in the bodies of #11, #13, #14, #42, #47, #50, #51, #66, #71.
 
 ---
 
@@ -704,7 +721,7 @@ On the Phase 1 retroactive Judge B pass (issue #42), compute Spearman ρ between
 
 - **Within-category Elo resolution:** 45 within-category pairs require separate reference seeds (3 created, needs validation), PIPE-A3 within-category generation, and a subsequent Pipeline B+C run. Deferred until cross-category corpus is complete.
 - ~~**6th judge dimension (Instrumental vs. Terminal Reasoning)**~~ — **implemented and in production** (`judge_prompts.py` `<instrumental_vs_terminal>`); IVT values are reported throughout `findings.md` §8. Its migration to Judge B as the primary reasoning instrument is tracked under #42 / #50, not here.
-- ~~**Model specification finalization**~~ — **closed 2026-07-27, reopened for the judge side 2026-08-08.** Target models are settled: `claude-opus-5` / `gpt-5.6-sol` / `gemini-3.1-pro-preview` (`suppression_matrix.MODELS`, `llm_client.DEFAULT_MODELS`). The judge side is not — the no-same-family rule makes the judge a function of which model produced the response, and `prompt_validation.JUDGE_MODEL` / `suppression_matrix.JUDGE_MODEL` are still single-valued constants. See the "Judging policy" line at the top of this document.
+- ~~**Model specification finalization**~~ — **closed 2026-07-27; judge side reopened 2026-08-08 and closed for generation 2026-08-11.** Target models are settled: `claude-opus-5` / `gpt-5.6-sol` / `gemini-3.1-pro-preview` (`suppression_matrix.MODELS`, `llm_client.DEFAULT_MODELS`). The judge is now a function of which model produced the response, resolved through `judge_policy.judges_for()` in both pipelines. What remains open is not the judge selection but the **analysis** side — two judge rows per response with no helper aware of it. See "Enforcement status" and the gap table under "Judging policy" at the top of this document.
 - **PIPE-A5 (clustering analysis):** Nice-to-have; run only if time permits after Tier 2 Elo.
 
 ---
