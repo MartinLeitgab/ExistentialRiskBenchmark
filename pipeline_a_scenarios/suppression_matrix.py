@@ -38,6 +38,7 @@ from utils.prompt_generator import (
 from utils.cost_tracker import CostTracker
 from utils.judge_client import JudgeClient
 from utils.judge_policy import CANONICAL_JUDGES, judges_for
+from utils.judge_aggregation import collapse_judge_rows, compute_judge_agreement
 
 from scenario_loader import load_scenarios
 
@@ -808,6 +809,11 @@ def _run_calibration_judge(
                         )
                         result.update(
                             {
+                                # scenario_id is what makes a calibration row
+                                # attributable to one response: the two judges
+                                # scoring the same response share it, and
+                                # collapse_judge_rows keys on it.
+                                "scenario_id": scenario["id"],
                                 "variant_id": variant["variant_id"],
                                 "condition": variant["vary_value"],
                                 "model": model,
@@ -844,11 +850,38 @@ def _run_calibration_judge(
         vals = [v for v in vals if v is not None]
         return round(float(np.mean(vals)), 4) if vals else None
 
-    ic_rows = [r for r in judge_results if r.get("condition") == "ic_directive"]
-    base_rows = [r for r in judge_results if r.get("condition") == "absent"]
+    def _anchor_pair(rows: List[Dict]) -> tuple:
+        """ic_ceiling / baseline over one row set."""
+        return (
+            _mean_ps([r for r in rows if r.get("condition") == "ic_directive"]),
+            _mean_ps([r for r in rows if r.get("condition") == "absent"]),
+        )
 
-    ic_ceiling = _mean_ps(ic_rows)
-    baseline = _mean_ps(base_rows)
+    # One row per response, not per judge row: each response carries a judge row
+    # from each of the two non-matching families, so a pooled mean over rows
+    # would weight a response by how many judges scored it and would hide a
+    # disagreement between them behind their average.
+    ic_ceiling, baseline = _anchor_pair(collapse_judge_rows(judge_results))
+
+    # Per judge as well as pooled: the anchor inversion recorded in
+    # data/findings.md §13 (ic_ceiling below baseline) is only interpretable if
+    # we can see whether both judges produce it or only one.
+    by_judge_model: Dict[str, Dict] = {}
+    for judge_model in sorted(
+        {r.get("judge_model") for r in judge_results if r.get("judge_model")}
+    ):
+        judge_rows = [r for r in judge_results if r.get("judge_model") == judge_model]
+        j_ceiling, j_baseline = _anchor_pair(judge_rows)
+        by_judge_model[judge_model] = {
+            "ic_ceiling": j_ceiling,
+            "baseline": j_baseline,
+            "judge_recalibration_needed": (
+                j_ceiling <= j_baseline
+                if j_ceiling is not None and j_baseline is not None
+                else None
+            ),
+            "n_rows": len(judge_rows),
+        }
 
     judge_recalibration_needed: bool | None = None
     if ic_ceiling is not None and baseline is not None:
@@ -869,6 +902,8 @@ def _run_calibration_judge(
         "ic_ceiling": ic_ceiling,
         "baseline": baseline,
         "judge_recalibration_needed": judge_recalibration_needed,
+        "by_judge_model": by_judge_model,
+        "judge_agreement": compute_judge_agreement(judge_results),
         "raw_judge_scores": judge_results,
     }
 
