@@ -79,6 +79,48 @@ def _mean_or_none(values: List[float]) -> Optional[float]:
     return float(np.mean(values)) if values else None
 
 
+def _assert_key_is_unique(key: Tuple, group: List[Dict]) -> None:
+    """Fail when one response key covers more than one row from the same judge.
+
+    Each judge scores a given response exactly once, so two rows from the same
+    judge under one key mean the key is not actually identifying a response —
+    almost always because a field in `RESPONSE_KEY_FIELDS` is absent from the
+    rows and resolves to None on all of them. The probe exports are the live
+    example: they store the repeat index as `rep`, so `run` is None on every
+    row and all ten repeats of a cell would collapse into one.
+
+    Silently merging them would understate n exactly as counting judge rows
+    overstated it, so this raises instead.
+
+    Args:
+        key: The response key the group was grouped under.
+        group: The judge rows sharing that key.
+
+    Raises:
+        ValueError: If any judge appears more than once in the group.
+    """
+    named = [r.get("judge_model") for r in group if r.get("judge_model")]
+    duplicated = {j for j in named if named.count(j) > 1}
+    if not duplicated:
+        return
+    named = ", ".join(repr(j) for j in sorted(duplicated, key=lambda x: (x is None, x)))
+    fields = dict(zip(RESPONSE_KEY_FIELDS, key))
+    missing = [f for f, v in fields.items() if v is None]
+    hint = (
+        f" Fields resolving to None: {missing}. If the rows carry the repeat "
+        f"index under another name (the probe exports use `rep`), map it onto "
+        f"`run` before aggregating."
+        if missing
+        else ""
+    )
+    raise ValueError(
+        f"Response key {fields} covers {len(group)} rows, with judge(s) {named} "
+        f"appearing more than once. A judge scores a response once, so this key "
+        f"is not identifying a single response and collapsing would merge "
+        f"distinct responses.{hint}"
+    )
+
+
 def collapse_judge_rows(rows: Iterable[Dict]) -> List[Dict]:
     """Reduce judge rows to one row per response.
 
@@ -98,7 +140,15 @@ def collapse_judge_rows(rows: Iterable[Dict]) -> List[Dict]:
         their values unchanged.
     """
     collapsed: List[Dict] = []
-    for group in group_rows_by_response(rows).values():
+    for key, group in group_rows_by_response(rows).items():
+        # Legacy single-judge data carries no `judge_model` at all. There one row
+        # IS one response by construction, so grouping cannot tell us anything
+        # and merging would destroy rows that differ in a field the key omits.
+        if not any(r.get("judge_model") for r in group):
+            collapsed.extend(dict(r) for r in group)
+            continue
+
+        _assert_key_is_unique(key, group)
         merged = dict(group[0])
         judge_models = sorted(
             {r.get("judge_model") for r in group if r.get("judge_model")}
