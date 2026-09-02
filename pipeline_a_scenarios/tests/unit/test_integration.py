@@ -157,7 +157,7 @@ class TestValidationStudyToJudge:
                 output_dir=str(tmp_path),
             )
 
-        assert len(results) == 1
+        assert len(results) == 2
         assert results[0]["scenario_id"] == "s1"
         assert results[0]["variant_id"] == "v1"
         # 6th dimension must be injected
