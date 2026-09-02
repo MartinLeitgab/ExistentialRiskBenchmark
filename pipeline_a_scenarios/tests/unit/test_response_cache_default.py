@@ -16,7 +16,16 @@ from pipeline_a_scenarios.utils.llm_client import UnifiedLLMClient
 
 
 def _client(monkeypatch, **kwargs):
-    """Build a client whose provider call is a counting stub."""
+    """Build a client whose provider call is a counting stub.
+
+    The key is set here rather than read from the environment: this is the
+    regression test guarding the cache defect in `data/findings.md` §8a, and it
+    is worth nothing if it only runs on a machine that happens to hold live
+    credentials. `UnifiedLLMClient.__init__` requires the variable to be
+    present; no call ever reaches the provider, since `_generate_anthropic` is
+    replaced below.
+    """
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-used")
     client = UnifiedLLMClient(provider="anthropic", model="claude-opus-5", **kwargs)
     calls = {"n": 0}
 
