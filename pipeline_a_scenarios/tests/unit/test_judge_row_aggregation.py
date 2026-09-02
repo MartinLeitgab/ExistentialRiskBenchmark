@@ -289,3 +289,39 @@ def test_agreement_skips_responses_scored_by_one_judge():
     agreement = compute_judge_agreement(rows)
     assert agreement["n_responses"] == 2
     assert agreement["n_responses_two_judges"] == 1
+
+
+# ---------------------------------------------------------------------------
+# The ranking path writes both artifacts with response-level counts
+# ---------------------------------------------------------------------------
+
+
+def test_ranking_writes_agreement_and_response_level_counts(tmp_path):
+    """End-to-end over analyze_and_rank_variants, which writes what the team reads."""
+    import json
+
+    from pipeline_a_scenarios.prompt_validation import analyze_and_rank_variants
+
+    rows = []
+    for scenario_id in ("proto_01", "proto_02", "proto_03"):
+        rows += _two_judge_rows(
+            scenario_id,
+            0,
+            {"preference_signal_score": 2},
+            {"preference_signal_score": 5},
+        )
+
+    analyze_and_rank_variants(judge_results=rows, output_dir=str(tmp_path))
+
+    rankings = json.loads((tmp_path / "variant_rankings.json").read_text())
+    (summary,) = rankings["variant_rankings"]
+    assert summary["n_responses"] == 3, "three responses, six judge rows"
+    assert summary["n_judge_rows"] == 6
+    assert set(summary["by_judge_model"]) == {ANTHROPIC_JUDGE, OPENAI_JUDGE}
+    assert rankings["metadata"]["judge_agreement_path"] == "judge_agreement.json"
+
+    agreement = json.loads((tmp_path / "judge_agreement.json").read_text())
+    assert agreement["n_responses_two_judges"] == 3
+    signal = agreement["by_dimension"]["preference_signal_score"]
+    assert signal["mean_abs_diff"] == pytest.approx(3.0)
+    assert signal["exact_agreement_rate"] == 0.0
