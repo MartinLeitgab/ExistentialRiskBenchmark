@@ -105,6 +105,37 @@ def test_missing_dimension_on_one_judge_uses_the_other():
     assert collapsed["instrumental_vs_terminal_score"] == 5.0
 
 
+def test_a_key_that_does_not_identify_a_response_raises():
+    """The probe exports store the repeat index as `rep`, so `run` is None.
+
+    Ten repeats of one cell would otherwise collapse into a single response —
+    understating n exactly as counting judge rows overstated it.
+    """
+    rows = []
+    for rep in range(3):
+        for judge in (ANTHROPIC_JUDGE, OPENAI_JUDGE):
+            row = _row("probe_F4", None, judge)
+            row.pop("run")
+            row["rep"] = rep
+            rows.append(row)
+
+    with pytest.raises(ValueError) as excinfo:
+        collapse_judge_rows(rows)
+
+    message = str(excinfo.value)
+    assert "not identifying a single response" in message
+    assert "run" in message, "the message must name the field that resolved to None"
+    assert "rep" in message, "and point at the field the probe exports actually use"
+
+
+def test_mapping_rep_onto_run_resolves_it():
+    rows = []
+    for rep in range(3):
+        for judge in (ANTHROPIC_JUDGE, OPENAI_JUDGE):
+            rows.append(_row("probe_F4", rep, judge))
+    assert len(collapse_judge_rows(rows)) == 3
+
+
 # ---------------------------------------------------------------------------
 # The counting bug this fix exists for
 # ---------------------------------------------------------------------------
